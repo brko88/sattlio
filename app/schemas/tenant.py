@@ -1,0 +1,53 @@
+import re
+
+from pydantic import BaseModel, field_validator
+
+
+class TenantCreate(BaseModel):
+    name: str
+    address: str | None = None
+    city: str | None = None
+    country: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    jib: str
+
+    @field_validator("jib")
+    @classmethod
+    def validate_jib(cls, value: str) -> str:
+        value = value.strip()
+
+        if not re.fullmatch(r"\d{13}", value):
+            raise ValueError("JIB mora sadržati tačno 13 cifara.")
+
+        if len(set(value)) == 1:
+            raise ValueError("JIB ne može sadržati istu cifru ponovljenu 13 puta.")
+
+        return value
+
+
+class TenantResponse(BaseModel):
+    id: int
+    name: str
+    slug: str
+    city: str | None
+    is_active: bool
+    jib: str | None
+    verification_status: str
+
+    class Config:
+        from_attributes = True
+
+
+class TenantWithRoleResponse(BaseModel):
+    id: int
+    name: str
+    slug: str
+    city: str | None
+    is_active: bool
+    jib: str | None
+    verification_status: str
+    role: str
+
+    class Config:
+        from_attributes = True

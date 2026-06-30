@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import BookAppointment from "./pages/BookAppointment";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import Services from "./pages/Services";
@@ -22,6 +23,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/book/:employeeId" element={<BookAppointment />} />
 
         <Route path="/" element={<Layout />}>
           <Route path="dashboard" element={<Dashboard />} />

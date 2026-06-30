@@ -1,4 +1,4 @@
-# SmartBooking — Automatizovani Test Suite
+# Sattlio — Automatizovani Test Suite
 
 ## Napomena o "PenTest" terminologiji
 
@@ -23,7 +23,7 @@ Ovaj test suite pokriva sigurnosnu suštinu (tenant izolacija, auth provjere, da
 ## Pokretanje
 
 ```powershell
-cd "D:\SmartBooking Platform"
+cd "D:\Sattlio Platform"
 venv\Scripts\activate
 pip install pytest httpx pytest-html
 pytest --html=test_report.html --self-contained-html -v
@@ -38,7 +38,7 @@ pytest -v > test_log.txt
 
 ## Važna napomena o test bazi
 
-Testovi **NE** treba da se pokreću protiv tvoje glavne `smartbooking` PostgreSQL baze — to bi pomiješalo test podatke sa stvarnim podacima (Dokument 11, sekcija 16: "Test podaci ne smiju koristiti produkcijske podatke").
+Testovi **NE** treba da se pokreću protiv tvoje glavne `Sattlio` PostgreSQL baze — to bi pomiješalo test podatke sa stvarnim podacima (Dokument 11, sekcija 16: "Test podaci ne smiju koristiti produkcijske podatke").
 
 `conftest.py` koristi **odvojenu, privremenu SQLite bazu** koja se kreira prije testova i briše nakon — tvoja stvarna baza ostaje netaknuta.
 
@@ -49,4 +49,5 @@ Test suite **simulira (mock-uje)** slanje email-a — `conftest.py` ima `disable
 Razlog: testovi prave ~10+ novih korisnika kroz registraciju, što bi značilo isto toliko pokušaja stvarnog slanja email-a — sporo, zavisi od mreže (isti SMTP/mobilna mreža problem sa kojim smo se ranije susreli), i nepotrebno bi "spamovalo" inbox pri svakom pokretanju testova.
 
 **Zaključak: pokreni testove sa bilo koje mreže, mobilne ili WiFi — nema veze, email se ne šalje stvarno tokom testiranja.** `.env` fajl i tvoj pravi SMTP_PASSWORD se ne dotiču ovim testovima.
+
 

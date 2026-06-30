@@ -1,4 +1,4 @@
-# SmartBooking Platform — Authentication & Tenant Security (Production Level)
+# Sattlio Platform — Authentication & Tenant Security (Production Level)
 
 **Dokument:** 06 — Authentication & Tenant Security (Production Level)
 **Verzija:** 1.0
@@ -286,10 +286,11 @@ API mora koristiti standardne sigurnosne HTTP headere: HSTS, X-Frame-Options, X-
 
 ## 18. Zaključak
 
-Ovaj dokument definiše sigurnosni temelj SmartBooking platforme. Bez implementacije ovih pravila sistem nije spreman za produkciju.
+Ovaj dokument definiše sigurnosni temelj Sattlio platforme. Bez implementacije ovih pravila sistem nije spreman za produkciju.
 
 Svi budući moduli moraju biti kompatibilni sa ovim security modelom: multi-tenant izolacija, RBAC model, ownership validacija, audit logging, sigurnosni standardi definisani ovim dokumentom.
 
 ---
 
 *Kraj dokumenta.*
+

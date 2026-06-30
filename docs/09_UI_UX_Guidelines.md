@@ -1,4 +1,4 @@
-# SmartBooking Platform — UI/UX Guidelines
+# Sattlio Platform — UI/UX Guidelines
 
 **Dokument:** 09 — UI/UX Guidelines
 **Verzija:** 1.0
@@ -9,13 +9,13 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše vizuelni identitet, korisničko iskustvo i pravila dizajna SmartBooking platforme. Cilj je osigurati: konzistentan izgled svih modula, brzo izvršavanje svakodnevnih zadataka, jednostavno korištenje za netehničke korisnike, podršku za više jezika, podršku za buduće mobilne aplikacije, spremnost za marketplace funkcionalnosti.
+Ovaj dokument definiše vizuelni identitet, korisničko iskustvo i pravila dizajna Sattlio platforme. Cilj je osigurati: konzistentan izgled svih modula, brzo izvršavanje svakodnevnih zadataka, jednostavno korištenje za netehničke korisnike, podršku za više jezika, podršku za buduće mobilne aplikacije, spremnost za marketplace funkcionalnosti.
 
 ---
 
 ## 2. Dizajnerski principi
 
-SmartBooking mora biti: jednostavan, brz, pregledan, profesionalan, moderan, prilagođen radu tokom cijelog dana, prilagođen mobilnim uređajima, fokusiran na produktivnost.
+Sattlio mora biti: jednostavan, brz, pregledan, profesionalan, moderan, prilagođen radu tokom cijelog dana, prilagođen mobilnim uređajima, fokusiran na produktivnost.
 
 ---
 
@@ -207,8 +207,9 @@ UI mora favorizovati brzinu rada nad vizuelnim efektima.
 
 Prioritet je: produktivnost korisnika, jednostavnost korištenja, responzivnost, višejezičnost, marketplace spremnost, skalabilnost dizajna.
 
-Svi novi moduli moraju pratiti ova pravila kako bi SmartBooking zadržao konzistentan korisnički doživljaj.
+Svi novi moduli moraju pratiti ova pravila kako bi Sattlio zadržao konzistentan korisnički doživljaj.
 
 ---
 
 *Kraj dokumenta.*
+

@@ -1,4 +1,4 @@
-# SmartBooking Platform — Release Checklist v1.0
+# Sattlio Platform — Release Checklist v1.0
 
 **Datum:** 26.06.2026.
 **Status:** Faza A + Faza B + Faza C + Faza C.5 (Test Suite) — KOMPLETNE
@@ -175,4 +175,5 @@ Nijedna stavka iz sekcije 5.1 i 5.2 ("KRITIČNO") ne treba biti preskočena prij
 
 ---
 
-*Dokument generisan 26.06.2026. na osnovu zajedničke razvojne sesije — SmartBooking Platform.*
+*Dokument generisan 26.06.2026. na osnovu zajedničke razvojne sesije — Sattlio Platform.*
+

@@ -1,4 +1,4 @@
-# SmartBooking Platform — Deployment & Infrastructure (CI/CD)
+# Sattlio Platform — Deployment & Infrastructure (CI/CD)
 
 **Dokument:** 08 — Deployment & Infrastructure (CI/CD)
 **Verzija:** 1.0
@@ -9,7 +9,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše način deployanja, hostinga, CI/CD procesa i infrastrukture SmartBooking platforme. Cilj: stabilno produkcijsko okruženje, automatizovan deployment, skalabilna arhitektura, minimalan downtime, sigurno upravljanje podacima, jednostavno održavanje sistema.
+Ovaj dokument definiše način deployanja, hostinga, CI/CD procesa i infrastrukture Sattlio platforme. Cilj: stabilno produkcijsko okruženje, automatizovan deployment, skalabilna arhitektura, minimalan downtime, sigurno upravljanje podacima, jednostavno održavanje sistema.
 
 > **Napomena (vidi Dokument 14):** Većina ovog dokumenta (Docker, CI/CD, monitoring) odgovara Fazi D u realnom razvojnom planu — uvodi se kad sistem ima prve stvarne korisnike, ne od prvog dana razvoja.
 
@@ -202,10 +202,11 @@ Cilj: manje od 5 minuta downtime-a po deployu (MVP), nula downtime-a u budućnos
 
 ## 20. Zaključak
 
-Ovaj dokument definiše kompletan životni ciklus SmartBooking platforme u produkciji. Bez ovog sloja sistem nije SaaS proizvod.
+Ovaj dokument definiše kompletan životni ciklus Sattlio platforme u produkciji. Bez ovog sloja sistem nije SaaS proizvod.
 
 Sa ovim slojem: sistem postaje deployable, skalabilan, održiv, siguran, spreman za korisnike, spreman za buduće širenje na više država i tržišta.
 
 ---
 
 *Kraj dokumenta.*
+

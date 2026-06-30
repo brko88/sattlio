@@ -1,4 +1,4 @@
-# SmartBooking Platform — Product Vision
+# Sattlio Platform — Product Vision
 
 **Dokument:** 00 — Product Vision
 **Verzija:** 1.0
@@ -9,7 +9,7 @@
 
 ## Mission
 
-SmartBooking je SaaS platforma za upravljanje rezervacijama termina i poslovanjem uslužnih djelatnosti.
+Sattlio je SaaS platforma za upravljanje rezervacijama termina i poslovanjem uslužnih djelatnosti.
 
 Platforma omogućava vlasnicima poslovnih subjekata jednostavno upravljanje:
 - rezervacijama
@@ -25,11 +25,11 @@ kroz jedinstven web i mobilni sistem.
 
 ## Long-Term Vision
 
-SmartBooking nije samo aplikacija za frizerske salone.
+Sattlio nije samo aplikacija za frizerske salone.
 
 Cilj platforme je postati centralno mjesto za rezervaciju svih vrsta usluga.
 
-Korisnik koristi jedan nalog za pristup svim poslovnim subjektima koji koriste SmartBooking platformu.
+Korisnik koristi jedan nalog za pristup svim poslovnim subjektima koji koriste Sattlio platformu.
 
 Primjeri:
 - frizerski salon
@@ -131,7 +131,7 @@ Korisnik koristi jedan nalog za rezervaciju usluga različitih poslovnih subjeka
 
 ## Partner Network Vision
 
-SmartBooking podržava partner model prodaje.
+Sattlio podržava partner model prodaje.
 
 Partneri mogu biti:
 - distributeri repromaterijala
@@ -207,3 +207,4 @@ Nakon validacije slijedi regionalna ekspanzija.
 ---
 
 *Kraj dokumenta.*
+

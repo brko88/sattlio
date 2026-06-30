@@ -1,4 +1,4 @@
-# SmartBooking Platform — Business Rules
+# Sattlio Platform — Business Rules
 
 **Dokument:** 10 — Business Rules
 **Verzija:** 1.0
@@ -11,7 +11,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše poslovna pravila SmartBooking platforme. Poslovna pravila određuju ponašanje sistema nezavisno od tehnologije implementacije. Sva backend i frontend logika mora biti usklađena sa ovim dokumentom.
+Ovaj dokument definiše poslovna pravila Sattlio platforme. Poslovna pravila određuju ponašanje sistema nezavisno od tehnologije implementacije. Sva backend i frontend logika mora biti usklađena sa ovim dokumentom.
 
 ---
 
@@ -190,8 +190,9 @@ Sistem je validan samo ako: nema preklapanja termina, nema cross-tenant pristupa
 
 ## 20. Zaključak
 
-Ovaj dokument predstavlja centralni skup poslovnih pravila SmartBooking platforme. Sva buduća funkcionalnost mora biti usklađena sa ovim pravilima ili zahtijeva novu verziju dokumenta.
+Ovaj dokument predstavlja centralni skup poslovnih pravila Sattlio platforme. Sva buduća funkcionalnost mora biti usklađena sa ovim pravilima ili zahtijeva novu verziju dokumenta.
 
 ---
 
 *Kraj dokumenta.*
+

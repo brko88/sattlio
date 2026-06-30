@@ -1,4 +1,4 @@
-# SmartBooking Platform — Backend Skeleton (FastAPI MVP)
+# Sattlio Platform — Backend Skeleton (FastAPI MVP)
 
 **Dokument:** 05 — Backend Skeleton (FastAPI MVP)
 **Verzija:** 1.0
@@ -9,7 +9,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše osnovni backend skeleton SmartBooking platforme. Cilj sistema je da omogući: pokretanje FastAPI servera, povezivanje sa PostgreSQL bazom, JWT autentifikaciju, refresh token sistem, email verifikaciju, multi-tenant arhitekturu, UserTenantRole model, modularnu strukturu spremnu za skaliranje.
+Ovaj dokument definiše osnovni backend skeleton Sattlio platforme. Cilj sistema je da omogući: pokretanje FastAPI servera, povezivanje sa PostgreSQL bazom, JWT autentifikaciju, refresh token sistem, email verifikaciju, multi-tenant arhitekturu, UserTenantRole model, modularnu strukturu spremnu za skaliranje.
 
 Backend skeleton predstavlja početnu osnovu za razvoj MVP verzije.
 
@@ -79,7 +79,7 @@ Osnovni paketi: fastapi, uvicorn, sqlalchemy, alembic, psycopg2-binary, pydantic
 ### 4.2 .env
 
 ```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/smartbooking
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/Sattlio
 SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
@@ -135,7 +135,7 @@ Sistem mora imati `get_current_user()` koji: validira JWT, učitava korisnika iz
 
 ### 8.2 Tenant Context
 
-SmartBooking koristi UserTenantRole model. Tenant se ne uzima iz JWT tokena. Aktivni tenant određuje se: izborom korisnika, tenant context sistemom.
+Sattlio koristi UserTenantRole model. Tenant se ne uzima iz JWT tokena. Aktivni tenant određuje se: izborom korisnika, tenant context sistemom.
 
 Ovo omogućava: više tenant-a po korisniku, više uloga po korisniku.
 
@@ -229,7 +229,7 @@ Lokacija: `app/main.py`
 
 Aplikacija mora: inicijalizovati FastAPI, registrovati middleware, registrovati API routere, omogućiti OpenAPI dokumentaciju.
 
-Početni endpoint: `GET /` → `{ "status": "SmartBooking API running" }`
+Početni endpoint: `GET /` → `{ "status": "Sattlio API running" }`
 
 ---
 
@@ -280,16 +280,17 @@ Sljedeći dokument: **06 — Full Authentication & Authorization System**
 
 Dodaje: kompletan RBAC sistem, UserTenantRole validaciju, tenant switching, permission sistem, protected routes, refresh token storage, email verification flow, audit log implementaciju.
 
-U ovom trenutku SmartBooking prelazi iz osnovnog skeletona u funkcionalnu SaaS platformu.
+U ovom trenutku Sattlio prelazi iz osnovnog skeletona u funkcionalnu SaaS platformu.
 
 ---
 
 ## 19. Zaključak
 
-Ovaj dokument definiše početni backend kostur SmartBooking platforme. Cilj skeletona nije implementacija svih funkcionalnosti, već stvaranje stabilne osnove za: autentifikaciju, multi-tenant sistem, buduće module, marketplace arhitekturu, skalabilan razvoj.
+Ovaj dokument definiše početni backend kostur Sattlio platforme. Cilj skeletona nije implementacija svih funkcionalnosti, već stvaranje stabilne osnove za: autentifikaciju, multi-tenant sistem, buduće module, marketplace arhitekturu, skalabilan razvoj.
 
 Sve naredne funkcionalnosti moraju biti implementirane na osnovu ovog dokumenta.
 
 ---
 
 *Kraj dokumenta.*
+

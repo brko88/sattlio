@@ -1,4 +1,4 @@
-# SmartBooking Platform — API Specification
+# Sattlio Platform — API Specification
 
 **Dokument:** 04 — API Specification
 **Verzija:** 1.0
@@ -9,7 +9,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše kompletan REST API SmartBooking platforme. Obuhvata: autentifikaciju, korisnike, poslovne subjekte, lokacije, zaposlenike, usluge, klijente, rezervacije, standard odgovora, autorizaciju, validaciju, error handling.
+Ovaj dokument definiše kompletan REST API Sattlio platforme. Obuhvata: autentifikaciju, korisnike, poslovne subjekte, lokacije, zaposlenike, usluge, klijente, rezervacije, standard odgovora, autorizaciju, validaciju, error handling.
 
 ---
 
@@ -280,3 +280,4 @@ API mora ostati: stabilan, skalabilan, siguran, marketplace ready, multi-tenant.
 ---
 
 *Kraj dokumenta.*
+

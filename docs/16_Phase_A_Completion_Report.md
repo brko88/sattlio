@@ -1,4 +1,4 @@
-# SmartBooking Platform — Phase A Completion Report
+# Sattlio Platform — Phase A Completion Report
 
 **Datum:** 23.06.2026.
 **Faza:** A — Core Booking System (lokalni razvoj, prema Dokumentu 14/15)
@@ -212,4 +212,5 @@ Sistem je spreman za prelazak na Fazu B (produkcijska infrastruktura) ili Fazu C
 
 ---
 
-*Izvještaj generisan 23.06.2026. na osnovu zajedničke razvojne sesije — SmartBooking Platform Backend, Faza A.*
+*Izvještaj generisan 23.06.2026. na osnovu zajedničke razvojne sesije — Sattlio Platform Backend, Faza A.*
+

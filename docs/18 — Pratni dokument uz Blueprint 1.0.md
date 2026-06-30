@@ -1,4 +1,4 @@
-# SmartBooking Platform — Buduće Funkcionalnosti (V2 ideje za rezervacije)
+# Sattlio Platform — Buduće Funkcionalnosti (V2 ideje za rezervacije)
 
 **Dokument:** 18 — Pratni dokument uz Blueprint 1.0
 **Verzija:** 1.0
@@ -96,3 +96,4 @@ Sve funkcionalnosti su kompatibilne sa postojećom arhitekturom i ne zahtijevaju
 ---
 
 *Kraj dokumenta.*
+

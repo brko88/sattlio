@@ -1,4 +1,4 @@
-# SmartBooking Platform — Testing Strategy
+# Sattlio Platform — Testing Strategy
 
 **Dokument:** 11 — Testing Strategy
 **Verzija:** 1.0
@@ -9,7 +9,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše strategiju testiranja SmartBooking platforme. Cilj je osigurati: stabilnost sistema, pouzdanost poslovne logike, sigurnost podataka, zaštitu od regresija, kvalitet prije produkcijskog puštanja.
+Ovaj dokument definiše strategiju testiranja Sattlio platforme. Cilj je osigurati: stabilnost sistema, pouzdanost poslovne logike, sigurnost podataka, zaštitu od regresija, kvalitet prije produkcijskog puštanja.
 
 ---
 
@@ -21,7 +21,7 @@ Testiranje mora potvrditi da: funkcionalnosti rade prema specifikaciji, poslovna
 
 ## 3. Vrste testiranja
 
-SmartBooking koristi: Unit Testing, Integration Testing, API Testing, Security Testing, Manual Testing, End-to-End Testing.
+Sattlio koristi: Unit Testing, Integration Testing, API Testing, Security Testing, Manual Testing, End-to-End Testing.
 
 ---
 
@@ -180,10 +180,11 @@ MVP se smatra prihvaćenim ako korisnik može:
 
 ## 20. Zaključak
 
-Ovaj dokument definiše standard kvaliteta SmartBooking platforme. Nijedna verzija sistema ne smije biti puštena u produkciju bez prolaska testova definisanih ovim dokumentom.
+Ovaj dokument definiše standard kvaliteta Sattlio platforme. Nijedna verzija sistema ne smije biti puštena u produkciju bez prolaska testova definisanih ovim dokumentom.
 
 Testiranje nije opcionalno već sastavni dio razvoja i procesa isporuke softvera.
 
 ---
 
 *Kraj dokumenta.*
+

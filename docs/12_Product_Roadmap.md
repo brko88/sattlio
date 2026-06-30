@@ -1,4 +1,4 @@
-# SmartBooking Platform — Product Roadmap
+# Sattlio Platform — Product Roadmap
 
 **Dokument:** 12 — Product Roadmap
 **Verzija:** 1.0
@@ -11,7 +11,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše plan razvoja SmartBooking platforme. Roadmap predstavlja strateški plan razvoja proizvoda tokom prve dvije godine. Dokument služi za: određivanje prioriteta, planiranje razvoja, procjenu troškova, praćenje napretka.
+Ovaj dokument definiše plan razvoja Sattlio platforme. Roadmap predstavlja strateški plan razvoja proizvoda tokom prve dvije godine. Dokument služi za: određivanje prioriteta, planiranje razvoja, procjenu troškova, praćenje napretka.
 
 ---
 
@@ -195,10 +195,11 @@ Blueprint 1.0 smatra se završenim kada su: svi dokumenti od 00 do 12 odobreni, 
 
 ## 19. Zaključak
 
-Roadmap definiše strateški pravac razvoja SmartBooking platforme. Svi budući razvojni planovi moraju biti usklađeni sa ovim dokumentom.
+Roadmap definiše strateški pravac razvoja Sattlio platforme. Svi budući razvojni planovi moraju biti usklađeni sa ovim dokumentom.
 
 ---
 
 *Kraj dokumenta.*
 
-**SMARTBOOKING BLUEPRINT 1.0 COMPLETE**
+**Sattlio BLUEPRINT 1.0 COMPLETE**
+

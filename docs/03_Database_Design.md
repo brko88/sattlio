@@ -1,4 +1,4 @@
-# SmartBooking Platform — Database Design (ERD + Schema)
+# Sattlio Platform — Database Design (ERD + Schema)
 
 **Dokument:** 03 — Database Design (ERD + Schema)
 **Verzija:** 1.0
@@ -9,7 +9,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše kompletnu strukturu baze podataka SmartBooking platforme. Obuhvata: entitete, relacije, primarne i strane ključeve, indeksiranje, multi-tenant model, pravila integriteta podataka.
+Ovaj dokument definiše kompletnu strukturu baze podataka Sattlio platforme. Obuhvata: entitete, relacije, primarne i strane ključeve, indeksiranje, multi-tenant model, pravila integriteta podataka.
 
 ---
 
@@ -345,3 +345,4 @@ Promjene u ovom modelu su moguće, ali moraju biti dokumentovane kroz Project Bl
 ---
 
 *Kraj dokumenta.*
+

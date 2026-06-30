@@ -1,4 +1,4 @@
-# SmartBooking Platform — Frontend Architecture (Web Application)
+# Sattlio Platform — Frontend Architecture (Web Application)
 
 **Dokument:** 07 — Frontend Architecture (Web Application)
 **Verzija:** 1.0
@@ -9,7 +9,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše frontend arhitekturu SmartBooking platforme. Cilj dokumenta je osigurati: konzistentan razvoj korisničkog interfejsa, jednostavno održavanje aplikacije, podršku za više jezika, podršku za buduće mobilne aplikacije, jednostavno povezivanje sa backend API-jem.
+Ovaj dokument definiše frontend arhitekturu Sattlio platforme. Cilj dokumenta je osigurati: konzistentan razvoj korisničkog interfejsa, jednostavno održavanje aplikacije, podršku za više jezika, podršku za buduće mobilne aplikacije, jednostavno povezivanje sa backend API-jem.
 
 ---
 
@@ -189,3 +189,4 @@ Svi novi moduli moraju pratiti ovu arhitekturu. Frontend mora biti usklađen sa 
 ---
 
 *Kraj dokumenta.*
+

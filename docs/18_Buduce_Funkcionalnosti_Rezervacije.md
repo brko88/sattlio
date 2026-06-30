@@ -273,23 +273,111 @@ Owner bira, **po zaposlenom**, jedan od dva moda:
 
 ---
 
+### 2.17 Prikaz "radnog vremena platforme" (najraniji početak, najkasniji kraj) u Admin panelu — IDEJA (29.06.2026.)
+
+**Ideja vlasnika:** Na nekom mjestu (Admin panel) vidjeti najraniji početak rada i najkasniji kraj rada, agregirano kroz SVE salone na platformi. Razlog: bitno za planiranje održavanja/ažuriranja sistema — vlasnik želi znati koji je najsigurniji vremenski prozor (kad najmanje salona aktivno radi) da minimizira prekid usluge.
+
+**Tehnička skica (lako, koristi postojeće podatke):**
+- `working_hours` tabela već ima `start_time`/`end_time` po zaposlenom, po danu — ne treba nova tabela
+- Admin panel dodatak: agregacioni upit `MIN(start_time)` i `MAX(end_time)` kroz SVE working_hours zapise na platformi (eventualno filtrirano po danu sedmice, ako vlasnik želi preciznije planiranje, npr. "kad je najsigurnije za nedjelju vs. za radni dan")
+- Prikaz: mala statistika/kartica u Admin panelu, npr. "Platforma aktivna: 07:00 - 21:00" — vlasnik vidi da je npr. 22:00-06:00 sigurna zona za održavanje
+
+**Status: Mali, brz dodatak postojećoj Admin panel stranici — može ići uz buduće poliranje Admin panela.**
+
+### 2.18 Grupna najava (broadcast) o nadolazećem ažuriranju — IDEJA (29.06.2026.), sa throttling zaštitom
+
+**Ideja vlasnika:** Mogućnost da vlasnik (kroz Admin panel) pošalje grupno obavještenje svim korisnicima (npr. "Sistem će biti nedostupan sutra od 22h do 23h zbog ažuriranja") — najavljeno UNAPRIJED (npr. dan ranije), ne u trenutku ažuriranja.
+
+**VAŽNA DOPUNA vlasnika — zaštita od spam liste:** Slanje email-a SVIM korisnicima ISTOVREMENO je rizično za email reputaciju — provajderi (Gmail i drugi) prepoznaju nagli "talas" email-ova sa istog naloga kao potencijalno spam/bot ponašanje, što može privremeno ograničiti nalog ili poslati buduće email-ove direktno u spam folder primalaca.
+
+**Tehnička skica:**
+1. Nova Admin panel akcija: forma sa naslovom/porukom najave
+2. Nova backend ruta, npr. `POST /api/v1/admin/broadcast` — prikuplja sve `owner` email adrese (join `users` → `user_tenant_roles` filtrirano po `role = owner`, distinct po `user_id` da se ista osoba ne dupla ako ima više salona)
+3. **Throttling zaštita (KLJUČNO, dogovoreno 29.06.2026.):** Slanje SA PAUZOM između svakog email-a (npr. `time.sleep(2)` — 2 sekunde između svakog), ne svi odjednom. Za trenutni obim (20-30 salona), ovo znači ukupno slanje traje ~1 minutu, potpuno prihvatljivo, NE treba složeniji sistem (queue, Celery, batch processing) za ovaj obim.
+4. **Timing (vlasnikova ideja, "dan ranije"):** Vlasnik ručno pokreće slanje najave dan unaprijed (npr. najavljuje ažuriranje za sutra, šalje email danas) — ovo NIJE automatsko planiranje (scheduled task), samo vlasnik klikne "Pošalji" kad odluči, dovoljno rano da korisnici imaju vremena da reaguju ako im termin/posao bude pogođen.
+
+**Kad obim poraste (buduća napomena):** Za stotine/hiljade korisnika, razmotriti profesionalniji email servis (SendGrid, Mailgun, Amazon SES) namijenjen za masovno slanje, sa boljom infrastrukturom/reputacijom od običnog Gmail SMTP naloga — ali to je za daleko kasnije, ne sad.
+
+**Status: Zapisano kao ideja sa konkretnom tehničkom zaštitom (throttling). Nije prioritet za trenutni mali obim (20-30 salona), gdje je direktan, lični kontakt i dalje praktičniji — vrijedi implementirati kad obim poraste do tačke gdje lični kontakt postane nepraktičan.**
+
+---
+
+### 2.19 Reliability Score — skriveni mehanizam zaštite od no-show klijenata i botova — VISOK PRIORITET ZA V2 (29.06.2026.)
+
+**Ideja vlasnika:** Zaštititi salone od klijenata koji rezervišu mnogo termina i ne pojavljuju se (no-show), uključujući botove ili zlonamjerne korisnike. Mehanizam treba biti SKRIVEN (klijent ne vidi svoj "score" direktno), sa stepenovanim posljedicama: pad "rejtinga" → obavezna potvrda od owner-a/zaposlenog za buduće rezervacije → potpuni ban sa platforme za najgore slučajeve.
+
+**VAŽNOST:** Ovo je direktno povezano sa originalnim Blueprint-om — Dokument 01 (Product Requirements Specification) VEĆ NAVODI "trust score" i "no-show sistem" kao buduće stavke (samo kao nazivi, bez ikakve razrade) — ova sekcija je PRVA puta kad se taj koncept konkretno razrađuje. Vlasnik je odlučio da ovo treba biti među PRVIM stvarima implementiranim kad V2 faza krene.
+
+**Veza sa postojećim konceptima:** Ovo je konceptualno "obrnuta strana" VIP klijent ideje (sekcija 2.5/2.8 ovog dokumenta) — VIP = visok score, potencijalne privilegije; Reliability Score = nizak score, ograničenja. Mogu deliti istu infrastrukturu (jedno polje, dvije primjene).
+
+**Tehnička skica — polje i logika:**
+
+```python
+# Customer model, novo polje
+reliability_score = Column(Integer, nullable=True, default=None)  # NULL = nema istorije još
+```
+
+**Logika promjene (poziva se kad appointment status postane "completed" ili "no_show"):**
+```python
+NO_SHOW_PENALTY = 15
+COMPLETED_BONUS = 2
+NEUTRAL_STARTING_SCORE = 75
+
+def update_reliability_score(customer, new_status):
+    if customer.reliability_score is None:
+        customer.reliability_score = NEUTRAL_STARTING_SCORE
+
+    if new_status == "no_show":
+        customer.reliability_score = max(0, customer.reliability_score - NO_SHOW_PENALTY)
+    elif new_status == "completed":
+        customer.reliability_score = min(100, customer.reliability_score + COMPLETED_BONUS)
+```
+
+**ODLUKA o početnoj vrijednosti (razjašnjeno tokom razgovora, 29.06.2026.) — VAŽNA NIJANSA:** Vlasnik je prvobitno pretpostavio da svi novi korisnici kreću na 100, ALI je nakon razmatranja prihvaćen ispravniji pristup:
+- Novi klijent (0 prošlih termina) ima `reliability_score = NULL` ("nema istorije") — NE 100. Tretira se kao "normalan" za PRVI termin (rezervacija prolazi standardno, prema Mod A/B pravilu koje je owner odabrao za tog zaposlenog — sekcija 2.7).
+- Score se POČINJE GRADITI tek nakon PRVOG termina (completed ili no_show), i počinje od NEUTRALNE vrijednosti (75), NE maksimalne (100).
+- **Razlog:** Davanje 100 svim novim korisnicima bi bilo "lažno povjerenje" bez zaslužene istorije, i bilo bi NEPRAVEDNO prema dugogodišnjim, dokazano pouzdanim klijentima koji bi inače "izgledali isto" kao potpuno nov nalog (oba na 100, plafonirano). Score koji STVARNO odražava istoriju je pravedniji i otporniji na zloupotrebu (botovi/novi nalozi ne dobijaju besplatno povjerenje).
+
+**Pravila primjene (stepenovano, prema score rasponu):**
+- **Score ≥ 70 (ili NULL — nova istorija):** normalno, samostalno rezervisanje radi standardno (ako je self-booking, sekcija 2.7, uključen za tog zaposlenog)
+- **Score 40-69:** rezervacija se KREIRA, ali status automatski postaje NOVI status `"pending_confirmation"` (ne odmah `"created"`) — owner/employee MORA ručno potvrditi prije nego termin postane stvaran
+- **Score < 40:** self-booking se BLOKIRA POTPUNO za tog klijenta — mora kontaktirati direktno (telefon), owner odlučuje ručno da li prihvata rezervaciju
+
+**KRITIČAN PREDUSLOV — "Nije se pojavio" (no-show) dugme TRENUTNO NE POSTOJI:**
+
+Razjašnjeno tokom razgovora (29.06.2026.) — ko određuje da li se klijent pojavio: ISKLJUČIVO owner/zaposleni, kroz RUČNU akciju (klik dugmeta), NIKAD automatski. Provjereno stanje koda: status `no_show` POSTOJI kao mogući enum u bazi (vidi Dokument 03, Dokument 10), ALI trenutno NE postoji ruta/dugme koje ga AKTIVNO postavlja — postoje samo "Završi" (complete) i "Otkaži" (cancel) akcije.
+
+**Šta treba dodati (preduslov za Reliability Score da uopšte radi):**
+1. Nova backend ruta: `POST /api/v1/appointments/{id}/mark-no-show` — slična postojećoj `complete`/`cancel` logici, postavlja `status = "no_show"`, poziva `update_reliability_score(customer, "no_show")`
+2. Nova frontend akcija: treće dugme "Nije se pojavio" na Appointments listi i Calendar detail modalu (trenutno postoje samo "Završi" i "Otkaži")
+3. **Vremenska validacija (bitno):** Dugme "Nije se pojavio" treba biti prikazano/aktivno SAMO nakon što je `end_time` termina već prošao (slično postojećem uslovnom prikazivanju dugmadi prema statusu) — sprečava da owner/employee zlonamjerno ili greškom označi no-show PRIJE nego klijent stigne
+
+**Zašto MORA biti skriven mehanizam (princip, ne samo detalj):** Ako klijent vidi tačan broj/score, mogao bi "igrati sistem" (npr. namjerno održavati granicu testiranjem ponašanja). Klijent treba samo OSJETITI posljedicu (npr. "zašto sad mora potvrda, ranije nije morala") bez da zna tačan mehanizam koji je do toga doveo.
+
+**Status: VISOK PRIORITET za V2 fazu — vlasnik je eksplicitno tražio da bude među prvim V2 stavkama implementiranim. Zahtijeva: (1) no-show dugme/ruta kao preduslov, (2) novo polje na Customer modelu, (3) novi `pending_confirmation` status u postojećem appointment status enum-u, (4) logiku za self-booking blokadu kod niskog score-a (vezano za self-booking sistem, sekcija 2.7).**
+
+---
+
 ## 3. Preporučeni redoslijed implementacije (kad dođe V2 faza)
 
 1. Blokirani termin
-2. Termin za pauzu
-3. Excel izvještaj
-4. Procenat za gazdu
-5. VIP član (nakon što se poslovno definišu beneficije)
-6. Termin na čekanju
-7. Kontrola "ko može rezervisati" po zaposlenom (vezano za Marketplace fazu, V4)
-8. `.ics` fajl prilog za eksterne kalendare (vezati uz email potvrde rezervacije)
-9. Lični pregled termina kroz salone (lista, vidi sekciju 2.10 — MVP-prioritetno, manji posao)
-10. Usluge bez fiksne cijene (lako, može i ranije ako se odluči — ne zavisi od ostalih stavki)
-11. "Predloži sljedeći slobodan termin" (dodatak self-booking sistemu, stavka 7)
-12. OCR unos cjenovnika fotografisanjem (kompleksno, najdalji prioritet od svih nabrojanih)
-13. Cjenovnik po zaposlenom (employee_services tabela + custom_price + checkbox UX za default slučaj)
-14. Notifikacija pri otkazivanju (email nivo odmah izvodivo; push nivo čeka native Android/iOS app, V3 faza)
-15. Modularni sistem notifikacija (notification_settings tabela + centralna send_notification funkcija) — implementirati uz stavku 14, arhitektura olakšava dodavanje SMS/WhatsApp/Viber kanala kasnije
+2. **Reliability Score + "Nije se pojavio" dugme (sekcija 2.19) — VISOK PRIORITET, vlasnik je eksplicitno tražio da bude među prvim V2 stavkama implementiranim.** Zahtijeva no-show dugme/rutu kao preduslov.
+3. Termin za pauzu
+4. Excel izvještaj
+5. Procenat za gazdu
+6. VIP član (nakon što se poslovno definišu beneficije) — konceptualno povezano sa stavkom 2 (obrnuta strana istog mehanizma)
+7. Termin na čekanju
+8. Kontrola "ko može rezervisati" po zaposlenom (vezano za Marketplace fazu, V4)
+9. `.ics` fajl prilog za eksterne kalendare (vezati uz email potvrde rezervacije)
+10. Lični pregled termina kroz salone (lista, vidi sekciju 2.10 — MVP-prioritetno, manji posao)
+11. Usluge bez fiksne cijene (lako, može i ranije ako se odluči — ne zavisi od ostalih stavki)
+12. "Predloži sljedeći slobodan termin" (dodatak self-booking sistemu, stavka 8)
+13. OCR unos cjenovnika fotografisanjem (kompleksno, najdalji prioritet od svih nabrojanih)
+14. Cjenovnik po zaposlenom (employee_services tabela + custom_price + checkbox UX za default slučaj)
+15. Notifikacija pri otkazivanju (email nivo odmah izvodivo; push nivo čeka native Android/iOS app, V3 faza)
+16. Modularni sistem notifikacija (notification_settings tabela + centralna send_notification funkcija) — implementirati uz stavku 15, arhitektura olakšava dodavanje SMS/WhatsApp/Viber kanala kasnije
+17. Prikaz "radnog vremena platforme" u Admin panelu (lako, koristi postojeće podatke, ide uz buduće Admin panel poliranje)
+18. Grupna najava (broadcast) sa throttling zaštitom — nije prioritet za trenutni mali obim, implementirati kad obim poraste
 
 ---
 

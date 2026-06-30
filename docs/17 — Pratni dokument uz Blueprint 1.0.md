@@ -1,4 +1,4 @@
-# SmartBooking Platform — Akvizicija Prvih Korisnika & Analitika
+# Sattlio Platform — Akvizicija Prvih Korisnika & Analitika
 
 **Dokument:** 17 — Pratni dokument uz Blueprint 1.0
 **Verzija:** 1.0
@@ -66,3 +66,4 @@ Akvizicija prvih korisnika ide kroz lične/društvene kanale (Facebook, poznanst
 ---
 
 *Kraj dokumenta.*
+

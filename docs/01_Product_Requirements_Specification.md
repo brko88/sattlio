@@ -1,4 +1,4 @@
-# SmartBooking Platform — Product Requirements Specification (PRS)
+# Sattlio Platform — Product Requirements Specification (PRS)
 
 **Dokument:** 01 — Product Requirements Specification (PRS)
 **Verzija:** 1.0
@@ -9,7 +9,7 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše funkcionalne i nefunkcionalne zahtjeve SmartBooking platforme.
+Ovaj dokument definiše funkcionalne i nefunkcionalne zahtjeve Sattlio platforme.
 
 Svi razvojni timovi moraju koristiti ovaj dokument kao referencu prilikom implementacije sistema.
 
@@ -35,7 +35,7 @@ Sve ostale funkcionalnosti planirane su za naredne verzije sistema.
 
 ## 3. Korisničke uloge
 
-> **NAPOMENA:** SmartBooking koristi Single Account model. Jedan korisnik koristi jedan nalog za cijelu platformu. Jedan korisnik može imati više uloga u različitim poslovnim subjektima.
+> **NAPOMENA:** Sattlio koristi Single Account model. Jedan korisnik koristi jedan nalog za cijelu platformu. Jedan korisnik može imati više uloga u različitim poslovnim subjektima.
 
 Primjer:
 - Owner u jednom salonu
@@ -365,3 +365,4 @@ MVP se smatra završenim kada korisnik može:
 ---
 
 *Kraj dokumenta.*
+

@@ -1,4 +1,4 @@
-# SmartBooking Platform — Software Architecture Document (SAD)
+# Sattlio Platform — Software Architecture Document (SAD)
 
 **Dokument:** 02 — Software Architecture Document (SAD)
 **Verzija:** 1.0
@@ -9,13 +9,13 @@
 
 ## 1. Svrha dokumenta
 
-Ovaj dokument definiše tehničku arhitekturu SmartBooking platforme. Dokument služi kao osnov za implementaciju backend-a, frontend-a i mobilnih aplikacija, kao i za buduće skaliranje sistema.
+Ovaj dokument definiše tehničku arhitekturu Sattlio platforme. Dokument služi kao osnov za implementaciju backend-a, frontend-a i mobilnih aplikacija, kao i za buduće skaliranje sistema.
 
 ---
 
 ## 2. Pregled sistema
 
-SmartBooking je SaaS multi-tenant platforma za upravljanje rezervacijama. Sistem se sastoji od:
+Sattlio je SaaS multi-tenant platforma za upravljanje rezervacijama. Sistem se sastoji od:
 - Web aplikacije (frontend)
 - Backend API servisa
 - Baze podataka
@@ -114,7 +114,7 @@ Svi korisnici koriste istu aplikaciju. Svi podaci se nalaze u istoj bazi podatak
 
 ### 6.2 UserTenantRole Model
 
-SmartBooking koristi Single Account arhitekturu.
+Sattlio koristi Single Account arhitekturu.
 
 Jedan korisnik:
 - ima jedan nalog
@@ -415,7 +415,7 @@ Nije dozvoljeno:
 
 ## 20. Zaključak
 
-Ovaj dokument definiše tehničku arhitekturu SmartBooking platforme. Svi budući moduli i implementacije moraju biti usklađeni sa ovom arhitekturom. Svako odstupanje mora biti dokumentovano i odobreno kroz Project Blueprint proces.
+Ovaj dokument definiše tehničku arhitekturu Sattlio platforme. Svi budući moduli i implementacije moraju biti usklađeni sa ovom arhitekturom. Svako odstupanje mora biti dokumentovano i odobreno kroz Project Blueprint proces.
 
 Cilj arhitekture je:
 - stabilan MVP
@@ -427,3 +427,4 @@ Cilj arhitekture je:
 ---
 
 *Kraj dokumenta.*
+

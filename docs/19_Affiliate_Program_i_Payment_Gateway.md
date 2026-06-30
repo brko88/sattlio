@@ -65,6 +65,52 @@ Provjereno pretragom: Stripe trenutno podržava 46 zemalja, i Bosna i Hercegovin
 
 ### 3.2 NOVI PRAVAC — Merchant of Record (MoR) platforme: PREPORUČENO RJEŠENJE
 
+**POTVRĐENO 29.06.2026. — DIREKTAN ODGOVOR OD PADDLE (Femi, Paddle support):**
+- BiH je podržana zemlja, potvrđeno direktno
+- Registracija kao "Individual" (sole trader) — NE treba registrovana firma, bira se "Individual" business type pri sign-up-u
+- Verifikacioni proces: Domain Review (provjera web sajta) + Identity Verification (Onfido — lična karta + video selfie) + Final review od strane Paddle tima — **NIJE trenutno, zahtijeva FUNKCIONALAN, JAVNO DOSTUPAN web sajt PRIJE prijave**
+- Podržava recurring mjesečne pretplate sa automatskom naplatom
+- Podržava free trial period (buyer unosi karticu, ne naplaćuje se do kraja trial-a) — direktno se uklapa sa postojećim 14-dnevnim trial periodom (sekcija 4)
+- Webhook/notifications sistem za sinhronizaciju statusa pretplate — koristiti za `subscriptions` tabelu (sekcija 3.4 tehničke skice)
+- Naknada: 5% + $0.50 po transakciji, BEZ dodatnih mjesečnih/godišnjih troškova
+- Podržani payment metodi: Google/Apple Pay, kartice, UPI, MB WAY, Naver Pay
+- Postoji Sandbox environment za testiranje prije produkcije
+- **VAŽNO: Paddle NEMA ugrađenu podršku za affiliate/partner programe** — afiliate praćenje (Dokument 19, sekcija 2) mora biti CUSTOM implementacija, vlasnik sam gradi tu logiku iznad Paddle integracije, ne dolazi gotova
+
+**Implikacija za redoslijed:** Pošto verifikacija zahtijeva javno dostupan sajt, Paddle prijava ide TEK nakon deployment-a na pravi server/domen (Faza D, Dokument 14), ne prije.
+
+**Payout mehanizam (potvrđeno iz Paddle Help Center, 29.06.2026.):**
+- Sredstva se akumuliraju kao balans na Paddle nalogu, ne mogu se povući na zahtjev
+- Minimalni prag za isplatu: $100 (podesivo do $100,000)
+- Mjesečni raspored: isplata kreirana 1. u mjesecu, poslata do 15., stiže do 3 radna dana nakon toga
+- Metode: Bank/Wire Transfer (preporučeno za BiH), PayPal, Payoneer
+- Valuta: birate pri podešavanju (preporuka: EUR, zbog fiksne veze BAM/EUR)
+- Paddle ne dodaje dodatne naknade na isplatu (5%+$0.50 provizija je već oduzeta) — ALI banka može naplatiti svoju naknadu za međunarodni SWIFT transfer (~$15)
+- Mjesečno se dobija "Statement", "Reverse Invoice" (Paddle izdaje fakturu vlasniku, obrnuto od standardnog), i "Remittance Advice" — dokumenti korisni za poresku evidenciju u BiH
+
+**ODLUKA — payout metoda: Paddle + Payoneer (donesena 29.06.2026.)**
+
+Vlasnik je odlučio da koristi Payoneer kao payout metodu od Paddle-a, umjesto klasičnog bankovnog/SWIFT transfera — razlog: ne treba devizni račun u lokalnoj banci, Payoneer daje multi-currency račun i karticu direktno, popularna i provjerena opcija među freelancerima/IT radnicima u regionu, brže i jeftinije od klasičnog SWIFT transfera.
+
+**VAŽNO UPOZORENJE (eksplicitno naglašeno tokom razgovora, 29.06.2026.) — Payoneer NE zamjenjuje poresku obavezu.** Payoneer rješava ISKLJUČIVO tehničku/bankarsku stranu (kako primiti pare iz inostranstva bez deviznog računa) — NE rješava i NE izbjegava BiH/RS poresku obavezu na dohodak, koja postoji bez obzira na to kako se pare fizički prime. Sredstva na Payoneer računu NISU "nevidljiva" poreskim organima — BiH se postepeno uključuje u međunarodne sisteme razmjene podataka (CRS, OECD), što znači da takvi računi postaju sve manje "nevidljivi" tokom vremena. Konsultacija sa knjigovođom (sekcija 3.3 ispod, Dokument 25) OSTAJE OBAVEZNA, nezavisno od odabrane payout metode.
+
+### 3.3 KRITIČNA STAVKA — Poreske obaveze u BiH, OBAVEZNA konsultacija sa knjigovođom (29.06.2026.)
+
+**Vlasnik je postavio pitanje:** Da li se u jednom trenutku plaća porez na dobit i porez na dohodak kao fizičko lice?
+
+**Opšti okvir (NIJE pravni savjet, samo orijentacija za razgovor sa stručnom osobom):**
+- **Porez na dobit** (corporate/profit tax) — odnosi se na PRAVNA lica (firme). Ako se ostane na "Individual" statusu kod Paddle-a (fizičko lice, bez registrovane firme), ovaj porez se VJEROVATNO NE odnosi direktno.
+- **Porez na dohodak** (income tax, fizičko lice) — odnosi se na prihod koji vlasnik prima od Paddle-a (nakon njihove provizije). Opšti izvori za region pominju stopu od 10% za kategoriju "samostalno zanimanje" kod fizičkih lica, ALI TAČNA stopa, kategorija, i postupak (mjesečno vs. godišnje) ZAVISI od RS-specifičnih pravila.
+- **VAŽNA NIJANSA — redovnost prihoda:** Pošto je riječ o MJESEČNOJ pretplati (redovan, kontinuiran prihod), ne jednokratnom honoraru, postoji realna mogućnost da Poreska uprava RS zahtijeva registraciju PREDUZETNIČKE djelatnosti (npr. kao dopunsko zanimanje), ne tretman kao povremeni freelance rad. Ovo MORA se provjeriti sa stručnom osobom, ne pretpostaviti.
+- **PDV** — prag registracije je 100.000 KM godišnje (vjerovatno se ne odnosi odmah na trenutni, mali obim — Solo/Start paketi, 20-30 salona u beta fazi). Priroda transakcije kroz MoR (Paddle, strana kompanija) kao posrednika prema BiH kupcima takođe zahtijeva precizno pravno tumačenje.
+
+**OBAVEZNA AKCIJA PRIJE PRVE STVARNE UPLATE:** Konsultacija sa knjigovođom/poreskim savjetnikom u Banja Luci (RS), konkretno o:
+1. Status: fizičko lice vs. registracija preduzetničke djelatnosti, s obzirom na REDOVNOST prihoda (mjesečna pretplata)
+2. Porez na dohodak — tačna stopa, kategorija, postupak prijave (mjesečno/kvartalno/godišnje)
+3. PDV — prag i tretman za MoR (Paddle) transakcije specifično
+
+**Status: Pitanje postavljeno i Paddle-u (njihova strana VAT obrade) — odgovor se čeka. BiH lična poreska obaveza OSTAJE odvojeno pitanje koje zahtijeva lokalnog stručnjaka, ne može se riješiti generičkim istraživanjem.**
+
 Nakon dodatnog istraživanja (26.06.2026), identifikovan je bolji pristup od direktnih payment gateway provajdera (CorvusPay/WSPay), koji traže registrovanu firmu i/ili imaju aktivacijske troškove (~380 KM/EUR kod Monri WSPay).
 
 **Šta je Merchant of Record:** Kod standardnog payment processora (Stripe, CorvusPay), TI si zakonski "prodavac" — odgovoran za porez, chargeback-ove, subscription logiku u svakoj jurisdikciji. Kod MoR platforme, **ONI** postaju zakonski prodavac — kupac kupuje od MoR platforme, ne direktno od tebe. Oni naplaćuju, obračunavaju/plaćaju porez, preuzimaju chargeback rizik, i isplaćuju tebi neto iznos nakon naknade.

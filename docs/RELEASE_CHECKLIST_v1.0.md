@@ -10,18 +10,23 @@
 
 Redoslijed važan zbog zavisnosti između stavki. Detalji i tehničke skice za svaku stavku su u referenciranim dokumentima.
 
-1. **Prijava problema (bug report) — NAJBRŽE, na početku sesije.** Dva dugmeta u sidebar-u (Email + WhatsApp), kod već pripremljen. Treba samo: vlasnikov stvarni email + WhatsApp broj, pa zalijepiti kod. Vidi Dokument 14, stavka v1.1c.
-2. **JIB verifikacija + Admin panel** — ide zajedno, prvo. Sigurnosni propust (fiktivni saloni), prioritet. Vidi sekciju 5.2b ovog dokumenta.
-3. **Employee edit ruta/UI** — preduslov za stavku 4, može paralelno sa #2.
-4. **Self-booking sistem** (privatno/javno po zaposlenom) — MVP-kritično, mora biti gotovo prije launch-a. Vidi Dokument 18, sekcija 2.7, i Dokument 14 za tehničku skicu.
-5. **Responsive dizajn + PWA + Push notifikacije** — nezavisno od 2-4, može paralelno. Pet konkretnih UI specifikacija već zapisano (full-screen kalendar, 24h format vremena, rješenje za pretrpan raspored, PWA, Google Calendar vizuelni standard). **DODATO 28.06.2026.: Push notifikacije RADE kroz PWA (Android puna podrška, iOS 16.4+ uz instalaciju na Home Screen) — implementirati U ISTOJ sesiji kao PWA "Add to Home Screen", ne čekati native app. Realno pola dana do jedan dan dodatnog rada.** Vidi Dokument 14, stavka v1.1a/v1.1b, i Dokument 18, sekcija 2.15.
-6. **"Moji termini" lista** — agregirani pregled termina kroz sve salone, NE kalendar, samo lista. Manji posao, može nezavisno od self-booking sistema. Vidi Dokument 18, sekcija 2.10.
-7. **Employee delete ruta** — soft delete, infrastruktura (`is_deleted`/`deleted_at`) već postoji u bazi, samo nedostaje ruta. Vidi sekciju 4.1 ovog dokumenta.
-8. **Automatsko obnavljanje access tokena (refresh token interceptor) — KRITIČNO za UX, otkriveno 28.06.2026.** Trenutno: access token traje 60 minuta (`.env`, `ACCESS_TOKEN_EXPIRE_MINUTES=60`), refresh token postoji i radi (30 dana), ALI frontend (`api.ts`) trenutno NEMA automatski mehanizam koji bi, kad access token istekne, sam pozvao `/api/v1/auth/refresh` i ponovio zahtjev — korisnik trenutno dobija 401 grešku i mora se ponovo ulogovati svakih 60 minuta. Za vlasnika salona koji koristi app cijeli radni dan, ovo je loše iskustvo. Rješenje: axios response interceptor koji hvata 401, automatski pozove refresh, ponovi originalni zahtjev — sve nevidljivo za korisnika. Mali, ali bitan zadatak, treba ići uz ostatak liste.
-9. **Postaviti projekat (backend + frontend) na GitHub — DOGOVORENO 28.06.2026.** Razlog: Claude trenutno nema pouzdan, ažuran pristup frontend kodu (samo se "sjeća" iz ranijih poruka u razgovoru, što može biti netačno/zastarjelo) — backend kod je djelimično dostupan jer je generisan kroz raniju sesiju, ali frontend nikad nije sačuvan na isti način. Postavljanje kompletnog projekta na privatan GitHub repo omogućava Claude-u da fetch-uje i provjerava STVARNO, TRENUTNO stanje cijelog koda, ne samo backend dio ili ono što se "sjeća". Koraci: (1) inicijalizovati git repo u `D:\SmartBooking Platform` ako još nije, (2) kreirati privatan repo na github.com, (3) `git push` kompletnog projekta (provjeriti da `.gitignore` isključuje `venv/`, `node_modules/`, `.env`, `*.db` — osjetljivi/nepotrebni fajlovi), (4) dati Claude-u link na repo kad treba provjera koda. Ovo postaje POSEBNO važno prije nego se počne sa stavkama 2-7 ove liste (JIB, self-booking, itd.), da Claude radi sa tačnim, ažurnim kodom, ne zastarjelim sjećanjem.
+1. ✅ **GOTOVO (29.06.2026.) Prijava problema (bug report).** Dva dugmeta u sidebar-u (Email: boris.kalamanda@gmail.com, WhatsApp: +387 65 497 119), implementirano i testirano — oba linka rade ispravno.
+2. ✅ **GOTOVO (29.06.2026.) JIB verifikacija + Admin panel (osnova)** — implementirano i testirano: `jib`/`verification_status` polja, validacija, `is_superadmin` polje, `require_superadmin` zaštita, Admin panel rute (lista/verify/suspend/reactivate), frontend stranica. Vidi sekciju 5.2b i 5.2c za dalje proširenje.
+3. **Forgot Password flow (NOVO, dodato 29.06.2026.) — PRIORITET, ide prije Employee edit.** Otkriveno tokom razmišljanja o Admin reset lozinke (sekcija 5.2c) — "Forgot Password" mehanizam TRENUTNO NE POSTOJI NIGDJE u sistemu, ni za obične korisnike. Vlasnik je odlučio: implementirati JEDAN, opšti mehanizam (ne odvojeno za admina i za korisnike) — korisnik sam pokreće reset (klikom na "Zaboravljena lozinka" na Login stranici), I admin može pokrenuti isti mehanizam za korisnika kroz Admin panel (support slučaj). Tehnička skica: token-based reset (slično postojećem email verification tokenu), email sa linkom koji vodi na "Postavi novu lozinku" stranicu, token ističe nakon određenog vremena (npr. 1h). Koristi postojeći Gmail SMTP sistem.
+4. **Employee edit ruta/UI** — preduslov za stavku 5, može paralelno sa #2-3.
+5. **Self-booking sistem (privatno/javno po zaposlenom) — POTVRĐENO KAO BLOKIRAJUĆI PREDUSLOV PRIJE LIVE TESTA (29.06.2026.).** Vlasnik je eksplicitno potvrdio (29.06.2026.) da ovo MORA biti implementirano prije nego prvi salon (van vlasnika) počne koristiti platformu "live" — nije "nice to have" dodatak za kasnije, već temeljni dio toga kako owner bira da vodi svoje poslovanje. Finalna, potvrđena definicija:
+   - **Mod A — "Privatno" (`allow_self_booking = False`, default):** SAMO owner/employee može upisati termin u kalendar. Klijent nema nikakav pristup kreiranju rezervacije, bez obzira da li ima nalog na platformi.
+   - **Mod B — "Javno" (`allow_self_booking = True`):** I owner/employee I klijent (koji ima nalog na platformi) mogu upisati termin. Ovo NIJE zamjena jedne opcije drugom — obje opcije su dostupne ISTOVREMENO. Owner/employee i dalje može ručno unijeti rezervaciju (npr. nakon telefonskog poziva), ALI klijent sada DODATNO ima mogućnost da sam, kroz svoj nalog, rezerviše termin direktno, bez posredovanja owner-a/employee-a.
+   - Vidi Dokument 18, sekcija 2.7 za kompletnu tehničku skicu (manji obim posla nego prvobitno procijenjeno — proširenje postojeće autorizacije na `appointments` ruti, NE treba nov "javni URL bez logovanja" sistem, jer klijent već ima nalog kroz postojeći login sistem). Vidi Dokument 14 za pozicioniranje u redoslijedu.
+6. **Responsive dizajn + PWA + Push notifikacije** — nezavisno od 2-5, može paralelno. Pet konkretnih UI specifikacija već zapisano (full-screen kalendar, 24h format vremena, rješenje za pretrpan raspored, PWA, Google Calendar vizuelni standard). **DODATO 28.06.2026.: Push notifikacije RADE kroz PWA (Android puna podrška, iOS 16.4+ uz instalaciju na Home Screen) — implementirati U ISTOJ sesiji kao PWA "Add to Home Screen", ne čekati native app. Realno pola dana do jedan dan dodatnog rada.** Vidi Dokument 14, stavka v1.1a/v1.1b, i Dokument 18, sekcija 2.15.
+7. **"Moji termini" lista** — agregirani pregled termina kroz sve salone, NE kalendar, samo lista. Manji posao, može nezavisno od self-booking sistema. Vidi Dokument 18, sekcija 2.10.
+8. **Employee delete ruta** — soft delete, infrastruktura (`is_deleted`/`deleted_at`) već postoji u bazi, samo nedostaje ruta. Vidi sekciju 4.1 ovog dokumenta.
+9. **Automatsko obnavljanje access tokena (refresh token interceptor) — KRITIČNO za UX, otkriveno 28.06.2026.** Trenutno: access token traje 60 minuta (`.env`, `ACCESS_TOKEN_EXPIRE_MINUTES=60`), refresh token postoji i radi (30 dana), ALI frontend (`api.ts`) trenutno NEMA automatski mehanizam koji bi, kad access token istekne, sam pozvao `/api/v1/auth/refresh` i ponovio zahtjev — korisnik trenutno dobija 401 grešku i mora se ponovo ulogovati svakih 60 minuta. Za vlasnika salona koji koristi app cijeli radni dan, ovo je loše iskustvo. Rješenje: axios response interceptor koji hvata 401, automatski pozove refresh, ponovi originalni zahtjev — sve nevidljivo za korisnika. Mali, ali bitan zadatak, treba ići uz ostatak liste.
+10. **Postaviti projekat (backend + frontend) na GitHub — DOGOVORENO 28.06.2026.** Razlog: Claude trenutno nema pouzdan, ažuran pristup frontend kodu (samo se "sjeća" iz ranijih poruka u razgovoru, što može biti netačno/zastarjelo) — backend kod je djelimično dostupan jer je generisan kroz raniju sesiju, ali frontend nikad nije sačuvan na isti način. Postavljanje kompletnog projekta na privatan GitHub repo omogućava Claude-u da fetch-uje i provjerava STVARNO, TRENUTNO stanje cijelog koda, ne samo backend dio ili ono što se "sjeća". Koraci: (1) inicijalizovati git repo u `D:\SmartBooking Platform` ako još nije, (2) kreirati privatan repo na github.com, (3) `git push` kompletnog projekta (provjeriti da `.gitignore` isključuje `venv/`, `node_modules/`, `.env`, `*.db` — osjetljivi/nepotrebni fajlovi), (4) dati Claude-u link na repo kad treba provjera koda. Ovo postaje POSEBNO važno prije nego se počne sa stavkama 4-8 ove liste, da Claude radi sa tačnim, ažurnim kodom, ne zastarjelim sjećanjem.
 
 **Van ove liste, ali otvoreno/u toku:**
 - Čeka se odgovor od payment gateway providera (CorvusPay, Monri WSPay, Lemon Squeezy, Paddle, FastSpring) — vidi Dokument 19
+- **KRITIČNO, prije prve stvarne uplate: konsultacija sa knjigovođom u Banja Luci o poreskim obavezama** (status fizičko lice vs. preduzetnik s obzirom na redovnost prihoda, porez na dohodak, PDV tretman za MoR transakcije) — vidi Dokument 19, sekcija 3.3
 - Plan enforcement (provjera Solo/Start/Pro/Business limita u kodu) — NIJE prioritet dok se ne riješi payment gateway, vidi sekciju 5.1a ovog dokumenta
 - Cjenovnik po zaposlenom, OCR unos cjenovnika, "predloži sljedeći termin", usluge bez cijene — sve V2 ideje, vidi Dokument 18, sekcije 2.11-2.14
 
@@ -224,9 +229,38 @@ JIB je javni, registarski poslovni identifikator (nije osjetljiv lični podatak 
 
 **Napomena o CompanyWall API (otkriveno 26.06.2026., još nije kontaktirano):** companywall.ba ima zvaničan, dokumentovan REST API (JSON odgovori) koji bi mogao automatizovati JIB verifikaciju (unos JIB-a → automatsko popunjavanje naziva/adrese firme + trenutna provjera legitimnosti, umjesto ručne provjere u koraku 6). Vlasnik je odlučio da ovo ostavi za kasnije istraživanje — ručna provjera (companywall.ba pretraga + Admin panel klik) je dovoljna za sada.
 
+**STATUS OSNOVE (29.06.2026.): GOTOVO I TESTIRANO.** Koraci 1-7 implementirani i potvrđeni kroz stvaran test (kreiranje tenant-a sa JIB-om, verify, suspend, reactivate akcije). Koraci 8-9 (manuelno admin kreiranje, generalna edit ruta) OSTAJU za implementaciju — vidi sekciju 5.2c ispod za kompletnu, proširenu listu budućih Admin panel funkcija.
+
+### 5.2c Proširene Admin Panel funkcije (zapisano 29.06.2026., razmišljanje tokom pauze)
+
+Dopuna na osnovu Dokumenta 01, sekcija 3.1 (Super Administrator ovlaštenja) i novih ideja vlasnika. Status "GOTOVO" odnosi se na već implementiranu osnovu (29.06.2026), ostalo je TODO za buduće sesije.
+
+**Iz Dokumenta 01, sekcija 3.1 (dokumentovano, provjereno 29.06.2026):**
+- [x] Pregled svih poslovnih subjekata — GOTOVO
+- [ ] Upravljanje korisnicima (User nalozi, ne samo Tenant) — vidi stavke ispod
+- [ ] Upravljanje pretplatama — zavisi od payment gateway integracije (Dokument 19), ne prioritet dok ta odluka nije riješena
+- [ ] Pregled statistike (platforma-wide: broj salona, broj korisnika, broj rezervacija ukupno) — srednje lako, agregacioni upiti
+- [x] Blokiranje naloga — GOTOVO za Tenant (suspend), NEDOSTAJE za User (blokiranje pojedinačnog korisničkog naloga, ne cijelog salona)
+- [ ] Upravljanje sistemskim postavkama — nejasno definisano, van obima za sada
+
+**Nove ideje vlasnika (29.06.2026.):**
+- [ ] **Pretraga tenant-a** po nazivu, JIB-u — LAKO, dodatak search input-a na postojeću tabelu (filter na frontend strani, ili `?search=` parametar na backend ruti, slično postojećoj Customer pretrazi)
+- [ ] **Pretraga po email-u → koji tenant je registrovan na tom mailu** — SREDNJE LAKO. Nova ruta, npr. `GET /api/v1/admin/users/search?email=X`, koja vrati User podatke PLUS sve tenant-e gdje ta osoba ima `UserTenantRole` (join `users` → `user_tenant_roles` → `tenants`). Korisno za support slučajeve ("korisnik X se javio, koji salon kontroliše?").
+- [ ] **Reset lozinke korisniku (admin-initiated)** — SREDNJE LAKO. Nova ruta `POST /api/v1/admin/users/{id}/reset-password` — generiše novi privremeni password ili šalje email sa reset linkom (zavisi od toga da li "Forgot Password" flow uopšte postoji — TRENUTNO NE POSTOJI nigdje u sistemu, ni za obične korisnike, ni za admina; vrijedno razmotriti da se ovo radi ZAJEDNO sa običnim "Forgot Password" flow-om, ne odvojeno samo za admin slučaj).
+
+**Dodatne ideje vrijedne razmatranja (predlog Claude-a, na osnovu iskustva sa sličnim sistemima):**
+- [ ] Brza statistika po tenant-u u tabeli (broj zaposlenih/usluga/rezervacija) — vizuelni dodatak postojećoj tabeli
+- [ ] Filter po statusu (prikaži samo `pending` / samo `suspended`) — lako, dropdown filter na postojećoj listi
+- [ ] Audit log pregled (ko je šta radio) — već zapisano kao v1.2 u glavnom redoslijedu (Faza D), ne duplirati ovdje, samo napomena da se Admin panel UI za to prirodno nadovezuje
+- [ ] Brisanje User naloga (GDPR "right to be forgotten") — relevantno SAMO ako se ide na EU tržište (Dokument 20), nije prioritet za BiH fazu
+
+**Status: Lista zapisana za buduće sesije. Redoslijed prioriteta nije fiksiran — odlučiti kad se dođe do implementacije, na osnovu toga šta se pokaže kao stvarno potrebno u praksi (npr. ako bude support upita "ko je registrovan na ovom mailu", to ide prvo).**
+
 ### 5.3 Funkcionalna provjera (manuelno testiranje punog toka)
 - [ ] Registracija → email stiže → verifikacija → login (kompletan tok, na produkcijskom serveru, ne localhost)
 - [ ] Kreiranje tenant-a → dodavanje zaposlenog → radno vrijeme → usluga → klijent → rezervacija → kalendar prikaz
+- [ ] **Self-booking Mod A (privatno) — potvrditi da klijent NEMA pristup kreiranju rezervacije kad je `allow_self_booking = False`**
+- [ ] **Self-booking Mod B (javno) — potvrditi da klijent MOŽE sam rezervisati kad je `allow_self_booking = True`, I da owner/employee i dalje mogu ručno unositi termine ISTOVREMENO (oba načina aktivna zajedno, ne međusobno isključiva)**
 - [ ] Provjera da email za potvrdu rezervacije (ako se odluči implementirati) radi
 - [ ] Test na **stvarnom mobilnom telefonu** (ne samo desktop browser) — provjeriti responsive prikaz
 - [ ] Test u različitim browserima (Chrome, Safari, Firefox)

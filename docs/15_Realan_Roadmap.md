@@ -1,4 +1,4 @@
-# SmartBooking Platform — Realan Roadmap za Solo Razvoj
+# Sattlio Platform — Realan Roadmap za Solo Razvoj
 
 **Dokument:** 15 — Pratni dokument uz Blueprint 1.0 i Dokument 14
 **Verzija:** 1.0
@@ -123,3 +123,4 @@ Cilj nije brzina po svaku cijenu. Cilj je da svaka faza bude stvarno, čvrsto za
 ---
 
 *Kraj dokumenta.*
+

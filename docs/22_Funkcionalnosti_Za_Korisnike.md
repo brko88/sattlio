@@ -1,4 +1,4 @@
-# SmartBooking — Funkcionalnosti danas i u narednih 5 godina
+# SmartBooking — Funkcionalnosti danas i u narednih 2 godine
 
 *Jednostavan pregled za vlasnike salona i poslovne partnere — bez tehničkih detalja.*
 
@@ -15,6 +15,8 @@
 - Praćenje statusa termina (zakazan, potvrđen, završen, otkazan)
 - Upravljanje više salona/lokacija sa jednog naloga
 - Dostupno sa računara i telefona, kroz browser
+- **Provjera legitimnosti poslovnih subjekata** — svaki salon na platformi prolazi kroz provjeru, za sigurnost svih korisnika
+- **Brza prijava problema** — direktan kontakt sa podrškom kroz email ili WhatsApp, u svakom trenutku
 
 ---
 
@@ -23,7 +25,8 @@
 - **Bolji prikaz na telefonu** — kalendar i sve stranice prilagođene za savršen rad na mobilnom
 - **Instaliranje na telefon** — SmartBooking se dodaje na početni ekran, izgleda i radi kao prava aplikacija
 - **Klijenti sami rezervišu termin** — vi birate, po zaposlenom, da li klijenti mogu sami zakazati termin online, ili to i dalje radite vi
-- **Provjera salona** — dodatna provjera legitimnosti poslovnih subjekata na platformi, za sigurnost svih korisnika
+- **Zaštita od nepouzdanih klijenata** — sistem prepoznaje klijente koji često ne dolaze na zakazane termine i automatski traži vašu potvrdu pre nego što im odobri novu samostalnu rezervaciju
+- **Promjena lozinke** — jednostavan način da povratite pristup nalogu ako zaboravite lozinku
 - **Pregled svih vaših termina na jednom mjestu** — ako i sami koristite SmartBooking kao klijent kod drugih salona/servisa
 
 ---
@@ -43,6 +46,8 @@
 - **Program preporuke** — nagrada za osobe koje dovedu nove salone na platformu
 - **Email marketing alati** — kuponi, popusti, loyalty program za klijente
 - **Integracija sa Google/Apple kalendarom** — termin se automatski dodaje u vaš lični kalendar na telefonu
+- **SMS i WhatsApp obavještenja** — dodatna opcija (uz nadoplatu) da vi i vaši klijenti primate podsjetnike i obavještenja putem SMS-a, WhatsApp-a ili Vibera, ne samo email-om
+- **Obavještenja o cijeloj platformi** — najave o planiranim unapređenjima sistema, na vrijeme, da znate šta dolazi
 
 ---
 

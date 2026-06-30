@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+﻿from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -6,7 +6,7 @@ from app.core.security import get_current_user
 from app.models.employee import Employee
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
-from app.schemas.employee import EmployeeCreate, EmployeeResponse
+from app.schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse
 
 router = APIRouter(prefix="/api/v1/employees", tags=["employees"])
 
@@ -20,11 +20,10 @@ def require_owner(db: Session, user_id: int, tenant_id: int):
         )
         .first()
     )
-
     if role is None or role.role != "owner":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Samo vlasnik poslovnog subjekta može izvršiti ovu akciju.",
+            detail="Samo vlasnik poslovnog subjekta moze izvrsiti ovu akciju.",
         )
 
 
@@ -76,3 +75,56 @@ def get_employees(
         .all()
     )
     return employees
+
+
+@router.put("/{employee_id}", response_model=EmployeeResponse)
+def update_employee(
+    employee_id: int,
+    data: EmployeeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    employee = (
+        db.query(Employee)
+        .filter(Employee.id == employee_id, Employee.is_deleted == False)
+        .first()
+    )
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Zaposleni nije pronadjen.")
+
+    require_owner(db, current_user.id, employee.tenant_id)
+
+    if data.first_name is not None:
+        employee.first_name = data.first_name
+    if data.last_name is not None:
+        employee.last_name = data.last_name
+    if data.phone is not None:
+        employee.phone = data.phone
+    if data.email is not None:
+        employee.email = data.email
+
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
+@router.delete("/{employee_id}")
+def delete_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    employee = (
+        db.query(Employee)
+        .filter(Employee.id == employee_id, Employee.is_deleted == False)
+        .first()
+    )
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Zaposleni nije pronadjen.")
+
+    require_owner(db, current_user.id, employee.tenant_id)
+
+    employee.is_deleted = True
+    db.commit()
+
+    return {"detail": "Zaposleni je obrisan."}

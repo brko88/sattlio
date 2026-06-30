@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+﻿from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -13,6 +13,8 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     email_verified = Column(Boolean, default=False)
     verification_token = Column(String, nullable=True)
+    password_reset_token = Column(String, nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     preferred_language = Column(String, default="bs")
     is_active = Column(Boolean, default=True)
     is_superadmin = Column(Boolean, default=False, nullable=False)

@@ -14,7 +14,8 @@ from app.core.security import (
     hash_refresh_token,
 )
 from app.core.config import settings
-from app.core.email import send_verification_email
+from app.core.email import send_verification_email, send_password_reset_email
+from app.core.limiter import limiter
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
 from app.schemas.auth import (
@@ -24,8 +25,9 @@ from app.schemas.auth import (
     UserResponse,
     VerifyEmailRequest,
     RefreshRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
-from app.core.limiter import limiter
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -163,7 +165,49 @@ def verify_email(data: VerifyEmailRequest, db: Session = Depends(get_db)):
     return user
 
 
+@router.post("/forgot-password")
+@limiter.limit("3/minute")
+def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+
+    if user:
+        reset_token = secrets.token_hex(32)
+        user.password_reset_token = reset_token
+        user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        db.commit()
+        send_password_reset_email(user.email, reset_token)
+
+    return {"detail": "Ako email postoji u sistemu, poslan je link za reset lozinke."}
+
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.password_reset_token == data.token).first()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Neispravan ili istekao token.",
+        )
+
+    expires = user.password_reset_expires
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+
+    if expires < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token je istekao. Zatražite novi reset.",
+        )
+
+    user.password_hash = hash_password(data.new_password)
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    db.commit()
+
+    return {"detail": "Lozinka je uspješno promijenjena."}
+
+
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
-

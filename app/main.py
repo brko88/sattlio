@@ -8,8 +8,6 @@ from app.core.database import Base, engine
 from app.models import user, tenant, user_tenant_role, employee, service, working_hours, customer, appointment, refresh_token
 from app.api.routes import auth, tenants, employees, services, working_hours as working_hours_routes, customers, appointments, admin
 
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="Sattlio API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -34,3 +32,4 @@ app.include_router(admin.router)
 @app.get("/")
 def root():
     return {"status": "Sattlio API running"}
+

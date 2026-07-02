@@ -1,7 +1,6 @@
 ﻿from datetime import datetime, timedelta, timezone, date, time
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -10,10 +9,22 @@ from app.core.security import get_current_user
 from app.models.appointment import Appointment
 from app.models.employee import Employee
 from app.models.service import Service
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.working_hours import WorkingHours
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
+
+
+class PublicTenantResponse(BaseModel):
+    id: int
+    name: str
+    city: str | None
+    business_category: str | None
+    description: str | None
+
+    class Config:
+        from_attributes = True
 
 
 class PublicEmployeeResponse(BaseModel):
@@ -53,6 +64,40 @@ class SelfBookingResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+# ---------------------------------------------------------------------------
+# Javni listing salona
+# ---------------------------------------------------------------------------
+
+@router.get("/tenants", response_model=list[PublicTenantResponse])
+def get_public_tenants(db: Session = Depends(get_db)):
+    """Vraća sve aktivne i verificirane salone."""
+    tenants = db.query(Tenant).filter(
+        Tenant.is_active == True,
+        Tenant.verification_status == "verified",
+    ).all()
+    return tenants
+
+
+# ---------------------------------------------------------------------------
+# Zaposleni po tenantu (filtrirani)
+# ---------------------------------------------------------------------------
+
+@router.get("/tenants/{tenant_id}/employees", response_model=list[PublicEmployeeResponse])
+def get_tenant_public_employees(tenant_id: int, db: Session = Depends(get_db)):
+    """Vraća zaposlene koji primaju online rezervacije za određeni salon."""
+    employees = db.query(Employee).filter(
+        Employee.tenant_id == tenant_id,
+        Employee.is_deleted == False,
+        Employee.is_active == True,
+        Employee.allow_self_booking == True,
+    ).all()
+    return employees
+
+
+# ---------------------------------------------------------------------------
+# Stare rute (zadržane za kompatibilnost)
+# ---------------------------------------------------------------------------
 
 @router.get("/employees", response_model=list[PublicEmployeeResponse])
 def get_all_public_employees(db: Session = Depends(get_db)):
@@ -123,7 +168,7 @@ def get_available_slots(
     ).first()
 
     if service is None:
-        raise HTTPException(status_code=404, detail="Usluga nije pronadjena.")
+        raise HTTPException(status_code=404, detail="Usluga nije pronađena.")
 
     try:
         booking_date = date.fromisoformat(date_str)
@@ -157,7 +202,6 @@ def get_available_slots(
     slot_start = datetime.combine(booking_date, wh.start_time).replace(tzinfo=timezone.utc)
     work_end = datetime.combine(booking_date, wh.end_time).replace(tzinfo=timezone.utc)
     duration = timedelta(minutes=service.duration_minutes)
-
     now = datetime.now(timezone.utc)
 
     while slot_start + duration <= work_end:
@@ -196,14 +240,14 @@ def self_book_appointment(
     ).first()
 
     if service is None:
-        raise HTTPException(status_code=404, detail="Usluga nije pronadjena.")
+        raise HTTPException(status_code=404, detail="Usluga nije pronađena.")
 
     start_time = data.start_time
     if start_time.tzinfo is None:
         start_time = start_time.replace(tzinfo=timezone.utc)
 
     if start_time < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Termin ne moze biti u proslosti.")
+        raise HTTPException(status_code=400, detail="Termin ne može biti u prošlosti.")
 
     end_time = start_time + timedelta(minutes=service.duration_minutes)
 
@@ -217,7 +261,7 @@ def self_book_appointment(
     ).first()
 
     if overlapping:
-        raise HTTPException(status_code=409, detail="Termin je vec zauzet.")
+        raise HTTPException(status_code=409, detail="Termin je već zauzet.")
 
     from app.models.customer import Customer
     customer = db.query(Customer).filter(
@@ -250,5 +294,3 @@ def self_book_appointment(
     db.refresh(new_appointment)
 
     return new_appointment
-
-

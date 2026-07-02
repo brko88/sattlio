@@ -13,6 +13,8 @@ interface TenantContextType {
   tenantId: number;
   setTenantId: (id: number) => void;
   tenants: Tenant[];
+  currentRole: string;
+  isLoading: boolean;
   refreshTenants: () => void;
 }
 
@@ -24,27 +26,34 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     stored ? parseInt(stored) : 1
   );
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const setTenantId = (id: number) => {
     localStorage.setItem("tenant_id", id.toString());
     setTenantIdState(id);
   };
 
+  const currentRole = tenants.find((t) => t.id === tenantId)?.role ?? "";
+
   const refreshTenants = async () => {
     const token = localStorage.getItem("access_token");
-    if (!token) return;
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await api.get("/api/v1/tenants/my");
       setTenants(response.data);
 
-      // Ako trenutni tenantId nije u listi (npr. star/nepostojeći), prebaci na prvi dostupan
       const exists = response.data.some((t: Tenant) => t.id === tenantId);
       if (!exists && response.data.length > 0) {
         setTenantId(response.data[0].id);
       }
     } catch {
-      // korisnik možda nije ulogovan, ignoriši
+      // korisnik možda nije ulogovan
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -53,7 +62,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <TenantContext.Provider value={{ tenantId, setTenantId, tenants, refreshTenants }}>
+    <TenantContext.Provider
+      value={{ tenantId, setTenantId, tenants, currentRole, isLoading, refreshTenants }}
+    >
       {children}
     </TenantContext.Provider>
   );

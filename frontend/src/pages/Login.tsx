@@ -18,6 +18,11 @@ function Login() {
       });
       localStorage.setItem("access_token", response.data.access_token);
       localStorage.setItem("refresh_token", response.data.refresh_token);
+
+      // Učitaj podatke o korisniku i sačuvaj is_superadmin
+      const meResponse = await api.get("/api/v1/auth/me");
+      localStorage.setItem("is_superadmin", meResponse.data.is_superadmin ? "true" : "false");
+
       navigate("/dashboard");
     } catch (err: any) {
       const message =

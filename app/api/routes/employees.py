@@ -102,6 +102,8 @@ def update_employee(
         employee.phone = data.phone
     if data.email is not None:
         employee.email = data.email
+    if data.allow_self_booking is not None:
+        employee.allow_self_booking = data.allow_self_booking
 
     db.commit()
     db.refresh(employee)

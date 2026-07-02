@@ -9,6 +9,7 @@ interface Employee {
   phone: string | null;
   email: string | null;
   is_active: boolean;
+  allow_self_booking: boolean;
 }
 
 function Employees() {
@@ -25,6 +26,7 @@ function Employees() {
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editAllowSelfBooking, setEditAllowSelfBooking] = useState(false);
 
   const fetchEmployees = async () => {
     try {
@@ -33,7 +35,7 @@ function Employees() {
       });
       setEmployees(response.data);
     } catch (err: any) {
-      setError("Greska prilikom ucitavanja zaposlenih.");
+      setError("Greška prilikom učitavanja zaposlenih.");
     } finally {
       setLoading(false);
     }
@@ -58,7 +60,7 @@ function Employees() {
       setPhone("");
       fetchEmployees();
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Greska prilikom dodavanja zaposlenog.");
+      setError(err.response?.data?.detail || "Greška prilikom dodavanja zaposlenog.");
     }
   };
 
@@ -67,6 +69,7 @@ function Employees() {
     setEditFirstName(emp.first_name);
     setEditLastName(emp.last_name);
     setEditPhone(emp.phone || "");
+    setEditAllowSelfBooking(emp.allow_self_booking);
   };
 
   const handleEdit = async (employeeId: number) => {
@@ -76,11 +79,12 @@ function Employees() {
         first_name: editFirstName,
         last_name: editLastName,
         phone: editPhone || null,
+        allow_self_booking: editAllowSelfBooking,
       });
       setEditingId(null);
       fetchEmployees();
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Greska prilikom uredivanja.");
+      setError(err.response?.data?.detail || "Greška prilikom uređivanja.");
     }
   };
 
@@ -91,7 +95,7 @@ function Employees() {
       await api.delete(`/api/v1/employees/${employeeId}`);
       fetchEmployees();
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Greska prilikom brisanja.");
+      setError(err.response?.data?.detail || "Greška prilikom brisanja.");
     }
   };
 
@@ -145,7 +149,7 @@ function Employees() {
       <h3 className="text-lg font-semibold mb-3">Lista zaposlenih</h3>
 
       {loading ? (
-        <p>Ucitavanje...</p>
+        <p>Učitavanje...</p>
       ) : employees.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
           Nema zaposlenih.
@@ -158,6 +162,7 @@ function Employees() {
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Prezime</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Telefon</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Online rezervacije</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Akcije</th>
             </tr>
           </thead>
@@ -188,19 +193,32 @@ function Employees() {
                       />
                     </td>
                     <td className="px-4 py-2 text-slate-400">—</td>
-                    <td className="px-4 py-2 flex gap-2">
-                      <button
-                        onClick={() => handleEdit(emp.id)}
-                        className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
-                      >
-                        Sačuvaj
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-sm hover:bg-slate-300"
-                      >
-                        Odustani
-                      </button>
+                    <td className="px-4 py-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editAllowSelfBooking}
+                          onChange={(e) => setEditAllowSelfBooking(e.target.checked)}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                        <span className="text-sm text-slate-600">Omogućeno</span>
+                      </label>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(emp.id)}
+                          className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+                        >
+                          Sačuvaj
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-sm hover:bg-slate-300"
+                        >
+                          Odustani
+                        </button>
+                      </div>
                     </td>
                   </>
                 ) : (
@@ -209,19 +227,30 @@ function Employees() {
                     <td className="px-4 py-3">{emp.last_name}</td>
                     <td className="px-4 py-3">{emp.phone || "—"}</td>
                     <td className="px-4 py-3">{emp.is_active ? "Aktivan" : "Neaktivan"}</td>
-                    <td className="px-4 py-3 flex gap-2">
-                      <button
-                        onClick={() => startEdit(emp)}
-                        className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
-                      >
-                        Uredi
-                      </button>
-                      <button
-                        onClick={() => handleDelete(emp.id, `${emp.first_name} ${emp.last_name}`)}
-                        className="px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
-                      >
-                        Obrisi
-                      </button>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        emp.allow_self_booking
+                          ? "bg-green-100 text-green-700"
+                          : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {emp.allow_self_booking ? "Uključeno" : "Isključeno"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEdit(emp)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                        >
+                          Uredi
+                        </button>
+                        <button
+                          onClick={() => handleDelete(emp.id, `${emp.first_name} ${emp.last_name}`)}
+                          className="px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+                        >
+                          Obriši
+                        </button>
+                      </div>
                     </td>
                   </>
                 )}

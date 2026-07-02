@@ -14,6 +14,7 @@ class EmployeeUpdate(BaseModel):
     last_name: str | None = None
     phone: str | None = None
     email: str | None = None
+    allow_self_booking: bool | None = None
 
 
 class EmployeeResponse(BaseModel):
@@ -24,6 +25,7 @@ class EmployeeResponse(BaseModel):
     phone: str | None
     email: str | None
     is_active: bool
+    allow_self_booking: bool
 
     class Config:
         from_attributes = True

@@ -1,6 +1,8 @@
 ﻿import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useTenant } from "./contexts/TenantContext";
 
+import MyAppointments from "./pages/MyAppointments";
+import BookingLanding from "./pages/BookingLanding";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -104,8 +106,9 @@ function RoleRouter() {
     return (
       <Routes>
         <Route element={<CustomerLayout />}>
-          <Route path="/my-appointments" element={<Dashboard />} />
-          <Route path="/book" element={<BookAppointment />} />
+          <Route path="/my-appointments" element={<MyAppointments />} />
+          <Route path="/book" element={<BookingLanding />} />
+          <Route path="/book/:employeeId" element={<BookAppointment />} />
           <Route path="*" element={<Navigate to="/my-appointments" replace />} />
         </Route>
       </Routes>

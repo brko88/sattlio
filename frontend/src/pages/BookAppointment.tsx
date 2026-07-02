@@ -27,7 +27,6 @@ function BookAppointment() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
   const token = localStorage.getItem("access_token");
@@ -77,9 +76,9 @@ function BookAppointment() {
         service_id: selectedService,
         start_time: selectedSlot,
       });
-      setSuccess(true);
+      navigate("/my-appointments");
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Greska prilikom rezervacije.");
+      setError(err.response?.data?.detail || "Greška prilikom rezervacije.");
     }
   };
 
@@ -90,28 +89,33 @@ function BookAppointment() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Ucitavanje...</div>;
-
-  if (error && !employee) return (
-    <div className="min-h-screen flex items-center justify-center text-red-600">{error}</div>
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      Učitavanje...
+    </div>
   );
 
-  if (success) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white rounded-lg shadow-sm p-8 max-w-sm w-full text-center">
-        <div className="text-green-500 text-5xl mb-4">✓</div>
-        <h2 className="text-xl font-bold mb-2">Rezervacija potvrdjena!</h2>
-        <p className="text-slate-500 text-sm">Vas termin je uspjesno rezervisan.</p>
-      </div>
+  if (error && !employee) return (
+    <div className="min-h-screen flex items-center justify-center text-red-600">
+      {error}
     </div>
   );
 
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4">
       <div className="max-w-lg mx-auto">
+        <button
+          onClick={() => navigate("/book")}
+          className="text-sm text-slate-500 hover:text-slate-700 mb-6 flex items-center gap-1"
+        >
+          ← Nazad
+        </button>
+
         <h1 className="text-2xl font-bold text-slate-900 mb-1">Online rezervacija</h1>
         {employee && (
-          <p className="text-slate-500 mb-6">{employee.first_name} {employee.last_name}</p>
+          <p className="text-slate-500 mb-6">
+            {employee.first_name} {employee.last_name}
+          </p>
         )}
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
@@ -128,7 +132,9 @@ function BookAppointment() {
                 }`}
               >
                 <span className="font-medium">{svc.name}</span>
-                <span className="text-slate-400 text-sm ml-2">{svc.duration_minutes} min • {svc.price} KM</span>
+                <span className="text-slate-400 text-sm ml-2">
+                  {svc.duration_minutes} min • {svc.price} KM
+                </span>
               </button>
             ))}
           </div>
@@ -151,9 +157,11 @@ function BookAppointment() {
           <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
             <h3 className="font-semibold mb-3">3. Odaberite termin</h3>
             {loadingSlots ? (
-              <p className="text-slate-400 text-sm">Ucitavanje termina...</p>
+              <p className="text-slate-400 text-sm">Učitavanje termina...</p>
             ) : slots.length === 0 ? (
-              <p className="text-slate-400 text-sm">Nema slobodnih termina za odabrani datum.</p>
+              <p className="text-slate-400 text-sm">
+                Nema slobodnih termina za odabrani datum.
+              </p>
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((slot) => (

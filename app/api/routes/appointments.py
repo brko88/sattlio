@@ -59,10 +59,7 @@ def check_working_hours(db: Session, tenant_id: int, employee_id: int, start_tim
         )
 
 
-from app.models.employee import Employee
-
 def check_overlap(db: Session, employee_id: int, start_time: datetime, end_time: datetime):
-    # Zaključaj employee red da spriječimo race condition - serijalizuje sve zahtjeve za ovog zaposlenog
     db.query(Employee).filter(Employee.id == employee_id).with_for_update().first()
 
     overlapping = (
@@ -81,6 +78,31 @@ def check_overlap(db: Session, employee_id: int, start_time: datetime, end_time:
             status_code=status.HTTP_409_CONFLICT,
             detail="Zaposleni je već zauzet u tom terminu.",
         )
+
+
+@router.get("/my", response_model=list[AppointmentResponse])
+def get_my_appointments(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Vraća sve rezervacije trenutno ulogovanog korisnika (customer rola)."""
+    customer_ids = db.query(Customer.id).filter(
+        Customer.email == current_user.email
+    ).all()
+
+    if not customer_ids:
+        return []
+
+    ids = [c.id for c in customer_ids]
+
+    appointments = (
+        db.query(Appointment)
+        .filter(Appointment.customer_id.in_(ids))
+        .order_by(Appointment.start_time.desc())
+        .all()
+    )
+
+    return appointments
 
 
 @router.post("", response_model=AppointmentResponse)
@@ -161,6 +183,8 @@ def get_appointments(
         .all()
     )
     return appointments
+
+
 @router.post("/{appointment_id}/cancel", response_model=AppointmentResponse)
 def cancel_appointment(
     appointment_id: int,

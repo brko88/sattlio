@@ -21,12 +21,14 @@ interface Employee {
 interface Service {
   id: number;
   name: string;
+  duration_minutes: number;
 }
 
 interface Customer {
   id: number;
   first_name: string;
   last_name: string;
+  phone: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -53,7 +55,29 @@ function Calendar() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Modal za detalje postojeće rezervacije
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
+
+  // Modal za novu rezervaciju
+  const [newApptModal, setNewApptModal] = useState(false);
+  const [newApptEmployee, setNewApptEmployee] = useState<Employee | null>(null);
+  const [newApptTime, setNewApptTime] = useState("");
+  const [newApptServiceId, setNewApptServiceId] = useState("");
+
+  // Pretraga klijenta
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  // Novi klijent inline forma
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+
+  const [saving, setSaving] = useState(false);
+  const [modalError, setModalError] = useState("");
 
   const fetchAll = async () => {
     try {
@@ -67,7 +91,7 @@ function Calendar() {
       setEmployees(empRes.data);
       setServices(srvRes.data);
       setCustomers(custRes.data);
-    } catch (err: any) {
+    } catch {
       setError("Greška prilikom učitavanja podataka.");
     } finally {
       setLoading(false);
@@ -77,6 +101,22 @@ function Calendar() {
   useEffect(() => {
     fetchAll();
   }, [tenantId]);
+
+  // Pretraga klijenata
+  useEffect(() => {
+    if (customerSearch.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const term = customerSearch.toLowerCase();
+    const results = customers.filter(
+      (c) =>
+        c.first_name.toLowerCase().includes(term) ||
+        c.last_name.toLowerCase().includes(term) ||
+        (c.phone && c.phone.includes(term))
+    );
+    setSearchResults(results);
+  }, [customerSearch, customers]);
 
   const dayAppointments = appointments.filter((a) => {
     const apptDate = a.start_time.split("T")[0];
@@ -99,25 +139,46 @@ function Calendar() {
   const getAppointmentStyle = (appt: Appointment) => {
     const start = new Date(appt.start_time);
     const end = new Date(appt.end_time);
-
     const startMinutesFromOpen =
       (start.getHours() - START_HOUR) * 60 + start.getMinutes();
     const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-
     const top = (startMinutesFromOpen / 30) * SLOT_HEIGHT;
     const height = (durationMinutes / 30) * SLOT_HEIGHT;
-
     return { top: `${top}px`, height: `${Math.max(height, 20)}px` };
   };
 
   const getEmployeeAppointments = (employeeId: number) =>
     dayAppointments.filter((a) => a.employee_id === employeeId);
 
-  const timeLabels = Array.from({ length: SLOTS / 2 }, (_, i) => START_HOUR + i);
+  const timeLabels = Array.from(
+    { length: SLOTS / 2 },
+    (_, i) => START_HOUR + i
+  );
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleTimeString("bs-BA", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  // Klik na slobodan slot
+  const handleSlotClick = (employee: Employee, slotIndex: number) => {
+    const totalMinutes = START_HOUR * 60 + slotIndex * 30;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const timeStr = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+
+    setNewApptEmployee(employee);
+    setNewApptTime(timeStr);
+    setNewApptServiceId("");
+    setSelectedCustomer(null);
+    setCustomerSearch("");
+    setSearchResults([]);
+    setShowNewCustomer(false);
+    setNewFirstName("");
+    setNewLastName("");
+    setNewPhone("");
+    setModalError("");
+    setNewApptModal(true);
   };
 
   const handleComplete = async (id: number) => {
@@ -126,7 +187,7 @@ function Calendar() {
       setSelectedAppt(null);
       fetchAll();
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Greška prilikom završavanja.");
+      setError(err.response?.data?.detail || "Greška.");
     }
   };
 
@@ -136,7 +197,55 @@ function Calendar() {
       setSelectedAppt(null);
       fetchAll();
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Greška prilikom otkazivanja.");
+      setError(err.response?.data?.detail || "Greška.");
+    }
+  };
+
+  // Kreiranje rezervacije iz modala
+  const handleCreateAppointment = async () => {
+    if (!newApptEmployee || !newApptServiceId) {
+      setModalError("Odaberite uslugu.");
+      return;
+    }
+
+    setSaving(true);
+    setModalError("");
+
+    try {
+      let customerId = selectedCustomer?.id;
+
+      // Ako nema odabranog klijenta, kreiraj novog
+      if (!customerId) {
+        if (!newFirstName || !newLastName) {
+          setModalError("Unesite ime i prezime klijenta.");
+          setSaving(false);
+          return;
+        }
+        const custRes = await api.post("/api/v1/customers", {
+          tenant_id: tenantId,
+          first_name: newFirstName,
+          last_name: newLastName,
+          phone: newPhone || null,
+        });
+        customerId = custRes.data.id;
+      }
+
+      const startTime = `${selectedDate}T${newApptTime}:00`;
+
+      await api.post("/api/v1/appointments", {
+        tenant_id: tenantId,
+        employee_id: newApptEmployee.id,
+        service_id: parseInt(newApptServiceId),
+        customer_id: customerId,
+        start_time: startTime,
+      });
+
+      setNewApptModal(false);
+      fetchAll();
+    } catch (err: any) {
+      setModalError(err.response?.data?.detail || "Greška prilikom kreiranja rezervacije.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -200,16 +309,22 @@ function Calendar() {
                   <div
                     key={i}
                     style={{ height: `${SLOT_HEIGHT}px` }}
-                    className={`border-b ${i % 2 === 0 ? "border-slate-100" : "border-slate-50"}`}
-                  ></div>
+                    className={`border-b cursor-pointer hover:bg-blue-50 transition-colors ${
+                      i % 2 === 0 ? "border-slate-100" : "border-slate-50"
+                    }`}
+                    onClick={() => handleSlotClick(emp, i)}
+                  />
                 ))}
 
                 {getEmployeeAppointments(emp.id).map((appt) => (
                   <button
                     key={appt.id}
-                    onClick={() => setSelectedAppt(appt)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAppt(appt);
+                    }}
                     style={getAppointmentStyle(appt)}
-                    className={`absolute left-1 right-1 ${STATUS_COLORS[appt.status]} border-l-4 rounded p-1.5 text-xs overflow-hidden text-left cursor-pointer hover:brightness-95 transition-all`}
+                    className={`absolute left-1 right-1 ${STATUS_COLORS[appt.status]} border-l-4 rounded p-1.5 text-xs overflow-hidden text-left cursor-pointer hover:brightness-95 transition-all z-10`}
                   >
                     <p className="font-semibold truncate">
                       {getCustomerName(appt.customer_id)}
@@ -223,6 +338,7 @@ function Calendar() {
         </div>
       )}
 
+      {/* Modal — detalji postojeće rezervacije */}
       {selectedAppt && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
@@ -233,7 +349,6 @@ function Calendar() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">Detalji rezervacije</h3>
-
             <div className="space-y-2 text-sm mb-6">
               <p>
                 <span className="text-slate-500">Klijent:</span>{" "}
@@ -258,7 +373,6 @@ function Calendar() {
                 <span className="font-medium">{selectedAppt.status}</span>
               </p>
             </div>
-
             <div className="flex gap-2">
               {(selectedAppt.status === "created" || selectedAppt.status === "confirmed") && (
                 <>
@@ -281,6 +395,184 @@ function Calendar() {
                 className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-50 transition-colors"
               >
                 Zatvori
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal — nova rezervacija */}
+      {newApptModal && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setNewApptModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-1">Nova rezervacija</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              {newApptEmployee?.first_name} {newApptEmployee?.last_name} — {newApptTime}
+            </p>
+
+            {/* Pretraga klijenta */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Klijent
+              </label>
+
+              {selectedCustomer ? (
+                <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
+                  <span className="text-sm font-medium text-blue-900">
+                    {selectedCustomer.first_name} {selectedCustomer.last_name}
+                    {selectedCustomer.phone && (
+                      <span className="text-blue-600 ml-2">{selectedCustomer.phone}</span>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedCustomer(null);
+                      setCustomerSearch("");
+                      setShowNewCustomer(false);
+                    }}
+                    className="text-slate-400 hover:text-slate-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Pretraži po imenu ili telefonu..."
+                    value={customerSearch}
+                    onChange={(e) => {
+                      setCustomerSearch(e.target.value);
+                      setShowNewCustomer(false);
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm"
+                    autoFocus
+                  />
+
+                  {/* Rezultati pretrage */}
+                  {searchResults.length > 0 && (
+                    <div className="mt-1 border border-slate-200 rounded-md overflow-hidden shadow-sm">
+                      {searchResults.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            setSelectedCustomer(c);
+                            setCustomerSearch("");
+                            setSearchResults([]);
+                            setShowNewCustomer(false);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0"
+                        >
+                          <span className="font-medium">{c.first_name} {c.last_name}</span>
+                          {c.phone && (
+                            <span className="text-slate-400 ml-2">{c.phone}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Nema rezultata — ponudi novi klijent */}
+                  {customerSearch.length >= 2 && searchResults.length === 0 && !showNewCustomer && (
+                    <div className="mt-1 px-3 py-2 text-sm text-slate-500">
+                      Nema rezultata.{" "}
+                      <button
+                        onClick={() => setShowNewCustomer(true)}
+                        className="text-blue-600 font-medium hover:underline"
+                      >
+                        + Dodaj novog klijenta
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Dugme za novi klijent kad nema pretrage */}
+                  {customerSearch.length < 2 && !showNewCustomer && (
+                    <button
+                      onClick={() => setShowNewCustomer(true)}
+                      className="mt-2 text-sm text-blue-600 font-medium hover:underline"
+                    >
+                      + Novi klijent
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* Inline forma za novog klijenta */}
+              {showNewCustomer && !selectedCustomer && (
+                <div className="mt-3 p-3 bg-slate-50 rounded-md border border-slate-200 space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Ime *"
+                    value={newFirstName}
+                    onChange={(e) => setNewFirstName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Prezime *"
+                    value={newLastName}
+                    onChange={(e) => setNewLastName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Telefon (opciono)"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    onClick={() => setShowNewCustomer(false)}
+                    className="text-xs text-slate-400 hover:text-slate-600"
+                  >
+                    Odustani
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Usluga */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Usluga
+              </label>
+              <select
+                value={newApptServiceId}
+                onChange={(e) => setNewApptServiceId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm"
+              >
+                <option value="">Odaberi uslugu</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.duration_minutes} min)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {modalError && (
+              <p className="text-red-600 text-sm mb-3">{modalError}</p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleCreateAppointment}
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {saving ? "Čekajte..." : "Rezerviši"}
+              </button>
+              <button
+                onClick={() => setNewApptModal(false)}
+                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                Odustani
               </button>
             </div>
           </div>

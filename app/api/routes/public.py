@@ -7,10 +7,12 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.appointment import Appointment
+from app.models.customer import Customer
 from app.models.employee import Employee
 from app.models.service import Service
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.models.user_tenant_role import UserTenantRole
 from app.models.working_hours import WorkingHours
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
@@ -65,13 +67,8 @@ class SelfBookingResponse(BaseModel):
         from_attributes = True
 
 
-# ---------------------------------------------------------------------------
-# Javni listing salona
-# ---------------------------------------------------------------------------
-
 @router.get("/tenants", response_model=list[PublicTenantResponse])
 def get_public_tenants(db: Session = Depends(get_db)):
-    """Vraća sve aktivne i verificirane salone."""
     tenants = db.query(Tenant).filter(
         Tenant.is_active == True,
         Tenant.verification_status == "verified",
@@ -79,13 +76,8 @@ def get_public_tenants(db: Session = Depends(get_db)):
     return tenants
 
 
-# ---------------------------------------------------------------------------
-# Zaposleni po tenantu (filtrirani)
-# ---------------------------------------------------------------------------
-
 @router.get("/tenants/{tenant_id}/employees", response_model=list[PublicEmployeeResponse])
 def get_tenant_public_employees(tenant_id: int, db: Session = Depends(get_db)):
-    """Vraća zaposlene koji primaju online rezervacije za određeni salon."""
     employees = db.query(Employee).filter(
         Employee.tenant_id == tenant_id,
         Employee.is_deleted == False,
@@ -94,10 +86,6 @@ def get_tenant_public_employees(tenant_id: int, db: Session = Depends(get_db)):
     ).all()
     return employees
 
-
-# ---------------------------------------------------------------------------
-# Stare rute (zadržane za kompatibilnost)
-# ---------------------------------------------------------------------------
 
 @router.get("/employees", response_model=list[PublicEmployeeResponse])
 def get_all_public_employees(db: Session = Depends(get_db)):
@@ -263,7 +251,7 @@ def self_book_appointment(
     if overlapping:
         raise HTTPException(status_code=409, detail="Termin je već zauzet.")
 
-    from app.models.customer import Customer
+    # Pronađi ili kreiraj customer zapis
     customer = db.query(Customer).filter(
         Customer.tenant_id == employee.tenant_id,
         Customer.email == current_user.email,
@@ -278,6 +266,20 @@ def self_book_appointment(
         )
         db.add(customer)
         db.flush()
+
+    # Automatski dodaj customer rolu ako je nema
+    existing_role = db.query(UserTenantRole).filter(
+        UserTenantRole.user_id == current_user.id,
+        UserTenantRole.tenant_id == employee.tenant_id,
+    ).first()
+
+    if existing_role is None:
+        new_role = UserTenantRole(
+            user_id=current_user.id,
+            tenant_id=employee.tenant_id,
+            role="customer",
+        )
+        db.add(new_role)
 
     new_appointment = Appointment(
         tenant_id=employee.tenant_id,

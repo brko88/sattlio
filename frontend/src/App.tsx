@@ -25,6 +25,7 @@ import WorkingHours from "./pages/WorkingHours";
 import Calendar from "./pages/Calendar";
 import CreateTenant from "./pages/CreateTenant";
 import AdminPanel from "./pages/AdminPanel";
+import Onboarding from "./pages/Onboarding";
 
 function RoleRouter() {
   const { tenants, isLoading } = useTenant();
@@ -38,8 +39,8 @@ function RoleRouter() {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. Čekamo učitavanje — uključuje i slučaj kad je currentRole još prazan
-  if (isLoading || (currentRole === "" && !isSuperadmin)) {
+  // 2. Čekamo učitavanje
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <p className="text-slate-400 text-sm">Učitavanje...</p>
@@ -47,7 +48,7 @@ function RoleRouter() {
     );
   }
 
-  // 3. Superadmin — UVIJEK PRVO
+  // 3. Superadmin
   if (isSuperadmin) {
     return (
       <Routes>
@@ -59,12 +60,15 @@ function RoleRouter() {
     );
   }
 
-  // 4. Nema tenanta — kreiraj
+  // 4. Korisnik nema nijedan tenant — onboarding
   if (tenants.length === 0) {
     return (
       <Routes>
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/create-tenant" element={<CreateTenant />} />
-        <Route path="*" element={<Navigate to="/create-tenant" replace />} />
+        <Route path="/book" element={<BookingLanding />} />
+        <Route path="/book/:employeeId" element={<BookAppointment />} />
+        <Route path="*" element={<Navigate to="/onboarding" replace />} />
       </Routes>
     );
   }

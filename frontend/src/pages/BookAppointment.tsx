@@ -76,7 +76,7 @@ function BookAppointment() {
         service_id: selectedService,
         start_time: selectedSlot,
       });
-      navigate("/my-appointments");
+      window.location.href = "/my-appointments";
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom rezervacije.");
     }

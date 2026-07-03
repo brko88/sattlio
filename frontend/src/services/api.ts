@@ -7,6 +7,7 @@ const api = axios.create({
   },
 });
 
+// Request interceptor — dodaje access token na svaki request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
   if (token) {
@@ -14,5 +15,93 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Response interceptor — automatski refresh kad token istekne
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token!);
+    }
+  });
+  failedQueue = [];
+};
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Ako nije 401 ili je već retry — ne pokušavaj refresh
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // Ne pokušavaj refresh na auth rutama
+    if (
+      originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/auth/refresh") ||
+      originalRequest.url?.includes("/auth/register")
+    ) {
+      return Promise.reject(error);
+    }
+
+    // Ako je već u toku refresh — stavi request u queue
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      }).then((token) => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return api(originalRequest);
+      });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    const refreshToken = localStorage.getItem("refresh_token");
+
+    if (!refreshToken) {
+      // Nema refresh tokena — odjavi korisnika
+      localStorage.clear();
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    try {
+      const response = await axios.post("/api/v1/auth/refresh", {
+        refresh_token: refreshToken,
+      });
+
+      const newAccessToken = response.data.access_token;
+      const newRefreshToken = response.data.refresh_token;
+
+      localStorage.setItem("access_token", newAccessToken);
+      localStorage.setItem("refresh_token", newRefreshToken);
+
+      api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+      processQueue(null, newAccessToken);
+
+      return api(originalRequest);
+    } catch (refreshError) {
+      // Refresh nije uspio — odjavi korisnika
+      processQueue(refreshError, null);
+      localStorage.clear();
+      window.location.href = "/login";
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
+  }
+);
 
 export default api;

@@ -2,6 +2,19 @@ import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 
+interface Employee {
+  id: number;
+  first_name: string;
+  last_name: string;
+  allow_self_booking: boolean;
+  is_active: boolean;
+}
+
+interface TenantInfo {
+  verification_status: string;
+  name: string;
+}
+
 function Dashboard() {
   const { tenantId } = useTenant();
   const [stats, setStats] = useState({
@@ -10,16 +23,19 @@ function Dashboard() {
     customers: 0,
     appointments: 0,
   });
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [empRes, srvRes, custRes, apptRes] = await Promise.all([
+        const [empRes, srvRes, custRes, apptRes, tenantsRes] = await Promise.all([
           api.get("/api/v1/employees", { params: { tenant_id: tenantId } }),
           api.get("/api/v1/services", { params: { tenant_id: tenantId } }),
           api.get("/api/v1/customers", { params: { tenant_id: tenantId } }),
           api.get("/api/v1/appointments", { params: { tenant_id: tenantId } }),
+          api.get("/api/v1/tenants/my"),
         ]);
         setStats({
           employees: empRes.data.length,
@@ -27,6 +43,10 @@ function Dashboard() {
           customers: custRes.data.length,
           appointments: apptRes.data.length,
         });
+        setEmployees(empRes.data);
+
+        const currentTenant = tenantsRes.data.find((t: any) => t.id === tenantId);
+        if (currentTenant) setTenant(currentTenant);
       } finally {
         setLoading(false);
       }
@@ -42,10 +62,64 @@ function Dashboard() {
     { label: "Rezervacije", value: stats.appointments, border: "border-l-red-600" },
   ];
 
+  const isPending = tenant?.verification_status === "pending";
+  const isSuspended = tenant?.verification_status === "suspended";
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-      <p className="text-slate-500 mb-8">Pregled vašeg poslovnog subjekta</p>
+      <p className="text-slate-500 mb-6">Pregled vašeg poslovnog subjekta</p>
+
+      {/* Status obavještenja */}
+      {!loading && (
+        <div className="mb-6 space-y-3">
+
+          {/* Verifikacija */}
+          {isPending && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <span className="text-amber-500 text-lg mt-0.5">⚠️</span>
+              <div>
+                <p className="font-medium text-amber-800 text-sm">Salon na čekanju verifikacije</p>
+                <p className="text-amber-600 text-xs mt-0.5">
+                  Klijenti ne mogu pronaći vaš salon dok administrator ne potvrdi podatke.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isSuspended && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+              <span className="text-red-500 text-lg mt-0.5">🚫</span>
+              <div>
+                <p className="font-medium text-red-800 text-sm">Salon je suspendovan</p>
+                <p className="text-red-600 text-xs mt-0.5">
+                  Vaš salon je privremeno deaktiviran. Kontaktirajte podršku.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Online rezervacije po zaposlenom */}
+          {employees.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-lg px-4 py-3">
+              <p className="text-sm font-medium text-slate-700 mb-2">Online rezervacije</p>
+              <div className="space-y-1.5">
+                {employees.map((emp) => (
+                  <div key={emp.id} className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${emp.allow_self_booking ? "bg-green-500" : "bg-red-400"}`} />
+                    <span className="text-sm text-slate-600">
+                      {emp.first_name} {emp.last_name}
+                    </span>
+                    <span className={`text-xs ml-auto ${emp.allow_self_booking ? "text-green-600" : "text-slate-400"}`}>
+                      {emp.allow_self_booking ? "Uključeno" : "Isključeno"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <p>Učitavanje...</p>

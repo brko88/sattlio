@@ -26,6 +26,10 @@ const DAYS = [
   "Nedjelja",
 ];
 
+const formatTime = (time: string) => time.slice(0, 5);
+
+const isValidTime = (time: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+
 function WorkingHours() {
   const { tenantId } = useTenant();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -52,7 +56,7 @@ function WorkingHours() {
         params: { tenant_id: tenantId, employee_id: employeeId },
       });
       setHours(response.data);
-    } catch (err: any) {
+    } catch {
       setError("Greška prilikom učitavanja radnog vremena.");
     }
   };
@@ -70,6 +74,21 @@ function WorkingHours() {
     setError("");
     setSuccessMessage("");
 
+    if (!isValidTime(startTime)) {
+      setError("Neispravan format vremena za 'Od'. Koristite HH:MM (npr. 09:00).");
+      return;
+    }
+
+    if (!isValidTime(endTime)) {
+      setError("Neispravan format vremena za 'Do'. Koristite HH:MM (npr. 17:00).");
+      return;
+    }
+
+    if (startTime >= endTime) {
+      setError("Početak radnog vremena mora biti prije kraja.");
+      return;
+    }
+
     try {
       await api.post("/api/v1/working-hours", {
         tenant_id: tenantId,
@@ -82,16 +101,13 @@ function WorkingHours() {
       setSuccessMessage("Radno vrijeme je sačuvano.");
       fetchHours(selectedEmployeeId);
     } catch (err: any) {
-      const message =
-        err.response?.data?.detail || "Greška prilikom dodavanja.";
-      setError(message);
+      setError(err.response?.data?.detail || "Greška prilikom dodavanja.");
     }
   };
 
   const handleDelete = async (id: number) => {
     setError("");
     setSuccessMessage("");
-
     try {
       await api.delete(`/api/v1/working-hours/${id}`);
       setSuccessMessage("Radno vrijeme je obrisano.");
@@ -156,9 +172,11 @@ function WorkingHours() {
                   Od
                 </label>
                 <input
-                  type="time"
+                  type="text"
+                  placeholder="09:00"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
+                  maxLength={5}
                   className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -167,13 +185,19 @@ function WorkingHours() {
                   Do
                 </label>
                 <input
-                  type="time"
+                  type="text"
+                  placeholder="17:00"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
+                  maxLength={5}
                   className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
+
+            <p className="text-xs text-slate-400 mb-4">
+              Format: HH:MM (npr. 09:00 — 17:00)
+            </p>
 
             {successMessage && (
               <p className="text-green-600 text-sm mb-3">{successMessage}</p>
@@ -197,26 +221,18 @@ function WorkingHours() {
             <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
               <thead>
                 <tr className="text-left bg-slate-50">
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                    Dan
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                    Od
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                    Do
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                    Akcije
-                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Dan</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Od</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Do</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Akcije</th>
                 </tr>
               </thead>
               <tbody>
                 {hours.map((h) => (
                   <tr key={h.id} className="border-t border-slate-100">
                     <td className="px-4 py-3">{DAYS[h.day_of_week]}</td>
-                    <td className="px-4 py-3">{h.start_time}</td>
-                    <td className="px-4 py-3">{h.end_time}</td>
+                    <td className="px-4 py-3">{formatTime(h.start_time)}</td>
+                    <td className="px-4 py-3">{formatTime(h.end_time)}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => handleDelete(h.id)}

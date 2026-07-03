@@ -1,4 +1,5 @@
 ﻿from datetime import datetime, timedelta, timezone, date, time
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -16,6 +17,8 @@ from app.models.user_tenant_role import UserTenantRole
 from app.models.working_hours import WorkingHours
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
+
+TZ = ZoneInfo("Europe/Sarajevo")
 
 
 class PublicTenantResponse(BaseModel):
@@ -175,24 +178,30 @@ def get_available_slots(
     if wh is None or not wh.is_working_day:
         return {"slots": []}
 
+    # Generišemo slotove u lokalnom vremenu (Europe/Sarajevo)
+    slot_start = datetime.combine(booking_date, wh.start_time).replace(tzinfo=TZ)
+    work_end = datetime.combine(booking_date, wh.end_time).replace(tzinfo=TZ)
+    duration = timedelta(minutes=service.duration_minutes)
+    now = datetime.now(TZ)
+
+    # Zauzeti termini iz baze (UTC) konvertujemo u lokalno
+    day_start = datetime.combine(booking_date, time.min).replace(tzinfo=TZ)
+    day_end = datetime.combine(booking_date, time.max).replace(tzinfo=TZ)
+
     existing = db.query(Appointment).filter(
         Appointment.employee_id == employee_id,
         Appointment.status.in_(["created", "confirmed"]),
-        Appointment.start_time >= datetime.combine(booking_date, time.min).replace(tzinfo=timezone.utc),
-        Appointment.start_time < datetime.combine(booking_date, time.max).replace(tzinfo=timezone.utc),
+        Appointment.start_time >= day_start.astimezone(timezone.utc),
+        Appointment.start_time < day_end.astimezone(timezone.utc),
     ).all()
 
-    booked_slots = [(
-        a.start_time.replace(tzinfo=timezone.utc) if a.start_time.tzinfo is None else a.start_time,
-        a.end_time.replace(tzinfo=timezone.utc) if a.end_time.tzinfo is None else a.end_time
-    ) for a in existing]
+    booked_slots = []
+    for a in existing:
+        s = a.start_time if a.start_time.tzinfo else a.start_time.replace(tzinfo=timezone.utc)
+        e = a.end_time if a.end_time.tzinfo else a.end_time.replace(tzinfo=timezone.utc)
+        booked_slots.append((s.astimezone(TZ), e.astimezone(TZ)))
 
     slots = []
-    slot_start = datetime.combine(booking_date, wh.start_time).replace(tzinfo=timezone.utc)
-    work_end = datetime.combine(booking_date, wh.end_time).replace(tzinfo=timezone.utc)
-    duration = timedelta(minutes=service.duration_minutes)
-    now = datetime.now(timezone.utc)
-
     while slot_start + duration <= work_end:
         slot_end = slot_start + duration
         is_booked = any(
@@ -200,7 +209,8 @@ def get_available_slots(
             for bs, be in booked_slots
         )
         if not is_booked and slot_start > now:
-            slots.append(slot_start.isoformat())
+            # Vraćamo kao ISO string u UTC za konzistentnost sa backendom
+            slots.append(slot_start.astimezone(timezone.utc).isoformat())
         slot_start += timedelta(minutes=30)
 
     return {"slots": slots}
@@ -252,7 +262,6 @@ def self_book_appointment(
     if overlapping:
         raise HTTPException(status_code=409, detail="Termin je već zauzet.")
 
-    # Pronađi ili kreiraj customer zapis
     customer = db.query(Customer).filter(
         Customer.tenant_id == employee.tenant_id,
         Customer.email == current_user.email,
@@ -268,7 +277,6 @@ def self_book_appointment(
         db.add(customer)
         db.flush()
 
-    # Automatski dodaj customer rolu ako je nema
     existing_role = db.query(UserTenantRole).filter(
         UserTenantRole.user_id == current_user.id,
         UserTenantRole.tenant_id == employee.tenant_id,

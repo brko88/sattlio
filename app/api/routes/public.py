@@ -22,6 +22,7 @@ class PublicTenantResponse(BaseModel):
     id: int
     name: str
     city: str | None
+    address: str | None
     business_category: str | None
     description: str | None
 

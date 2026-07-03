@@ -1,30 +1,41 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+
+const BUSINESS_CATEGORIES = [
+  "Frizerski salon",
+  "Barber salon",
+  "Kozmetički salon",
+  "Masažni studio",
+  "Manikir / Pedikir",
+  "Tattoo studio",
+  "Spa centar",
+  "Fitnes studio",
+  "Ordinacija",
+  "Fizioterapija",
+  "Stomatologija",
+  "Servis računara",
+  "Servis mobilnih telefona",
+  "Automehaničar",
+  "Vulkanizer",
+  "Ostalo",
+];
 
 function CreateTenant() {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [jib, setJib] = useState("");
+  const [businessCategory, setBusinessCategory] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const [success, setSuccess] = useState(false);
   const { setTenantId, refreshTenants } = useTenant();
 
   const extractErrorMessage = (err: any): string => {
     const detail = err.response?.data?.detail;
-
-    if (typeof detail === "string") {
-      return detail;
-    }
-
-    if (Array.isArray(detail)) {
-      return detail
-        .map((item) => item.msg || JSON.stringify(item))
-        .join(" ");
-    }
-
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) return detail.map((item) => item.msg || JSON.stringify(item)).join(" ");
     return "Greška prilikom kreiranja salona.";
   };
 
@@ -36,17 +47,47 @@ function CreateTenant() {
       const response = await api.post("/api/v1/tenants", {
         name,
         city: city || null,
+        address: address || null,
         phone: phone || null,
         jib,
+        business_category: businessCategory || null,
       });
 
       setTenantId(response.data.id);
       await refreshTenants();
-      navigate("/dashboard");
+      setSuccess(true);
+
+      // Redirect na dashboard nakon 4 sekunde
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 4000);
     } catch (err: any) {
       setError(extractErrorMessage(err));
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white rounded-lg p-8 shadow-sm text-center">
+          <div className="text-green-500 text-5xl mb-4">✓</div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">
+            Salon je uspješno kreiran!
+          </h2>
+          <p className="text-slate-500 mb-4">
+            Vaš salon je trenutno u statusu <span className="font-semibold text-amber-600">na čekanju</span>.
+          </p>
+          <p className="text-slate-400 text-sm">
+            Administrator platforme će pregledati vaše podatke i aktivirati salon u najkraćem roku.
+            Nakon aktivacije, vaš salon će biti vidljiv klijentima.
+          </p>
+          <p className="text-slate-400 text-xs mt-4">
+            Preusmjeravamo vas na dashboard za nekoliko sekundi...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
@@ -59,10 +100,11 @@ function CreateTenant() {
         </p>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg p-6 shadow-sm">
+
           <div className="mb-4">
             <input
               type="text"
-              placeholder="Naziv salona"
+              placeholder="Naziv salona *"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -71,9 +113,22 @@ function CreateTenant() {
           </div>
 
           <div className="mb-4">
+            <select
+              value={businessCategory}
+              onChange={(e) => setBusinessCategory(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-slate-700"
+            >
+              <option value="">Vrsta djelatnosti (opciono)</option>
+              {BUSINESS_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mb-4">
             <input
               type="text"
-              placeholder="JIB (13 cifara)"
+              placeholder="JIB (13 cifara) *"
               value={jib}
               onChange={(e) => setJib(e.target.value)}
               required
@@ -88,9 +143,20 @@ function CreateTenant() {
           <div className="mb-4">
             <input
               type="text"
-              placeholder="Grad"
+              placeholder="Grad *"
               value={city}
               onChange={(e) => setCity(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Adresa (ulica i broj)"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
             />
           </div>

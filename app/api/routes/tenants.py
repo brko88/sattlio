@@ -49,6 +49,7 @@ def create_tenant(
         phone=data.phone,
         email=data.email,
         jib=data.jib,
+        business_category=data.business_category,
         verification_status="pending",
     )
     db.add(new_tenant)

@@ -6,6 +6,7 @@ interface Tenant {
   id: number;
   name: string;
   city: string | null;
+  address: string | null;
   business_category: string | null;
   description: string | null;
 }
@@ -65,21 +66,23 @@ function BookingLanding() {
               Trenutno nema dostupnih salona.
             </div>
           ) : (
-            <div className="grid gap-3 max-w-md">
+            <div className="grid gap-3 max-w-lg">
               {tenants.map((tenant) => (
                 <button
                   key={tenant.id}
                   onClick={() => handleSelectTenant(tenant)}
                   className="bg-white rounded-lg p-5 shadow-sm text-left hover:shadow-md transition-shadow border border-slate-100 hover:border-blue-200"
                 >
-                  <p className="font-semibold text-slate-900">{tenant.name}</p>
-                  {tenant.city && (
-                    <p className="text-sm text-slate-400 mt-0.5">{tenant.city}</p>
-                  )}
+                  <p className="font-semibold text-slate-900 text-base">{tenant.name}</p>
                   {tenant.business_category && (
-                    <p className="text-xs text-slate-400">{tenant.business_category}</p>
+                    <p className="text-xs text-blue-600 mt-0.5">{tenant.business_category}</p>
                   )}
-                  <p className="text-sm text-blue-600 mt-2">Pogledaj termine →</p>
+                  <div className="mt-2 space-y-0.5">
+                    {tenant.city && (
+                      <p className="text-sm text-slate-500">📍 {tenant.city}{tenant.address ? `, ${tenant.address}` : ""}</p>
+                    )}
+                  </div>
+                  <p className="text-sm text-blue-600 mt-3">Pogledaj termine →</p>
                 </button>
               ))}
             </div>
@@ -94,10 +97,17 @@ function BookingLanding() {
             ← Nazad na salone
           </button>
 
-          <p className="text-slate-500 mb-6">
-            <span className="font-medium text-slate-700">{selectedTenant.name}</span>
-            {selectedTenant.city && ` — ${selectedTenant.city}`}
-          </p>
+          <div className="bg-white rounded-lg p-4 shadow-sm mb-6 max-w-lg">
+            <p className="font-semibold text-slate-900">{selectedTenant.name}</p>
+            {selectedTenant.business_category && (
+              <p className="text-xs text-blue-600 mt-0.5">{selectedTenant.business_category}</p>
+            )}
+            {selectedTenant.city && (
+              <p className="text-sm text-slate-500 mt-1">
+                📍 {selectedTenant.city}{selectedTenant.address ? `, ${selectedTenant.address}` : ""}
+              </p>
+            )}
+          </div>
 
           {loadingEmployees ? (
             <p>Učitavanje...</p>
@@ -106,7 +116,7 @@ function BookingLanding() {
               Nema dostupnih termina za online rezervaciju u ovom salonu.
             </div>
           ) : (
-            <div className="grid gap-3 max-w-md">
+            <div className="grid gap-3 max-w-lg">
               {employees.map((emp) => (
                 <button
                   key={emp.id}

@@ -21,6 +21,7 @@ function Customers() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
 
   const fetchCustomers = async (searchTerm?: string) => {
     try {
@@ -49,11 +50,13 @@ function Customers() {
         first_name: firstName,
         last_name: lastName,
         phone: phone || null,
+        email: email || null,
       });
 
       setFirstName("");
       setLastName("");
       setPhone("");
+      setEmail("");
 
       fetchCustomers();
     } catch (err: any) {
@@ -110,6 +113,16 @@ function Customers() {
           />
         </div>
 
+        <div className="mb-4">
+          <input
+            type="email"
+            placeholder="Email (opciono)"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
         {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
         <button
@@ -151,15 +164,10 @@ function Customers() {
         <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
           <thead>
             <tr className="text-left bg-slate-50">
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Ime
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Prezime
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Telefon
-              </th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Ime</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Prezime</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Telefon</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Email</th>
             </tr>
           </thead>
           <tbody>
@@ -168,6 +176,7 @@ function Customers() {
                 <td className="px-4 py-3">{c.first_name}</td>
                 <td className="px-4 py-3">{c.last_name}</td>
                 <td className="px-4 py-3">{c.phone || "—"}</td>
+                <td className="px-4 py-3">{c.email || "—"}</td>
               </tr>
             ))}
           </tbody>

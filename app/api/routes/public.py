@@ -260,8 +260,8 @@ def self_book_appointment(
     if customer is None:
         customer = Customer(
             tenant_id=employee.tenant_id,
-            first_name=current_user.email.split("@")[0],
-            last_name="",
+            first_name=current_user.first_name or current_user.email.split("@")[0],
+            last_name=current_user.last_name or "",
             email=current_user.email,
         )
         db.add(customer)

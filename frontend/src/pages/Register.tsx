@@ -3,6 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 
 function Register() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,6 +19,8 @@ function Register() {
       await api.post("/api/v1/auth/register", {
         email,
         password,
+        first_name: firstName,
+        last_name: lastName,
       });
 
       setSuccess(true);
@@ -35,7 +39,7 @@ function Register() {
             Registracija uspješna
           </h1>
           <p className="text-slate-500 mb-6">
-            Poslali smo vam email sa verifikacionim kodom. Provjerite inbox
+            Poslali smo vam email sa verifikacionim linkom. Provjerite inbox
             (i spam folder).
           </p>
           <button
@@ -53,10 +57,36 @@ function Register() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="bg-white rounded-lg shadow-sm p-8 w-full max-w-sm">
         <h1 className="text-2xl font-bold text-slate-900 mb-6">
-          SmartBooking — Registracija
+          Sattlio — Registracija
         </h1>
 
         <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-500 mb-2">
+              Ime
+            </label>
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-500 mb-2">
+              Prezime
+            </label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
           <div className="mb-4">
             <label className="block text-sm font-medium text-slate-500 mb-2">
               Email

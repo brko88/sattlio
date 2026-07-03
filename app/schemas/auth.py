@@ -4,6 +4,8 @@
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    first_name: str
+    last_name: str
 
 
 class LoginRequest(BaseModel):
@@ -24,6 +26,8 @@ class RefreshRequest(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: str
+    first_name: str | None
+    last_name: str | None
     email_verified: bool
     is_superadmin: bool
 

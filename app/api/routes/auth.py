@@ -66,6 +66,8 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
     new_user = User(
         email=data.email,
         password_hash=hash_password(data.password),
+        first_name=data.first_name,
+        last_name=data.last_name,
         email_verified=False,
         verification_token=verification_token,
     )

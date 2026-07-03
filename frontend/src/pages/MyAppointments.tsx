@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
-import { useTenant } from "../contexts/TenantContext";
 
 interface Appointment {
   id: number;
@@ -9,17 +8,8 @@ interface Appointment {
   start_time: string;
   end_time: string;
   status: string;
-}
-
-interface Employee {
-  id: number;
-  first_name: string;
-  last_name: string;
-}
-
-interface Service {
-  id: number;
-  name: string;
+  service_name: string;
+  employee_name: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -39,41 +29,17 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 function MyAppointments() {
-  const { tenantId } = useTenant();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [apptRes, empRes, srvRes] = await Promise.all([
-          api.get("/api/v1/appointments/my"),
-          api.get("/api/v1/public/employees"),
-          api.get("/api/v1/public/employees"),
-        ]);
-        setAppointments(apptRes.data);
-        setEmployees(empRes.data);
-        setServices(srvRes.data);
-      } catch (err: any) {
-        setError("Greška prilikom učitavanja termina.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [tenantId]);
-
-  const getEmployeeName = (id: number) => {
-    const e = employees.find((e) => e.id === id);
-    return e ? `${e.first_name} ${e.last_name}` : "—";
-  };
-
-  const getServiceName = (id: number) =>
-    services.find((s) => s.id === id)?.name || "—";
+    api
+      .get("/api/v1/appointments/my")
+      .then((res) => setAppointments(res.data))
+      .catch(() => setError("Greška prilikom učitavanja termina."))
+      .finally(() => setLoading(false));
+  }, []);
 
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
@@ -90,7 +56,10 @@ function MyAppointments() {
     (a) => a.status === "created" || a.status === "confirmed"
   );
   const past = appointments.filter(
-    (a) => a.status === "completed" || a.status === "cancelled" || a.status === "no_show"
+    (a) =>
+      a.status === "completed" ||
+      a.status === "cancelled" ||
+      a.status === "no_show"
   );
 
   return (
@@ -127,11 +96,9 @@ function MyAppointments() {
                   >
                     <div>
                       <p className="font-medium text-slate-900">
-                        {getServiceName(a.service_id)}
+                        {a.service_name}
                       </p>
-                      <p className="text-sm text-slate-500">
-                        {getEmployeeName(a.employee_id)}
-                      </p>
+                      <p className="text-sm text-slate-500">{a.employee_name}</p>
                       <p className="text-sm text-slate-500">
                         {formatDateTime(a.start_time)}
                       </p>
@@ -160,11 +127,9 @@ function MyAppointments() {
                   >
                     <div>
                       <p className="font-medium text-slate-900">
-                        {getServiceName(a.service_id)}
+                        {a.service_name}
                       </p>
-                      <p className="text-sm text-slate-500">
-                        {getEmployeeName(a.employee_id)}
-                      </p>
+                      <p className="text-sm text-slate-500">{a.employee_name}</p>
                       <p className="text-sm text-slate-500">
                         {formatDateTime(a.start_time)}
                       </p>

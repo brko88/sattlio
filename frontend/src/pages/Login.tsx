@@ -1,12 +1,11 @@
 ﻿import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,14 +18,30 @@ function Login() {
       localStorage.setItem("access_token", response.data.access_token);
       localStorage.setItem("refresh_token", response.data.refresh_token);
 
-      // Učitaj podatke o korisniku i sačuvaj is_superadmin
+      // Učitaj podatke o korisniku
       const meResponse = await api.get("/api/v1/auth/me");
       localStorage.setItem("is_superadmin", meResponse.data.is_superadmin ? "true" : "false");
 
-      navigate("/dashboard");
+      // Učitaj tenante i postavi prvi kao aktivan
+      if (!meResponse.data.is_superadmin) {
+        const tenantsResponse = await api.get("/api/v1/tenants/my");
+        if (tenantsResponse.data.length > 0) {
+          const storedId = localStorage.getItem("tenant_id");
+          const exists = tenantsResponse.data.some(
+            (t: any) => t.id === parseInt(storedId || "0")
+          );
+          const activeId = exists ? parseInt(storedId!) : tenantsResponse.data[0].id;
+          localStorage.setItem("tenant_id", activeId.toString());
+          const activeRole = tenantsResponse.data.find((t: any) => t.id === activeId)?.role ?? "";
+          localStorage.setItem("current_role", activeRole);
+        }
+      }
+
+      // Hard redirect — osigurava da TenantContext počne svježe
+      window.location.href = "/dashboard";
     } catch (err: any) {
       const message =
-        err.response?.data?.detail || "Greska prilikom prijave.";
+        err.response?.data?.detail || "Greška prilikom prijave.";
       setError(message);
     }
   };

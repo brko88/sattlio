@@ -24,3 +24,17 @@ class AppointmentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MyAppointmentResponse(BaseModel):
+    id: int
+    employee_id: int
+    service_id: int
+    start_time: datetime
+    end_time: datetime
+    status: str
+    service_name: str
+    employee_name: str
+
+    class Config:
+        from_attributes = True

@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     email_verified: bool
+    is_superadmin: bool
 
     class Config:
         from_attributes = True

@@ -27,16 +27,19 @@ import CreateTenant from "./pages/CreateTenant";
 import AdminPanel from "./pages/AdminPanel";
 
 function RoleRouter() {
-  const { currentRole, tenants, isLoading } = useTenant();
+  const { tenants, isLoading } = useTenant();
+
+  const token = localStorage.getItem("access_token");
+  const isSuperadmin = localStorage.getItem("is_superadmin") === "true";
+  const currentRole = localStorage.getItem("current_role") ?? "";
 
   // 1. Nema tokena — login
-  const token = localStorage.getItem("access_token");
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. Čekamo učitavanje
-  if (isLoading) {
+  // 2. Čekamo učitavanje — uključuje i slučaj kad je currentRole još prazan
+  if (isLoading || (currentRole === "" && !isSuperadmin)) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <p className="text-slate-400 text-sm">Učitavanje...</p>
@@ -45,7 +48,6 @@ function RoleRouter() {
   }
 
   // 3. Superadmin — UVIJEK PRVO
-  const isSuperadmin = localStorage.getItem("is_superadmin") === "true";
   if (isSuperadmin) {
     return (
       <Routes>
@@ -131,7 +133,6 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/book/:employeeId" element={<BookAppointment />} />
 
-        {/* Sve zaštićene rute kroz RoleRouter */}
         <Route path="/*" element={<RoleRouter />} />
       </Routes>
     </BrowserRouter>

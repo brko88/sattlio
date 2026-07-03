@@ -80,12 +80,12 @@ def check_overlap(db: Session, employee_id: int, start_time: datetime, end_time:
         )
 
 
-@router.get("/my", response_model=list[AppointmentResponse])
+@router.get("/my")
 def get_my_appointments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Vraća sve rezervacije trenutno ulogovanog korisnika (customer rola)."""
+    """Vraća sve rezervacije trenutno ulogovanog korisnika sa nazivima usluge i zaposlenog."""
     customer_ids = db.query(Customer.id).filter(
         Customer.email == current_user.email
     ).all()
@@ -102,7 +102,22 @@ def get_my_appointments(
         .all()
     )
 
-    return appointments
+    result = []
+    for a in appointments:
+        service = db.query(Service).filter(Service.id == a.service_id).first()
+        employee = db.query(Employee).filter(Employee.id == a.employee_id).first()
+        result.append({
+            "id": a.id,
+            "employee_id": a.employee_id,
+            "service_id": a.service_id,
+            "start_time": a.start_time,
+            "end_time": a.end_time,
+            "status": a.status,
+            "service_name": service.name if service else "—",
+            "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "—",
+        })
+
+    return result
 
 
 @router.post("", response_model=AppointmentResponse)

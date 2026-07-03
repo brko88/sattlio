@@ -261,6 +261,30 @@ function Calendar() {
         />
       </div>
 
+      {/* Legenda statusa */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-blue-100 border-l-2 border-blue-500 inline-block" />
+          <span className="text-xs text-slate-500">Zakazano</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-green-100 border-l-2 border-green-500 inline-block" />
+          <span className="text-xs text-slate-500">Potvrđeno</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-slate-200 border-l-2 border-slate-500 inline-block" />
+          <span className="text-xs text-slate-500">Završeno</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-red-100 border-l-2 border-red-400 inline-block" />
+          <span className="text-xs text-slate-500">Otkazano</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-slate-100 border-l-2 border-slate-400 inline-block" />
+          <span className="text-xs text-slate-500">Nije došao</span>
+        </div>
+      </div>
+
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {loading ? (

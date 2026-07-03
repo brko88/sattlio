@@ -32,14 +32,32 @@ function MyAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancelling, setCancelling] = useState<number | null>(null);
 
-  useEffect(() => {
+  const fetchAppointments = () => {
     api
       .get("/api/v1/appointments/my")
       .then((res) => setAppointments(res.data))
       .catch(() => setError("Greška prilikom učitavanja termina."))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchAppointments();
   }, []);
+
+  const handleCancel = async (id: number) => {
+    if (!confirm("Da li ste sigurni da želite otkazati ovaj termin?")) return;
+    setCancelling(id);
+    try {
+      await api.post(`/api/v1/appointments/${id}/cancel`);
+      fetchAppointments();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom otkazivanja.");
+    } finally {
+      setCancelling(null);
+    }
+  };
 
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
@@ -74,10 +92,7 @@ function MyAppointments() {
       ) : appointments.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
           <p className="mb-2">Nemate zakazanih termina.</p>
-          <a
-            href="/book"
-            className="text-blue-600 font-medium hover:underline"
-          >
+          <a href="/book" className="text-blue-600 font-medium hover:underline">
             Rezervišite termin →
           </a>
         </div>
@@ -92,22 +107,25 @@ function MyAppointments() {
                 {upcoming.map((a) => (
                   <div
                     key={a.id}
-                    className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between"
+                    className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between gap-4"
                   >
                     <div>
-                      <p className="font-medium text-slate-900">
-                        {a.service_name}
-                      </p>
+                      <p className="font-medium text-slate-900">{a.service_name}</p>
                       <p className="text-sm text-slate-500">{a.employee_name}</p>
-                      <p className="text-sm text-slate-500">
-                        {formatDateTime(a.start_time)}
-                      </p>
+                      <p className="text-sm text-slate-500">{formatDateTime(a.start_time)}</p>
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[a.status]}`}
-                    >
-                      {STATUS_LABELS[a.status]}
-                    </span>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[a.status]}`}>
+                        {STATUS_LABELS[a.status]}
+                      </span>
+                      <button
+                        onClick={() => handleCancel(a.id)}
+                        disabled={cancelling === a.id}
+                        className="px-3 py-1.5 border border-red-300 text-red-600 rounded-md text-xs font-medium hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        {cancelling === a.id ? "..." : "Otkaži"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -126,17 +144,11 @@ function MyAppointments() {
                     className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between opacity-75"
                   >
                     <div>
-                      <p className="font-medium text-slate-900">
-                        {a.service_name}
-                      </p>
+                      <p className="font-medium text-slate-900">{a.service_name}</p>
                       <p className="text-sm text-slate-500">{a.employee_name}</p>
-                      <p className="text-sm text-slate-500">
-                        {formatDateTime(a.start_time)}
-                      </p>
+                      <p className="text-sm text-slate-500">{formatDateTime(a.start_time)}</p>
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[a.status]}`}
-                    >
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[a.status]}`}>
                       {STATUS_LABELS[a.status]}
                     </span>
                   </div>

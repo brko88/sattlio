@@ -24,6 +24,7 @@ class Tenant(Base):
     jib = Column(String, unique=True, nullable=True, index=True)
     verification_status = Column(String, default="pending", nullable=False)
     is_active = Column(Boolean, default=True)
+    slot_duration_minutes = Column(Integer, default=30, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

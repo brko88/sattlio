@@ -2,6 +2,7 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -13,11 +14,28 @@ from app.schemas.tenant import TenantCreate, TenantResponse, TenantWithRoleRespo
 router = APIRouter(prefix="/api/v1/tenants", tags=["tenants"])
 
 
+class TenantUpdate(BaseModel):
+    slot_duration_minutes: int | None = None
+
+
 def slugify(name: str) -> str:
     slug = name.lower().strip()
     slug = re.sub(r"[^a-z0-9\s-]", "", slug)
     slug = re.sub(r"[\s-]+", "-", slug)
     return slug
+
+
+def require_owner(db: Session, user_id: int, tenant_id: int):
+    role = db.query(UserTenantRole).filter(
+        UserTenantRole.user_id == user_id,
+        UserTenantRole.tenant_id == tenant_id,
+        UserTenantRole.role == "owner",
+    ).first()
+    if role is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Samo vlasnik može mijenjati podešavanja.",
+        )
 
 
 @router.post("", response_model=TenantResponse)
@@ -67,6 +85,33 @@ def create_tenant(
     return new_tenant
 
 
+@router.patch("/{tenant_id}", response_model=TenantResponse)
+def update_tenant(
+    tenant_id: int,
+    data: TenantUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_owner(db, current_user.id, tenant_id)
+
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
+
+    if data.slot_duration_minutes is not None:
+        if data.slot_duration_minutes < 5 or data.slot_duration_minutes > 240:
+            raise HTTPException(
+                status_code=400,
+                detail="Interval mora biti između 5 i 240 minuta.",
+            )
+        tenant.slot_duration_minutes = data.slot_duration_minutes
+
+    db.commit()
+    db.refresh(tenant)
+
+    return tenant
+
+
 @router.get("/my", response_model=list[TenantWithRoleResponse])
 def get_my_tenants(
     db: Session = Depends(get_db),
@@ -91,6 +136,7 @@ def get_my_tenants(
                 jib=tenant.jib,
                 verification_status=tenant.verification_status,
                 role=role.role,
+                slot_duration_minutes=tenant.slot_duration_minutes,
             )
         )
 

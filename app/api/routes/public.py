@@ -178,6 +178,11 @@ def get_available_slots(
     if wh is None or not wh.is_working_day:
         return {"slots": []}
 
+    # Dohvati slot interval iz tenanta
+    from app.models.tenant import Tenant as TenantModel
+    tenant_obj = db.query(TenantModel).filter(TenantModel.id == employee.tenant_id).first()
+    slot_interval = tenant_obj.slot_duration_minutes if tenant_obj else 30
+
     # Generišemo slotove u lokalnom vremenu (Europe/Sarajevo)
     slot_start = datetime.combine(booking_date, wh.start_time).replace(tzinfo=TZ)
     work_end = datetime.combine(booking_date, wh.end_time).replace(tzinfo=TZ)
@@ -209,9 +214,8 @@ def get_available_slots(
             for bs, be in booked_slots
         )
         if not is_booked and slot_start > now:
-            # Vraćamo kao ISO string u UTC za konzistentnost sa backendom
             slots.append(slot_start.astimezone(timezone.utc).isoformat())
-        slot_start += timedelta(minutes=30)
+        slot_start += timedelta(minutes=slot_interval)
 
     return {"slots": slots}
 

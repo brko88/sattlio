@@ -20,6 +20,7 @@ function OwnerLayout() {
     { to: "/services", label: "Usluge" },
     { to: "/employees", label: "Zaposleni" },
     { to: "/working-hours", label: "Radno vrijeme" },
+    { to: "/settings", label: "Podešavanja" },
   ];
 
   return (

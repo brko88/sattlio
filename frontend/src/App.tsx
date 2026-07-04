@@ -26,6 +26,7 @@ import Calendar from "./pages/Calendar";
 import CreateTenant from "./pages/CreateTenant";
 import AdminPanel from "./pages/AdminPanel";
 import Onboarding from "./pages/Onboarding";
+import Settings from "./pages/Settings";
 
 function RoleRouter() {
   const { tenants, isLoading } = useTenant();
@@ -85,6 +86,7 @@ function RoleRouter() {
           <Route path="/services" element={<Services />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/working-hours" element={<WorkingHours />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/create-tenant" element={<CreateTenant />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>

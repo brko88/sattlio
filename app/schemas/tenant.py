@@ -33,6 +33,7 @@ class TenantResponse(BaseModel):
     is_active: bool
     jib: str | None
     verification_status: str
+    slot_duration_minutes: int
 
     class Config:
         from_attributes = True
@@ -47,6 +48,7 @@ class TenantWithRoleResponse(BaseModel):
     jib: str | None
     verification_status: str
     role: str
+    slot_duration_minutes: int
 
     class Config:
         from_attributes = True

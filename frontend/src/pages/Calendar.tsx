@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import { formatTime, getLocalHoursMinutes } from "../utils/time";
 
 interface Appointment {
   id: number;
@@ -45,7 +46,7 @@ const SLOT_HEIGHT = 30;
 const SLOTS = (END_HOUR - START_HOUR) * 2;
 
 function Calendar() {
-  const { tenantId } = useTenant();
+  const { tenantId, timezone } = useTenant();
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -137,11 +138,11 @@ function Calendar() {
   };
 
   const getAppointmentStyle = (appt: Appointment) => {
-    const start = new Date(appt.start_time);
-    const end = new Date(appt.end_time);
-    const startMinutesFromOpen =
-      (start.getHours() - START_HOUR) * 60 + start.getMinutes();
-    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+    const { hours, minutes } = getLocalHoursMinutes(appt.start_time, timezone);
+    const end = getLocalHoursMinutes(appt.end_time, timezone);
+    const startMinutesFromOpen = (hours - START_HOUR) * 60 + minutes;
+    const endMinutesFromOpen = (end.hours - START_HOUR) * 60 + end.minutes;
+    const durationMinutes = endMinutesFromOpen - startMinutesFromOpen;
     const top = (startMinutesFromOpen / 30) * SLOT_HEIGHT;
     const height = (durationMinutes / 30) * SLOT_HEIGHT;
     return { top: `${top}px`, height: `${Math.max(height, 20)}px` };
@@ -155,10 +156,6 @@ function Calendar() {
     (_, i) => START_HOUR + i
   );
 
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString("bs-BA", { hour: "2-digit", minute: "2-digit" });
-  };
 
   // Klik na slobodan slot
   const handleSlotClick = (employee: Employee, slotIndex: number) => {
@@ -389,7 +386,7 @@ function Calendar() {
               <p>
                 <span className="text-slate-500">Vrijeme:</span>{" "}
                 <span className="font-medium">
-                  {formatTime(selectedAppt.start_time)} - {formatTime(selectedAppt.end_time)}
+                  {formatTime(selectedAppt.start_time, timezone)} - {formatTime(selectedAppt.end_time, timezone)}
                 </span>
               </p>
               <p>

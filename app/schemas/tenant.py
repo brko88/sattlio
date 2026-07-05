@@ -49,6 +49,7 @@ class TenantWithRoleResponse(BaseModel):
     verification_status: str
     role: str
     slot_duration_minutes: int
+    timezone: str
 
     class Config:
         from_attributes = True

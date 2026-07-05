@@ -7,6 +7,8 @@ interface Tenant {
   name: string;
   slug: string;
   role: string;
+  slot_duration_minutes?: number;
+  timezone?: string;
 }
 
 interface TenantContextType {
@@ -14,11 +16,14 @@ interface TenantContextType {
   setTenantId: (id: number) => void;
   tenants: Tenant[];
   currentRole: string;
+  timezone: string;
   isLoading: boolean;
   refreshTenants: () => Promise<void>;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
+
+const DEFAULT_TZ = "Europe/Sarajevo";
 
 export function TenantProvider({ children }: { children: ReactNode }) {
   const stored = localStorage.getItem("tenant_id");
@@ -34,6 +39,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   };
 
   const currentRole = localStorage.getItem("current_role") ?? "";
+
+  // Timezone aktivnog tenanta
+  const timezone =
+    tenants.find((t) => t.id === tenantId)?.timezone ?? DEFAULT_TZ;
 
   const refreshTenants = async () => {
     const token = localStorage.getItem("access_token");
@@ -58,7 +67,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           setTenantIdState(activeId);
         }
 
-        // Uvijek postavi trenutnu rolu u localStorage
         const activeRole = response.data.find((t: Tenant) => t.id === activeId)?.role ?? "";
         localStorage.setItem("current_role", activeRole);
       } else {
@@ -77,7 +85,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   return (
     <TenantContext.Provider
-      value={{ tenantId, setTenantId, tenants, currentRole, isLoading, refreshTenants }}
+      value={{ tenantId, setTenantId, tenants, currentRole, timezone, isLoading, refreshTenants }}
     >
       {children}
     </TenantContext.Provider>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
+import { formatDateTime } from "../utils/time";
 
 interface Appointment {
   id: number;
@@ -59,16 +60,7 @@ function MyAppointments() {
     }
   };
 
-  const formatDateTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleString("bs-BA", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+
 
   const upcoming = appointments.filter(
     (a) => a.status === "created" || a.status === "confirmed"

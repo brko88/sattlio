@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import { formatDateTime, formatTime } from "../utils/time";
 
 interface Appointment {
   id: number;
@@ -29,18 +30,27 @@ interface Customer {
   id: number;
   first_name: string;
   last_name: string;
+  phone: string | null;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  created: "bg-blue-600",
-  confirmed: "bg-green-600",
-  completed: "bg-slate-900",
-  cancelled: "bg-red-600",
-  no_show: "bg-slate-500",
+const STATUS_LABELS: Record<string, string> = {
+  created: "Zakazano",
+  confirmed: "Potvrđeno",
+  completed: "Završeno",
+  cancelled: "Otkazano",
+  no_show: "Nije došao",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  created: "bg-blue-100 text-blue-800",
+  confirmed: "bg-green-100 text-green-800",
+  completed: "bg-slate-100 text-slate-600",
+  cancelled: "bg-red-100 text-red-700",
+  no_show: "bg-slate-100 text-slate-500",
 };
 
 function Appointments() {
-  const { tenantId } = useTenant();
+  const { tenantId, timezone } = useTenant();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -48,10 +58,24 @@ function Appointments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [employeeId, setEmployeeId] = useState("");
-  const [serviceId, setServiceId] = useState("");
-  const [customerId, setCustomerId] = useState("");
-  const [startTime, setStartTime] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [selectedService, setSelectedService] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [slots, setSlots] = useState<string[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  // Pretraga klijenta
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+
+  const today = new Date().toISOString().split("T")[0];
 
   const fetchAll = async () => {
     try {
@@ -65,8 +89,8 @@ function Appointments() {
       setEmployees(empRes.data);
       setServices(srvRes.data);
       setCustomers(custRes.data);
-    } catch (err: any) {
-      setError("Greška prilikom učitavanja podataka.");
+    } catch {
+      setError("Greška prilikom učitavanja.");
     } finally {
       setLoading(false);
     }
@@ -76,29 +100,92 @@ function Appointments() {
     fetchAll();
   }, [tenantId]);
 
-  const handleCreateAppointment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  // Pretraga klijenata
+  useEffect(() => {
+    if (customerSearch.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const term = customerSearch.toLowerCase();
+    const results = customers.filter(
+      (c) =>
+        c.first_name.toLowerCase().includes(term) ||
+        c.last_name.toLowerCase().includes(term) ||
+        (c.phone && c.phone.includes(term))
+    );
+    setSearchResults(results);
+  }, [customerSearch, customers]);
 
+  useEffect(() => {
+    if (!selectedEmployee || !selectedService || !selectedDate) {
+      setSlots([]);
+      setSelectedSlot(null);
+      return;
+    }
+    setLoadingSlots(true);
+    setSlots([]);
+    setSelectedSlot(null);
+    api
+      .get(`/api/v1/public/employees/${selectedEmployee}/slots`, {
+        params: { date_str: selectedDate, service_id: selectedService },
+      })
+      .then((res) => setSlots(res.data.slots))
+      .catch(() => setSlots([]))
+      .finally(() => setLoadingSlots(false));
+  }, [selectedEmployee, selectedService, selectedDate]);
+
+  const handleCreateCustomer = async () => {
+    if (!newFirstName || !newLastName) {
+      setError("Ime i prezime su obavezni.");
+      return;
+    }
+    setCreatingCustomer(true);
+    setError("");
+    try {
+      const res = await api.post("/api/v1/customers", {
+        tenant_id: tenantId,
+        first_name: newFirstName,
+        last_name: newLastName,
+        phone: newPhone || null,
+      });
+      await fetchAll();
+      setSelectedCustomer(res.data);
+      setShowNewCustomer(false);
+      setNewFirstName("");
+      setNewLastName("");
+      setNewPhone("");
+      setCustomerSearch("");
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom kreiranja klijenta.");
+    } finally {
+      setCreatingCustomer(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!selectedSlot || !selectedEmployee || !selectedService || !selectedCustomer) {
+      setError("Molimo popunite sva polja.");
+      return;
+    }
+    setError("");
     try {
       await api.post("/api/v1/appointments", {
         tenant_id: tenantId,
-        employee_id: parseInt(employeeId),
-        service_id: parseInt(serviceId),
-        customer_id: parseInt(customerId),
-        start_time: startTime,
+        employee_id: parseInt(selectedEmployee),
+        service_id: parseInt(selectedService),
+        customer_id: selectedCustomer.id,
+        start_time: selectedSlot,
       });
-
-      setEmployeeId("");
-      setServiceId("");
-      setCustomerId("");
-      setStartTime("");
-
+      setSelectedEmployee("");
+      setSelectedService("");
+      setSelectedCustomer(null);
+      setSelectedDate("");
+      setSlots([]);
+      setSelectedSlot(null);
+      setCustomerSearch("");
       fetchAll();
     } catch (err: any) {
-      const message =
-        err.response?.data?.detail || "Greška prilikom kreiranja rezervacije.";
-      setError(message);
+      setError(err.response?.data?.detail || "Greška prilikom kreiranja rezervacije.");
     }
   };
 
@@ -107,8 +194,7 @@ function Appointments() {
       await api.post(`/api/v1/appointments/${id}/cancel`);
       fetchAll();
     } catch (err: any) {
-      const message = err.response?.data?.detail || "Greška prilikom otkazivanja.";
-      setError(message);
+      setError(err.response?.data?.detail || "Greška.");
     }
   };
 
@@ -117,52 +203,38 @@ function Appointments() {
       await api.post(`/api/v1/appointments/${id}/complete`);
       fetchAll();
     } catch (err: any) {
-      const message = err.response?.data?.detail || "Greška prilikom završavanja.";
-      setError(message);
+      setError(err.response?.data?.detail || "Greška.");
     }
   };
 
   const getEmployeeName = (id: number) => {
-    const emp = employees.find((e) => e.id === id);
-    return emp ? `${emp.first_name} ${emp.last_name}` : "—";
+    const e = employees.find((e) => e.id === id);
+    return e ? `${e.first_name} ${e.last_name}` : "—";
   };
 
-  const getServiceName = (id: number) => {
-    const srv = services.find((s) => s.id === id);
-    return srv ? srv.name : "—";
-  };
+  const getServiceName = (id: number) =>
+    services.find((s) => s.id === id)?.name || "—";
 
   const getCustomerName = (id: number) => {
-    const cust = customers.find((c) => c.id === id);
-    return cust ? `${cust.first_name} ${cust.last_name}` : "—";
+    const c = customers.find((c) => c.id === id);
+    return c ? `${c.first_name} ${c.last_name}` : "—";
   };
 
-  const formatDateTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleString("bs-BA", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+
+
+  const formatSlot = (iso: string) => formatTime(iso, timezone);
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6 text-slate-900">Rezervacije</h1>
 
-      <form
-        onSubmit={handleCreateAppointment}
-        className="bg-white rounded-lg p-6 shadow-sm mb-6 max-w-md"
-      >
+      <div className="bg-white rounded-lg p-6 shadow-sm mb-6 max-w-lg">
         <h3 className="text-lg font-semibold mb-4">Nova rezervacija</h3>
 
         <div className="mb-4">
           <select
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            required
+            value={selectedEmployee}
+            onChange={(e) => setSelectedEmployee(e.target.value)}
             className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
           >
             <option value="">Izaberi zaposlenog</option>
@@ -176,55 +248,201 @@ function Appointments() {
 
         <div className="mb-4">
           <select
-            value={serviceId}
-            onChange={(e) => setServiceId(e.target.value)}
-            required
+            value={selectedService}
+            onChange={(e) => setSelectedService(e.target.value)}
             className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
           >
             <option value="">Izaberi uslugu</option>
-            {services.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.duration_minutes} min)
+            {services.map((svc) => (
+              <option key={svc.id} value={svc.id}>
+                {svc.name} ({svc.duration_minutes} min)
               </option>
             ))}
           </select>
         </div>
 
+        {/* Pretraga klijenta */}
         <div className="mb-4">
-          <select
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
-          >
-            <option value="">Izaberi klijenta</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.first_name} {c.last_name}
-              </option>
-            ))}
-          </select>
+          <label className="block text-sm font-medium text-slate-500 mb-2">Klijent</label>
+
+          {selectedCustomer ? (
+            <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
+              <span className="text-sm font-medium text-blue-900">
+                {selectedCustomer.first_name} {selectedCustomer.last_name}
+                {selectedCustomer.phone && (
+                  <span className="text-blue-600 ml-2">{selectedCustomer.phone}</span>
+                )}
+              </span>
+              <button
+                onClick={() => {
+                  setSelectedCustomer(null);
+                  setCustomerSearch("");
+                  setShowNewCustomer(false);
+                }}
+                className="text-slate-400 hover:text-slate-600 text-xs ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                placeholder="Pretraži po imenu ili telefonu..."
+                value={customerSearch}
+                onChange={(e) => {
+                  setCustomerSearch(e.target.value);
+                  setShowNewCustomer(false);
+                }}
+                className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm"
+              />
+
+              {searchResults.length > 0 && (
+                <div className="mt-1 border border-slate-200 rounded-md overflow-hidden shadow-sm">
+                  {searchResults.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCustomer(c);
+                        setCustomerSearch("");
+                        setSearchResults([]);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 border-b border-slate-100 last:border-0"
+                    >
+                      <span className="font-medium">{c.first_name} {c.last_name}</span>
+                      {c.phone && <span className="text-slate-400 ml-2">{c.phone}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {customerSearch.length >= 2 && searchResults.length === 0 && !showNewCustomer && (
+                <div className="mt-1 px-3 py-2 text-sm text-slate-500">
+                  Nema rezultata.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowNewCustomer(true)}
+                    className="text-blue-600 font-medium hover:underline"
+                  >
+                    + Dodaj novog klijenta
+                  </button>
+                </div>
+              )}
+
+              {customerSearch.length < 2 && !showNewCustomer && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewCustomer(true)}
+                  className="mt-2 text-sm text-blue-600 font-medium hover:underline"
+                >
+                  + Novi klijent
+                </button>
+              )}
+            </>
+          )}
+
+          {showNewCustomer && !selectedCustomer && (
+            <div className="mt-3 p-3 bg-slate-50 rounded-md border border-slate-200 space-y-2">
+              <input
+                type="text"
+                placeholder="Ime *"
+                value={newFirstName}
+                onChange={(e) => setNewFirstName(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="Prezime *"
+                value={newLastName}
+                onChange={(e) => setNewLastName(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="Telefon (opciono)"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+              />
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCreateCustomer}
+                  disabled={creatingCustomer}
+                  className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {creatingCustomer ? "Čuvanje..." : "Dodaj klijenta"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewCustomer(false);
+                    setNewFirstName("");
+                    setNewLastName("");
+                    setNewPhone("");
+                  }}
+                  className="px-3 py-2 border border-slate-200 text-slate-600 rounded-md text-sm hover:bg-slate-50"
+                >
+                  Odustani
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="mb-4">
-          <input
-            type="datetime-local"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
-          />
-        </div>
+        {selectedEmployee && selectedService && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-500 mb-2">Datum</label>
+            <input
+              type="date"
+              min={today}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        )}
+
+        {selectedDate && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-500 mb-2">Slobodni termini</label>
+            {loadingSlots ? (
+              <p className="text-slate-400 text-sm">Učitavanje termina...</p>
+            ) : slots.length === 0 ? (
+              <p className="text-slate-400 text-sm">Nema slobodnih termina za odabrani datum.</p>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {slots.map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`py-2 rounded-md text-sm font-medium border transition-colors ${
+                      selectedSlot === slot
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-slate-200 hover:border-blue-300"
+                    }`}
+                  >
+                    {formatSlot(slot)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
-        <button
-          type="submit"
-          className="px-5 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
-        >
-          Kreiraj rezervaciju
-        </button>
-      </form>
+        {selectedSlot && selectedCustomer && (
+          <button
+            onClick={handleCreate}
+            className="w-full px-5 py-2.5 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+          >
+            Kreiraj rezervaciju
+          </button>
+        )}
+      </div>
 
       <h3 className="text-lg font-semibold mb-3">Lista rezervacija</h3>
 
@@ -238,57 +456,45 @@ function Appointments() {
         <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
           <thead>
             <tr className="text-left bg-slate-50">
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Datum/Vrijeme
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Zaposleni
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Usluga
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Klijent
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Status
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Akcije
-              </th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Klijent</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Zaposleni</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Usluga</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Datum i vrijeme</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
+              <th className="px-4 py-3 text-xs font-semibind text-slate-500 uppercase">Akcije</th>
             </tr>
           </thead>
           <tbody>
-            {appointments.map((a) => (
-              <tr key={a.id} className="border-t border-slate-100">
-                <td className="px-4 py-3">{formatDateTime(a.start_time)}</td>
-                <td className="px-4 py-3">{getEmployeeName(a.employee_id)}</td>
-                <td className="px-4 py-3">{getServiceName(a.service_id)}</td>
-                <td className="px-4 py-3">{getCustomerName(a.customer_id)}</td>
+            {appointments.map((appt) => (
+              <tr key={appt.id} className="border-t border-slate-100">
+                <td className="px-4 py-3">{getCustomerName(appt.customer_id)}</td>
+                <td className="px-4 py-3">{getEmployeeName(appt.employee_id)}</td>
+                <td className="px-4 py-3">{getServiceName(appt.service_id)}</td>
+                <td className="px-4 py-3">{formatDateTime(appt.start_time, timezone)}</td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`${STATUS_STYLES[a.status] || "bg-slate-500"} text-white px-3 py-1 rounded-full text-xs font-semibold`}
-                  >
-                    {a.status}
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[appt.status]}`}>
+                    {STATUS_LABELS[appt.status]}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  {(a.status === "created" || a.status === "confirmed") && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleComplete(a.id)}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 transition-colors"
-                      >
-                        Završi
-                      </button>
-                      <button
-                        onClick={() => handleCancel(a.id)}
-                        className="px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors"
-                      >
-                        Otkaži
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    {(appt.status === "created" || appt.status === "confirmed") && (
+                      <>
+                        <button
+                          onClick={() => handleComplete(appt.id)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700"
+                        >
+                          Završi
+                        </button>
+                        <button
+                          onClick={() => handleCancel(appt.id)}
+                          className="px-3 py-1 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700"
+                        >
+                          Otkaži
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

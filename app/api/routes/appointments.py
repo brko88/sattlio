@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -15,6 +16,8 @@ from app.models.working_hours import WorkingHours
 from app.schemas.appointment import AppointmentCreate, AppointmentResponse
 
 router = APIRouter(prefix="/api/v1/appointments", tags=["appointments"])
+
+TZ = ZoneInfo("Europe/Sarajevo")
 
 
 def require_member(db: Session, user_id: int, tenant_id: int):
@@ -34,7 +37,10 @@ def require_member(db: Session, user_id: int, tenant_id: int):
 
 
 def check_working_hours(db: Session, tenant_id: int, employee_id: int, start_time: datetime, end_time: datetime):
-    day_of_week = start_time.weekday()
+    # Konvertuj u lokalno vrijeme za provjeru radnog vremena
+    local_start = start_time.astimezone(TZ)
+    local_end = end_time.astimezone(TZ)
+    day_of_week = local_start.weekday()
 
     wh = (
         db.query(WorkingHours)
@@ -52,7 +58,7 @@ def check_working_hours(db: Session, tenant_id: int, employee_id: int, start_tim
             detail="Zaposleni ne radi tog dana.",
         )
 
-    if start_time.time() < wh.start_time or end_time.time() > wh.end_time:
+    if local_start.time() < wh.start_time or local_end.time() > wh.end_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Termin je izvan radnog vremena zaposlenog.",
@@ -85,7 +91,6 @@ def get_my_appointments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Vraća sve rezervacije trenutno ulogovanog korisnika sa nazivima usluge i zaposlenog."""
     customer_ids = db.query(Customer.id).filter(
         Customer.email == current_user.email
     ).all()
@@ -128,10 +133,11 @@ def create_appointment(
 ):
     require_member(db, current_user.id, data.tenant_id)
 
+    # Konvertuj u UTC sa timezone info
     if data.start_time.tzinfo is None:
         start_time = data.start_time.replace(tzinfo=timezone.utc)
     else:
-        start_time = data.start_time
+        start_time = data.start_time.astimezone(timezone.utc)
 
     if start_time < datetime.now(timezone.utc):
         raise HTTPException(

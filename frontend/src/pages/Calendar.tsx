@@ -198,6 +198,7 @@ function Calendar() {
     }
   };
 
+
   // Kreiranje rezervacije iz modala
   const handleCreateAppointment = async () => {
     if (!newApptEmployee || !newApptServiceId) {

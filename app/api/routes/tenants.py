@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/v1/tenants", tags=["tenants"])
 
 class TenantUpdate(BaseModel):
     slot_duration_minutes: int | None = None
+    timezone: str | None = None
 
 
 def slugify(name: str) -> str:
@@ -105,6 +106,9 @@ def update_tenant(
                 detail="Interval mora biti 15, 20, 30 ili 60 minuta.",
             )
         tenant.slot_duration_minutes = data.slot_duration_minutes
+
+    if data.timezone is not None:
+        tenant.timezone = data.timezone
 
     db.commit()
     db.refresh(tenant)

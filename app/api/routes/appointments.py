@@ -135,7 +135,7 @@ def create_appointment(
 
     # Konvertuj u UTC sa timezone info
     if data.start_time.tzinfo is None:
-        start_time = data.start_time.replace(tzinfo=timezone.utc)
+        start_time = data.start_time.replace(tzinfo=TZ).astimezone(timezone.utc)
     else:
         start_time = data.start_time.astimezone(timezone.utc)
 

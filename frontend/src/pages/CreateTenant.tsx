@@ -30,8 +30,9 @@ function CreateTenant() {
   const [businessCategory, setBusinessCategory] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [emailNotVerified, setEmailNotVerified] = useState(false);
-  const { setTenantId, refreshTenants } = useTenant();
+  const { setTenantId } = useTenant();
 
   const extractErrorMessage = (err: any): string => {
     const detail = err.response?.data?.detail;
@@ -46,6 +47,7 @@ function CreateTenant() {
 
     try {
       setEmailNotVerified(false);
+      setSubmitting(true);
       const response = await api.post("/api/v1/tenants", {
         name,
         city: city || null,
@@ -56,14 +58,17 @@ function CreateTenant() {
       });
 
       setTenantId(response.data.id);
-      await refreshTenants();
+      localStorage.setItem("tenant_id", response.data.id.toString());
+      localStorage.setItem("current_role", "owner");
       setSuccess(true);
+      setSubmitting(false);
 
       // Redirect na dashboard nakon 4 sekunde
       setTimeout(() => {
         window.location.href = "/dashboard";
-      }, 4000);
+      }, 2000);
     } catch (err: any) {
+      setSubmitting(false);
       if (err.response?.status === 403) {
         setEmailNotVerified(true);
       } else {
@@ -71,6 +76,16 @@ function CreateTenant() {
       }
     }
   };
+
+  if (submitting) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-slate-500 text-sm">Kreiranje salona...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (

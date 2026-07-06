@@ -260,33 +260,56 @@ def list_all_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin),
 ):
+    from sqlalchemy import or_, func
+
     query = db.query(User)
 
     if search:
-        from sqlalchemy import or_
         search_term = f"%{search}%"
+
+        full_name_match = func.concat(
+            func.coalesce(User.first_name, ""),
+            " ",
+            func.coalesce(User.last_name, ""),
+        ).ilike(search_term)
+
+        tenant_name_match = (
+            db.query(UserTenantRole.user_id)
+            .join(Tenant, Tenant.id == UserTenantRole.tenant_id)
+            .filter(Tenant.name.ilike(search_term))
+        )
+
         query = query.filter(
             or_(
                 User.email.ilike(search_term),
                 User.first_name.ilike(search_term),
                 User.last_name.ilike(search_term),
+                full_name_match,
+                User.id.in_(tenant_name_match),
             )
         )
 
     users = query.order_by(User.created_at.desc()).all()
+    user_ids = [u.id for u in users]
+
+    # Jedan query za SVE role + tenante odjednom (umjesto po jednog za svakog usera)
+    roles_with_tenants = (
+        db.query(UserTenantRole, Tenant)
+        .join(Tenant, Tenant.id == UserTenantRole.tenant_id)
+        .filter(UserTenantRole.user_id.in_(user_ids))
+        .all()
+    )
+
+    tenants_by_user: dict[int, list[dict]] = {}
+    for role, tenant in roles_with_tenants:
+        tenants_by_user.setdefault(role.user_id, []).append({
+            "tenant_id": tenant.id,
+            "tenant_name": tenant.name,
+            "role": role.role,
+        })
 
     result = []
     for user in users:
-        roles = db.query(UserTenantRole).filter(UserTenantRole.user_id == user.id).all()
-        tenants_info = []
-        for role in roles:
-            tenant = db.query(Tenant).filter(Tenant.id == role.tenant_id).first()
-            if tenant:
-                tenants_info.append({
-                    "tenant_id": tenant.id,
-                    "tenant_name": tenant.name,
-                    "role": role.role,
-                })
         result.append({
             "id": user.id,
             "email": user.email,
@@ -296,7 +319,7 @@ def list_all_users(
             "is_active": user.is_active,
             "is_superadmin": user.is_superadmin,
             "created_at": user.created_at,
-            "tenants": tenants_info,
+            "tenants": tenants_by_user.get(user.id, []),
         })
 
     return result

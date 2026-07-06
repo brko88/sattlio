@@ -25,6 +25,7 @@ import WorkingHours from "./pages/WorkingHours";
 import Calendar from "./pages/Calendar";
 import CreateTenant from "./pages/CreateTenant";
 import AdminPanel from "./pages/AdminPanel";
+import Users from "./pages/Users";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
 
@@ -54,6 +55,8 @@ function RoleRouter() {
     return (
       <Routes>
         <Route element={<AdminLayout />}>
+          <Route path="/admin/tenants" element={<AdminPanel />} />
+          <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="*" element={<Navigate to="/admin/tenants" replace />} />
         </Route>
@@ -146,3 +149,4 @@ function App() {
 }
 
 export default App;
+

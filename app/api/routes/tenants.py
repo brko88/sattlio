@@ -12,6 +12,7 @@ from app.models.user_tenant_role import UserTenantRole
 from datetime import datetime, timedelta, timezone
 
 from app.schemas.tenant import TenantCreate, TenantResponse, TenantWithRoleResponse
+from app.core.email import send_new_tenant_notification
 
 router = APIRouter(prefix="/api/v1/tenants", tags=["tenants"])
 
@@ -79,7 +80,7 @@ def create_tenant(
         business_category=data.business_category,
         verification_status="pending",
         plan="trial",
-        trial_ends_at=datetime.now(timezone.utc) + timedelta(days=60),
+        trial_ends_at=datetime.now(timezone.utc) + timedelta(days=14),
     )
     db.add(new_tenant)
     db.commit()
@@ -92,6 +93,18 @@ def create_tenant(
     )
     db.add(owner_role)
     db.commit()
+
+    # Pošalji notifikaciju adminu
+    total_tenants = db.query(Tenant).count()
+    owner_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
+    send_new_tenant_notification(
+        owner_email=current_user.email,
+        owner_name=owner_name,
+        tenant_name=new_tenant.name,
+        tenant_city=new_tenant.city,
+        tenant_plan=new_tenant.plan,
+        total_tenants=total_tenants,
+    )
 
     return new_tenant
 

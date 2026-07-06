@@ -34,11 +34,18 @@ def list_all_tenants(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin),
 ):
+    from sqlalchemy import or_, func
+
     query = db.query(Tenant)
 
     if search:
-        from sqlalchemy import or_
         search_term = f"%{search}%"
+
+        full_name_match = func.concat(
+            func.coalesce(User.first_name, ""),
+            " ",
+            func.coalesce(User.last_name, ""),
+        ).ilike(search_term)
 
         owner_match = (
             db.query(UserTenantRole.tenant_id)
@@ -49,6 +56,7 @@ def list_all_tenants(
                     User.email.ilike(search_term),
                     User.first_name.ilike(search_term),
                     User.last_name.ilike(search_term),
+                    full_name_match,
                 ),
             )
         )

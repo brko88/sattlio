@@ -26,6 +26,8 @@ import Calendar from "./pages/Calendar";
 import CreateTenant from "./pages/CreateTenant";
 import AdminPanel from "./pages/AdminPanel";
 import Users from "./pages/Users";
+import ComingSoon from "./pages/ComingSoon";
+import DashboardAdmin from "./pages/DashboardAdmin";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
 
@@ -55,8 +57,13 @@ function RoleRouter() {
     return (
       <Routes>
         <Route element={<AdminLayout />}>
+          <Route path="/admin/dashboard" element={<DashboardAdmin />} />
           <Route path="/admin/tenants" element={<AdminPanel />} />
           <Route path="/admin/users" element={<Users />} />
+          <Route path="/admin/verifications" element={<ComingSoon title="Verifikacije" />} />
+          <Route path="/admin/subscriptions" element={<ComingSoon title="Pretplate" />} />
+          <Route path="/admin/statistics" element={<ComingSoon title="Statistika" />} />
+          <Route path="/admin/audit-log" element={<ComingSoon title="Audit log" />} />
           <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="*" element={<Navigate to="/admin/tenants" replace />} />
         </Route>
@@ -149,4 +156,6 @@ function App() {
 }
 
 export default App;
+
+
 

@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import api from "../services/api";
+
+const PLAN_LABELS: Record<string, string> = {
+  solo: "Solo — 14,90 KM/mj",
+  start: "Start — 29,90 KM/mj",
+  pro: "Pro — 59,90 KM/mj",
+  business: "Business — po dogovoru",
+};
 
 function Register() {
   const [firstName, setFirstName] = useState("");
@@ -10,6 +17,8 @@ function Register() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const selectedPlan = searchParams.get("plan") ?? "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +31,11 @@ function Register() {
         first_name: firstName,
         last_name: lastName,
       });
+
+      // Sačuvaj odabrani plan za kasnije
+      if (selectedPlan) {
+        localStorage.setItem("selected_plan", selectedPlan);
+      }
 
       setSuccess(true);
     } catch (err: any) {
@@ -56,9 +70,20 @@ function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="bg-white rounded-lg shadow-sm p-8 w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-slate-900 mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">
           Sattlio — Registracija
         </h1>
+
+        {/* Prikaz odabranog plana */}
+        {selectedPlan && PLAN_LABELS[selectedPlan] && (
+          <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 mb-4">
+            <p className="text-xs text-blue-600 font-medium">Odabrani paket</p>
+            <p className="text-sm text-blue-900 font-semibold">{PLAN_LABELS[selectedPlan]}</p>
+            <p className="text-xs text-blue-500 mt-0.5">14 dana besplatnog probnog perioda</p>
+          </div>
+        )}
+
+        <p className="text-slate-500 text-sm mb-6">Kreirajte vaš nalog</p>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">

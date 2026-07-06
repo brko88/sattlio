@@ -324,7 +324,7 @@ function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
         </a>
       ) : (
         <Link
-          to={ROUTES.register}
+          to={`${ROUTES.register}?plan=${plan.id}`}
           className={`block text-center px-4 py-2.5 ${COLORS.primaryClass} text-white rounded-lg font-medium ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
         >
           {plan.ctaLabel}

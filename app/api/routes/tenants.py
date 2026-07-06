@@ -79,7 +79,7 @@ def create_tenant(
         business_category=data.business_category,
         verification_status="pending",
         plan="trial",
-        trial_ends_at=datetime.now(timezone.utc) + timedelta(days=14),
+        trial_ends_at=datetime.now(timezone.utc) + timedelta(days=60),
     )
     db.add(new_tenant)
     db.commit()

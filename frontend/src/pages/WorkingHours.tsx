@@ -27,7 +27,6 @@ const DAYS = [
 ];
 
 const formatTime = (time: string) => time.slice(0, 5);
-
 const isValidTime = (time: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
 
 function WorkingHours() {
@@ -41,6 +40,10 @@ function WorkingHours() {
   const [dayOfWeek, setDayOfWeek] = useState("0");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
+
+  // Copy stanja
+  const [copyTarget, setCopyTarget] = useState("all");
+  const [copying, setCopying] = useState(false);
 
   const fetchEmployees = async () => {
     const response = await api.get("/api/v1/employees", {
@@ -78,12 +81,10 @@ function WorkingHours() {
       setError("Neispravan format vremena za 'Od'. Koristite HH:MM (npr. 09:00).");
       return;
     }
-
     if (!isValidTime(endTime)) {
       setError("Neispravan format vremena za 'Do'. Koristite HH:MM (npr. 17:00).");
       return;
     }
-
     if (startTime >= endTime) {
       setError("Početak radnog vremena mora biti prije kraja.");
       return;
@@ -97,7 +98,6 @@ function WorkingHours() {
         start_time: startTime + ":00",
         end_time: endTime + ":00",
       });
-
       setSuccessMessage("Radno vrijeme je sačuvano.");
       fetchHours(selectedEmployeeId);
     } catch (err: any) {
@@ -117,14 +117,58 @@ function WorkingHours() {
     }
   };
 
+  const handleCopy = async () => {
+    if (!isValidTime(startTime) || !isValidTime(endTime)) {
+      setError("Unesite ispravno radno vrijeme prije kopiranja.");
+      return;
+    }
+    if (startTime >= endTime) {
+      setError("Početak radnog vremena mora biti prije kraja.");
+      return;
+    }
+
+    setCopying(true);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      const targetDays = copyTarget === "all"
+        ? [0, 1, 2, 3, 4, 5, 6]
+        : copyTarget === "workdays"
+        ? [0, 1, 2, 3, 4]
+        : [parseInt(copyTarget)];
+
+      for (const day of targetDays) {
+        await api.post("/api/v1/working-hours", {
+          tenant_id: tenantId,
+          employee_id: parseInt(selectedEmployeeId),
+          day_of_week: day,
+          start_time: startTime + ":00",
+          end_time: endTime + ":00",
+        });
+      }
+
+      setSuccessMessage(
+        copyTarget === "all"
+          ? "Radno vrijeme kopirano na sve dane."
+          : copyTarget === "workdays"
+          ? "Radno vrijeme kopirano na radne dane (Pon-Pet)."
+          : `Radno vrijeme kopirano na ${DAYS[parseInt(copyTarget)]}.`
+      );
+      fetchHours(selectedEmployeeId);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom kopiranja.");
+    } finally {
+      setCopying(false);
+    }
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6 text-slate-900">Radno vrijeme</h1>
 
       <div className="bg-white rounded-lg p-6 shadow-sm mb-6 max-w-md">
-        <label className="block text-sm font-medium text-slate-500 mb-2">
-          Zaposleni
-        </label>
+        <label className="block text-sm font-medium text-slate-500 mb-2">Zaposleni</label>
         <select
           value={selectedEmployeeId}
           onChange={(e) => setSelectedEmployeeId(e.target.value)}
@@ -141,36 +185,25 @@ function WorkingHours() {
 
       {selectedEmployeeId && (
         <>
-          <form
-            onSubmit={handleAdd}
-            className="bg-white rounded-lg p-6 shadow-sm mb-6 max-w-md"
-          >
-            <h3 className="text-lg font-semibold mb-4">
-              Dodaj / izmijeni radno vrijeme
-            </h3>
+          <form onSubmit={handleAdd} className="bg-white rounded-lg p-6 shadow-sm mb-4 max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Dodaj / izmijeni radno vrijeme</h3>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-500 mb-2">
-                Dan
-              </label>
+              <label className="block text-sm font-medium text-slate-500 mb-2">Dan</label>
               <select
                 value={dayOfWeek}
                 onChange={(e) => setDayOfWeek(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
               >
                 {DAYS.map((day, idx) => (
-                  <option key={idx} value={idx}>
-                    {day}
-                  </option>
+                  <option key={idx} value={idx}>{day}</option>
                 ))}
               </select>
             </div>
 
             <div className="flex gap-3 mb-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-500 mb-2">
-                  Od
-                </label>
+                <label className="block text-sm font-medium text-slate-500 mb-2">Od</label>
                 <input
                   type="text"
                   placeholder="09:00"
@@ -181,9 +214,7 @@ function WorkingHours() {
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-slate-500 mb-2">
-                  Do
-                </label>
+                <label className="block text-sm font-medium text-slate-500 mb-2">Do</label>
                 <input
                   type="text"
                   placeholder="17:00"
@@ -195,22 +226,51 @@ function WorkingHours() {
               </div>
             </div>
 
-            <p className="text-xs text-slate-400 mb-4">
-              Format: HH:MM (npr. 09:00 — 17:00)
-            </p>
+            <p className="text-xs text-slate-400 mb-4">Format: HH:MM (npr. 09:00 — 17:00)</p>
 
-            {successMessage && (
-              <p className="text-green-600 text-sm mb-3">{successMessage}</p>
-            )}
+            {successMessage && <p className="text-green-600 text-sm mb-3">{successMessage}</p>}
             {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+              className="w-full px-5 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
             >
-              Sačuvaj
+              Sačuvaj za odabrani dan
             </button>
           </form>
+
+          {/* Copy sekcija */}
+          <div className="bg-white rounded-lg p-6 shadow-sm mb-6 max-w-md">
+            <h3 className="text-lg font-semibold mb-1">Kopiraj radno vrijeme</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Kopiraj trenutno uneseno radno vrijeme ({startTime} — {endTime}) na:
+            </p>
+
+            <div className="flex gap-2 mb-3">
+              <select
+                value={copyTarget}
+                onChange={(e) => setCopyTarget(e.target.value)}
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm"
+              >
+                <option value="all">Sve dane</option>
+                <option value="workdays">Radne dane (Pon-Pet)</option>
+                <option value="0">Ponedjeljak</option>
+                <option value="1">Utorak</option>
+                <option value="2">Srijeda</option>
+                <option value="3">Četvrtak</option>
+                <option value="4">Petak</option>
+                <option value="5">Subota</option>
+                <option value="6">Nedjelja</option>
+              </select>
+              <button
+                onClick={handleCopy}
+                disabled={copying}
+                className="px-4 py-2 bg-slate-700 text-white rounded-md text-sm font-medium hover:bg-slate-800 transition-colors disabled:opacity-50"
+              >
+                {copying ? "Kopiranje..." : "Kopiraj"}
+              </button>
+            </div>
+          </div>
 
           <h3 className="text-lg font-semibold mb-3">Trenutno radno vrijeme</h3>
           {hours.length === 0 ? (

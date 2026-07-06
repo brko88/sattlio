@@ -206,14 +206,27 @@ def get_available_slots(
         e = a.end_time if a.end_time.tzinfo else a.end_time.replace(tzinfo=timezone.utc)
         booked_slots.append((s.astimezone(TZ), e.astimezone(TZ)))
 
+    # Pauza
+    break_start_local = None
+    break_end_local = None
+    if wh.break_start and wh.break_end:
+        break_start_local = datetime.combine(booking_date, wh.break_start).replace(tzinfo=TZ)
+        break_end_local = datetime.combine(booking_date, wh.break_end).replace(tzinfo=TZ)
+
     slots = []
     while slot_start + duration <= work_end:
         slot_end = slot_start + duration
+
+        # Preskoči ako se termin preklapa sa pauzom
+        is_in_break = False
+        if break_start_local and break_end_local:
+            is_in_break = not (slot_end <= break_start_local or slot_start >= break_end_local)
+
         is_booked = any(
             not (slot_end <= bs or slot_start >= be)
             for bs, be in booked_slots
         )
-        if not is_booked and slot_start > now:
+        if not is_booked and not is_in_break and slot_start > now:
             slots.append(slot_start.astimezone(timezone.utc).isoformat())
         slot_start += timedelta(minutes=slot_interval)
 

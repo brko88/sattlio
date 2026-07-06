@@ -10,6 +10,8 @@ class WorkingHoursCreate(BaseModel):
     start_time: time
     end_time: time
     is_working_day: bool = True
+    break_start: time | None = None
+    break_end: time | None = None
 
 
 class WorkingHoursResponse(BaseModel):
@@ -20,6 +22,8 @@ class WorkingHoursResponse(BaseModel):
     start_time: time
     end_time: time
     is_working_day: bool
+    break_start: time | None
+    break_end: time | None
 
     class Config:
         from_attributes = True

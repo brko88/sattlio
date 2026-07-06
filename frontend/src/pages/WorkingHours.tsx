@@ -14,6 +14,8 @@ interface WorkingHour {
   start_time: string;
   end_time: string;
   is_working_day: boolean;
+  break_start: string | null;
+  break_end: string | null;
 }
 
 const DAYS = [
@@ -40,6 +42,9 @@ function WorkingHours() {
   const [dayOfWeek, setDayOfWeek] = useState("0");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
+  const [hasBreak, setHasBreak] = useState(false);
+  const [breakStart, setBreakStart] = useState("13:00");
+  const [breakEnd, setBreakEnd] = useState("14:00");
 
   // Copy stanja
   const [copyTarget, setCopyTarget] = useState("all");
@@ -90,6 +95,17 @@ function WorkingHours() {
       return;
     }
 
+    if (hasBreak) {
+      if (!isValidTime(breakStart) || !isValidTime(breakEnd)) {
+        setError("Neispravan format pauze. Koristite HH:MM.");
+        return;
+      }
+      if (breakStart >= breakEnd) {
+        setError("Početak pauze mora biti prije kraja pauze.");
+        return;
+      }
+    }
+
     try {
       await api.post("/api/v1/working-hours", {
         tenant_id: tenantId,
@@ -97,6 +113,8 @@ function WorkingHours() {
         day_of_week: parseInt(dayOfWeek),
         start_time: startTime + ":00",
         end_time: endTime + ":00",
+        break_start: hasBreak ? breakStart + ":00" : null,
+        break_end: hasBreak ? breakEnd + ":00" : null,
       });
       setSuccessMessage("Radno vrijeme je sačuvano.");
       fetchHours(selectedEmployeeId);
@@ -145,6 +163,8 @@ function WorkingHours() {
           day_of_week: day,
           start_time: startTime + ":00",
           end_time: endTime + ":00",
+          break_start: hasBreak ? breakStart + ":00" : null,
+          break_end: hasBreak ? breakEnd + ":00" : null,
         });
       }
 
@@ -228,6 +248,45 @@ function WorkingHours() {
 
             <p className="text-xs text-slate-400 mb-4">Format: HH:MM (npr. 09:00 — 17:00)</p>
 
+            {/* Pauza */}
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer mb-2">
+                <input
+                  type="checkbox"
+                  checked={hasBreak}
+                  onChange={(e) => setHasBreak(e.target.checked)}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm font-medium text-slate-700">Pauza tokom radnog dana</span>
+              </label>
+              {hasBreak && (
+                <div className="flex gap-3 mt-2">
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-500 mb-1">Pauza od</label>
+                    <input
+                      type="text"
+                      placeholder="13:00"
+                      value={breakStart}
+                      onChange={(e) => setBreakStart(e.target.value)}
+                      maxLength={5}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-slate-500 mb-1">Pauza do</label>
+                    <input
+                      type="text"
+                      placeholder="14:00"
+                      value={breakEnd}
+                      onChange={(e) => setBreakEnd(e.target.value)}
+                      maxLength={5}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {successMessage && <p className="text-green-600 text-sm mb-3">{successMessage}</p>}
             {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
@@ -284,6 +343,7 @@ function WorkingHours() {
                   <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Dan</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Od</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Do</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Pauza</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Akcije</th>
                 </tr>
               </thead>
@@ -293,6 +353,7 @@ function WorkingHours() {
                     <td className="px-4 py-3">{DAYS[h.day_of_week]}</td>
                     <td className="px-4 py-3">{formatTime(h.start_time)}</td>
                     <td className="px-4 py-3">{formatTime(h.end_time)}</td>
+                    <td className="px-4 py-3">{h.break_start && h.break_end ? formatTime(h.break_start) + " — " + formatTime(h.break_end) : "—"}</td>
                     <td className="px-4 py-3">
                       <button
                         onClick={() => handleDelete(h.id)}

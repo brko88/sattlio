@@ -13,4 +13,6 @@ class WorkingHours(Base):
     day_of_week = Column(Integer, nullable=False)  # 0 = ponedjeljak ... 6 = nedjelja
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
+    break_start = Column(Time, nullable=True)
+    break_end = Column(Time, nullable=True)
     is_working_day = Column(Boolean, default=True)

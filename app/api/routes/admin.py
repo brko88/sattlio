@@ -14,6 +14,7 @@ from app.models.employee import Employee
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
+from app.models.refresh_token import RefreshToken
 from app.models.working_hours import WorkingHours
 from app.models.service import Service
 from app.schemas.tenant import TenantResponse, TenantAdminResponse
@@ -367,9 +368,16 @@ def block_user(
     if user is None:
         raise HTTPException(status_code=404, detail="Korisnik ne postoji.")
     if user.is_superadmin:
-        raise HTTPException(status_code=400, detail="Ne moĹľete blokirati superadmina.")
+        raise HTTPException(status_code=400, detail="Ne mozete blokirati superadmina.")
 
     user.is_active = False
+
+    # Ponisti sve refresh tokene da korisnik ne moze izvaditi novi access token
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user_id,
+        RefreshToken.is_revoked == False,
+    ).update({"is_revoked": True})
+
     db.commit()
     return {"detail": f"Korisnik {user.email} je blokiran."}
 
@@ -387,3 +395,4 @@ def unblock_user(
     user.is_active = True
     db.commit()
     return {"detail": f"Korisnik {user.email} je deblokiran."}
+

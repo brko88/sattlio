@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.limiter import limiter
 from app.core.config import settings
-from app.api.routes import auth, tenants, employees, services, working_hours as working_hours_routes, customers, appointments, admin, public
+from app.api.routes import auth, tenants, employees, services, working_hours as working_hours_routes, customers, appointments, admin, public, special_days
 
 app = FastAPI(title="Sattlio API")
 app.state.limiter = limiter
@@ -28,6 +28,7 @@ app.include_router(customers.router)
 app.include_router(appointments.router)
 app.include_router(admin.router)
 app.include_router(public.router)
+app.include_router(special_days.router)
 
 @app.get("/")
 def root():

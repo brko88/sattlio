@@ -15,6 +15,7 @@ from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.models.working_hours import WorkingHours
+from app.models.special_day import SpecialDay
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
 
@@ -175,7 +176,25 @@ def get_available_slots(
         WorkingHours.day_of_week == day_of_week,
     ).first()
 
-    if wh is None or not wh.is_working_day:
+    # Provjeri specijalni dan (override standardnog radnog vremena)
+    special_day = db.query(SpecialDay).filter(
+        SpecialDay.employee_id == employee_id,
+        SpecialDay.tenant_id == employee.tenant_id,
+        SpecialDay.date == booking_date,
+    ).first()
+
+    if special_day is not None:
+        if not special_day.is_working_day:
+            return {"slots": []}
+        # Override radnog vremena sa specijalnim danom
+        class OverrideWH:
+            start_time = special_day.start_time
+            end_time = special_day.end_time
+            break_start = None
+            break_end = None
+            is_working_day = True
+        wh = OverrideWH()
+    elif wh is None or not wh.is_working_day:
         return {"slots": []}
 
     # Dohvati slot interval iz tenanta

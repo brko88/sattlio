@@ -213,3 +213,18 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/resend-verification")
+@limiter.limit("3/minute")
+def resend_verification(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.email_verified:
+        return {"detail": "Email je već potvrđen."}
+
+    verification_token = secrets.token_hex(16)
+    current_user.verification_token = verification_token
+    db.commit()
+
+    send_verification_email(current_user.email, verification_token)
+
+    return {"detail": "Verifikacijski email je ponovo poslan."}

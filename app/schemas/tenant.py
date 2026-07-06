@@ -1,3 +1,4 @@
+from datetime import datetime
 import re
 from pydantic import BaseModel, field_validator
 
@@ -34,6 +35,8 @@ class TenantResponse(BaseModel):
     jib: str | None
     verification_status: str
     slot_duration_minutes: int
+    plan: str
+    trial_ends_at: datetime | None
 
     class Config:
         from_attributes = True
@@ -50,6 +53,8 @@ class TenantWithRoleResponse(BaseModel):
     role: str
     slot_duration_minutes: int
     timezone: str
+    plan: str
+    trial_ends_at: datetime | None
 
     class Config:
         from_attributes = True

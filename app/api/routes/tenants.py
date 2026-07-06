@@ -9,6 +9,8 @@ from app.core.security import get_current_user
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
+from datetime import datetime, timedelta, timezone
+
 from app.schemas.tenant import TenantCreate, TenantResponse, TenantWithRoleResponse
 
 router = APIRouter(prefix="/api/v1/tenants", tags=["tenants"])
@@ -45,6 +47,12 @@ def create_tenant(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email adresa mora biti potvrđena prije kreiranja poslovnog subjekta.",
+        )
+
     existing_jib = db.query(Tenant).filter(Tenant.jib == data.jib).first()
     if existing_jib is not None:
         raise HTTPException(
@@ -70,6 +78,8 @@ def create_tenant(
         jib=data.jib,
         business_category=data.business_category,
         verification_status="pending",
+        plan="trial",
+        trial_ends_at=datetime.now(timezone.utc) + timedelta(days=14),
     )
     db.add(new_tenant)
     db.commit()
@@ -107,9 +117,6 @@ def update_tenant(
             )
         tenant.slot_duration_minutes = data.slot_duration_minutes
 
-    if data.timezone is not None:
-        tenant.timezone = data.timezone
-
     db.commit()
     db.refresh(tenant)
 
@@ -142,6 +149,8 @@ def get_my_tenants(
                 role=role.role,
                 slot_duration_minutes=tenant.slot_duration_minutes,
                 timezone=tenant.timezone or "Europe/Sarajevo",
+                plan=tenant.plan or "trial",
+                trial_ends_at=tenant.trial_ends_at,
             )
         )
 

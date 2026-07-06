@@ -30,6 +30,7 @@ function CreateTenant() {
   const [businessCategory, setBusinessCategory] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
   const { setTenantId, refreshTenants } = useTenant();
 
   const extractErrorMessage = (err: any): string => {
@@ -44,6 +45,7 @@ function CreateTenant() {
     setError("");
 
     try {
+      setEmailNotVerified(false);
       const response = await api.post("/api/v1/tenants", {
         name,
         city: city || null,
@@ -62,7 +64,11 @@ function CreateTenant() {
         window.location.href = "/dashboard";
       }, 4000);
     } catch (err: any) {
-      setError(extractErrorMessage(err));
+      if (err.response?.status === 403) {
+        setEmailNotVerified(true);
+      } else {
+        setError(extractErrorMessage(err));
+      }
     }
   };
 
@@ -98,6 +104,31 @@ function CreateTenant() {
         <p className="text-slate-500 mb-6">
           Unesite podatke o vašem salonu ili poslovnom subjektu.
         </p>
+
+        {emailNotVerified && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-4 mb-6">
+            <p className="font-medium text-amber-800 text-sm">⚠️ Email nije potvrđen</p>
+            <p className="text-amber-600 text-xs mt-1 mb-3">
+              Morate potvrditi email adresu prije kreiranja poslovnog subjekta. 
+              Provjerite inbox i spam folder.
+            </p>
+            <a
+              href="mailto:"
+              className="text-xs text-blue-600 font-medium hover:underline"
+              onClick={async (e) => {
+                e.preventDefault();
+                try {
+                  await api.post("/api/v1/auth/resend-verification");
+                  alert("Verifikacijski email je ponovo poslan.");
+                } catch {
+                  alert("Greška. Pokušajte se odjaviti i ponovo prijaviti.");
+                }
+              }}
+            >
+              Pošalji verifikacijski email ponovo →
+            </a>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg p-6 shadow-sm">
 

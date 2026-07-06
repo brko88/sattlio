@@ -25,6 +25,8 @@ class Tenant(Base):
     verification_status = Column(String, default="pending", nullable=False)
     is_active = Column(Boolean, default=True)
     slot_duration_minutes = Column(Integer, default=30, nullable=False)
+    plan = Column(String, default="trial", nullable=False)
+    trial_ends_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -16,7 +16,7 @@ interface TenantInfo {
 }
 
 function Dashboard() {
-  const { tenantId } = useTenant();
+  const { tenantId, plan, trialEndsAt } = useTenant();
   const [stats, setStats] = useState({
     employees: 0,
     services: 0,
@@ -44,14 +44,12 @@ function Dashboard() {
           appointments: apptRes.data.length,
         });
         setEmployees(empRes.data);
-
         const currentTenant = tenantsRes.data.find((t: any) => t.id === tenantId);
         if (currentTenant) setTenant(currentTenant);
       } finally {
         setLoading(false);
       }
     };
-
     fetchStats();
   }, [tenantId]);
 
@@ -65,14 +63,73 @@ function Dashboard() {
   const isPending = tenant?.verification_status === "pending";
   const isSuspended = tenant?.verification_status === "suspended";
 
+  // Trial dani
+  const trialDaysLeft = (() => {
+    if (plan !== "trial" || !trialEndsAt) return null;
+    const diff = new Date(trialEndsAt).getTime() - new Date().getTime();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  })();
+
+  const getTrialBgClass = () => {
+    if (trialDaysLeft === null) return "";
+    if (trialDaysLeft <= 3) return "bg-red-50 border-red-200";
+    if (trialDaysLeft <= 7) return "bg-amber-50 border-amber-200";
+    return "bg-blue-50 border-blue-200";
+  };
+
+  const getTrialTextClass = () => {
+    if (trialDaysLeft === null) return "";
+    if (trialDaysLeft <= 3) return "text-red-800";
+    if (trialDaysLeft <= 7) return "text-amber-800";
+    return "text-blue-800";
+  };
+
+  const getTrialSubTextClass = () => {
+    if (trialDaysLeft === null) return "";
+    if (trialDaysLeft <= 3) return "text-red-600";
+    if (trialDaysLeft <= 7) return "text-amber-600";
+    return "text-blue-600";
+  };
+
+  const getTrialIcon = () => {
+    if (trialDaysLeft === null) return "";
+    if (trialDaysLeft <= 3) return "🔴";
+    if (trialDaysLeft <= 7) return "⚠️";
+    return "ℹ️";
+  };
+
+  const getDaysLabel = (days: number) => {
+    if (days === 1) return "1 dan";
+    if (days < 5) return `${days} dana`;
+    return `${days} dana`;
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
       <p className="text-slate-500 mb-6">Pregled vašeg poslovnog subjekta</p>
 
-      {/* Status obavještenja */}
       {!loading && (
         <div className="mb-6 space-y-3">
+
+          {/* Trial banner */}
+          {trialDaysLeft !== null && (
+            <div className={`flex items-start gap-3 rounded-lg px-4 py-3 border ${getTrialBgClass()}`}>
+              <span className="text-lg mt-0.5">{getTrialIcon()}</span>
+              <div>
+                <p className={`font-medium text-sm ${getTrialTextClass()}`}>
+                  {trialDaysLeft === 0
+                    ? "Probni period je istekao!"
+                    : `Probni period — ostalo ${getDaysLabel(trialDaysLeft)}`}
+                </p>
+                <p className={`text-xs mt-0.5 ${getTrialSubTextClass()}`}>
+                  {trialDaysLeft === 0
+                    ? "Pretplatite se da nastavite koristiti Sattlio."
+                    : "Nakon isteka probnog perioda potrebna je pretplata."}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Verifikacija */}
           {isPending && (

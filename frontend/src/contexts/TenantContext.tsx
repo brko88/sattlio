@@ -9,6 +9,8 @@ interface Tenant {
   role: string;
   slot_duration_minutes?: number;
   timezone?: string;
+  plan?: string;
+  trial_ends_at?: string | null;
 }
 
 interface TenantContextType {
@@ -17,6 +19,8 @@ interface TenantContextType {
   tenants: Tenant[];
   currentRole: string;
   timezone: string;
+  plan: string;
+  trialEndsAt: string | null;
   isLoading: boolean;
   refreshTenants: () => Promise<void>;
 }
@@ -40,9 +44,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const currentRole = localStorage.getItem("current_role") ?? "";
 
-  // Timezone aktivnog tenanta
-  const timezone =
-    tenants.find((t) => t.id === tenantId)?.timezone ?? DEFAULT_TZ;
+  const activeTenant = tenants.find((t) => t.id === tenantId);
+  const timezone = activeTenant?.timezone ?? DEFAULT_TZ;
+  const plan = activeTenant?.plan ?? "trial";
+  const trialEndsAt = activeTenant?.trial_ends_at ?? null;
 
   const refreshTenants = async () => {
     const token = localStorage.getItem("access_token");
@@ -85,7 +90,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   return (
     <TenantContext.Provider
-      value={{ tenantId, setTenantId, tenants, currentRole, timezone, isLoading, refreshTenants }}
+      value={{ tenantId, setTenantId, tenants, currentRole, timezone, plan, trialEndsAt, isLoading, refreshTenants }}
     >
       {children}
     </TenantContext.Provider>

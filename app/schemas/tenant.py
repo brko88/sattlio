@@ -58,3 +58,7 @@ class TenantWithRoleResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class TenantAdminResponse(TenantResponse):
+    owner_name: str | None = None
+    owner_email: str | None = None

@@ -1,21 +1,89 @@
+﻿import smtplib
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.security import require_superadmin
+from app.core.email import send_password_reset_email
+from app.models.appointment import Appointment
+from app.models.employee import Employee
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.schemas.tenant import TenantResponse
+from app.models.user_tenant_role import UserTenantRole
+from app.models.working_hours import WorkingHours
+from app.models.service import Service
+from app.schemas.tenant import TenantResponse, TenantAdminResponse
+
+import secrets
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
-@router.get("/tenants", response_model=list[TenantResponse])
+# ---------------------------------------------------------------------------
+# PostojeÄ‡e rute
+# ---------------------------------------------------------------------------
+
+@router.get("/tenants", response_model=list[TenantAdminResponse])
 def list_all_tenants(
+    search: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin),
 ):
-    tenants = db.query(Tenant).order_by(Tenant.created_at.desc()).all()
+    query = db.query(Tenant)
+
+    if search:
+        from sqlalchemy import or_
+        search_term = f"%{search}%"
+
+        owner_match = (
+            db.query(UserTenantRole.tenant_id)
+            .join(User, User.id == UserTenantRole.user_id)
+            .filter(
+                UserTenantRole.role == "owner",
+                or_(
+                    User.email.ilike(search_term),
+                    User.first_name.ilike(search_term),
+                    User.last_name.ilike(search_term),
+                ),
+            )
+        )
+
+        query = query.filter(
+            or_(
+                Tenant.name.ilike(search_term),
+                Tenant.jib.ilike(search_term),
+                Tenant.city.ilike(search_term),
+                Tenant.email.ilike(search_term),
+                Tenant.id.in_(owner_match),
+            )
+        )
+
+    tenants = query.order_by(Tenant.created_at.desc()).all()
+
+    tenant_ids = [t.id for t in tenants]
+    owners = (
+        db.query(UserTenantRole.tenant_id, User.first_name, User.last_name, User.email)
+        .join(User, User.id == UserTenantRole.user_id)
+        .filter(UserTenantRole.tenant_id.in_(tenant_ids), UserTenantRole.role == "owner")
+        .all()
+    )
+    owner_by_tenant = {
+        tid: {
+            "name": f"{first or ''} {last or ''}".strip() or None,
+            "email": email,
+        }
+        for tid, first, last, email in owners
+    }
+
+    for t in tenants:
+        info = owner_by_tenant.get(t.id, {})
+        t.owner_name = info.get("name")
+        t.owner_email = info.get("email")
+
     return tenants
 
 
@@ -28,10 +96,9 @@ def verify_tenant(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
-
     tenant.verification_status = "verified"
+    tenant.is_active = True
     db.commit()
-
     return {"detail": "Tenant je verifikovan.", "verification_status": tenant.verification_status}
 
 
@@ -44,11 +111,9 @@ def suspend_tenant(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
-
     tenant.verification_status = "suspended"
     tenant.is_active = False
     db.commit()
-
     return {"detail": "Tenant je suspendovan.", "verification_status": tenant.verification_status}
 
 
@@ -61,9 +126,241 @@ def reactivate_tenant(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
-
     tenant.verification_status = "pending"
     tenant.is_active = True
     db.commit()
-
     return {"detail": "Tenant je reaktiviran.", "verification_status": tenant.verification_status}
+
+
+# ---------------------------------------------------------------------------
+# Platform Stats Dashboard
+# ---------------------------------------------------------------------------
+
+@router.get("/stats")
+def get_platform_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    total_tenants = db.query(Tenant).count()
+    total_users = db.query(User).filter(User.is_superadmin == False).count()
+    total_employees = db.query(Employee).filter(Employee.is_deleted == False).count()
+    total_appointments = db.query(Appointment).count()
+    trial_tenants = db.query(Tenant).filter(Tenant.plan == "trial").count()
+    active_tenants = db.query(Tenant).filter(Tenant.plan != "trial", Tenant.is_active == True).count()
+    suspended_tenants = db.query(Tenant).filter(Tenant.verification_status == "suspended").count()
+    verified_tenants = db.query(Tenant).filter(Tenant.verification_status == "verified").count()
+    pending_tenants = db.query(Tenant).filter(Tenant.verification_status == "pending").count()
+
+    return {
+        "total_tenants": total_tenants,
+        "total_users": total_users,
+        "total_employees": total_employees,
+        "total_appointments": total_appointments,
+        "trial_tenants": trial_tenants,
+        "active_tenants": active_tenants,
+        "suspended_tenants": suspended_tenants,
+        "verified_tenants": verified_tenants,
+        "pending_tenants": pending_tenants,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Platform Health
+# ---------------------------------------------------------------------------
+
+@router.get("/health")
+def get_platform_health(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    # Database check
+    db_ok = False
+    try:
+        db.execute(__import__('sqlalchemy').text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        pass
+
+    # SMTP check
+    smtp_ok = False
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=5) as server:
+            server.ehlo()
+            smtp_ok = True
+    except Exception:
+        pass
+
+    return {
+        "backend": {"status": "online"},
+        "database": {"status": "online" if db_ok else "offline"},
+        "smtp": {"status": "online" if smtp_ok else "offline"},
+        "paddle": {"status": "not_configured"},
+    }
+
+
+# ---------------------------------------------------------------------------
+# Tenant Health Check
+# ---------------------------------------------------------------------------
+
+@router.get("/tenants/{tenant_id}/health")
+def get_tenant_health(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant ne postoji.")
+
+    owner = (
+        db.query(User)
+        .join(UserTenantRole, UserTenantRole.user_id == User.id)
+        .filter(UserTenantRole.tenant_id == tenant_id, UserTenantRole.role == "owner")
+        .first()
+    )
+
+    employees = db.query(Employee).filter(
+        Employee.tenant_id == tenant_id, Employee.is_deleted == False
+    ).all()
+
+    services = db.query(Service).filter(
+        Service.tenant_id == tenant_id, Service.is_active == True
+    ).all()
+
+    working_hours = db.query(WorkingHours).filter(
+        WorkingHours.tenant_id == tenant_id
+    ).count()
+
+    self_booking_enabled = any(e.allow_self_booking for e in employees)
+
+    return {
+        "tenant_id": tenant_id,
+        "tenant_name": tenant.name,
+        "checks": {
+            "email_verified": owner.email_verified if owner else False,
+            "salon_verified": tenant.verification_status == "verified",
+            "employees_added": len(employees) > 0,
+            "employees_count": len(employees),
+            "services_added": len(services) > 0,
+            "services_count": len(services),
+            "working_hours_set": working_hours > 0,
+            "self_booking_enabled": self_booking_enabled,
+        },
+        "owner_email": owner.email if owner else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Pregled korisnika
+# ---------------------------------------------------------------------------
+
+@router.get("/users")
+def list_all_users(
+    search: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    query = db.query(User)
+
+    if search:
+        from sqlalchemy import or_
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                User.email.ilike(search_term),
+                User.first_name.ilike(search_term),
+                User.last_name.ilike(search_term),
+            )
+        )
+
+    users = query.order_by(User.created_at.desc()).all()
+
+    result = []
+    for user in users:
+        roles = db.query(UserTenantRole).filter(UserTenantRole.user_id == user.id).all()
+        tenants_info = []
+        for role in roles:
+            tenant = db.query(Tenant).filter(Tenant.id == role.tenant_id).first()
+            if tenant:
+                tenants_info.append({
+                    "tenant_id": tenant.id,
+                    "tenant_name": tenant.name,
+                    "role": role.role,
+                })
+        result.append({
+            "id": user.id,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email_verified": user.email_verified,
+            "is_active": user.is_active,
+            "is_superadmin": user.is_superadmin,
+            "created_at": user.created_at,
+            "tenants": tenants_info,
+        })
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Reset lozinke (admin Ĺˇalje link)
+# ---------------------------------------------------------------------------
+
+@router.post("/users/{user_id}/reset-password")
+def admin_reset_password(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Korisnik ne postoji.")
+
+    from datetime import timedelta
+    reset_token = secrets.token_hex(32)
+    user.password_reset_token = reset_token
+    user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+    db.commit()
+
+    try:
+        send_password_reset_email(user.email, reset_token)
+    except Exception:
+        pass
+
+    return {"detail": f"Reset link poslan na {user.email}."}
+
+
+# ---------------------------------------------------------------------------
+# Blokiranje / deblokiranje korisnika
+# ---------------------------------------------------------------------------
+
+@router.post("/users/{user_id}/block")
+def block_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Korisnik ne postoji.")
+    if user.is_superadmin:
+        raise HTTPException(status_code=400, detail="Ne moĹľete blokirati superadmina.")
+
+    user.is_active = False
+    db.commit()
+    return {"detail": f"Korisnik {user.email} je blokiran."}
+
+
+@router.post("/users/{user_id}/unblock")
+def unblock_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Korisnik ne postoji.")
+
+    user.is_active = True
+    db.commit()
+    return {"detail": f"Korisnik {user.email} je deblokiran."}

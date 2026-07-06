@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import api from "../services/api";
 
 interface Tenant {
@@ -9,6 +9,8 @@ interface Tenant {
   is_active: boolean;
   jib: string | null;
   verification_status: string;
+  owner_name: string | null;
+  owner_email: string | null;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -22,10 +24,14 @@ function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [search, setSearch] = useState("");
 
-  const fetchTenants = async () => {
+  const fetchTenants = async (searchTerm: string = "") => {
+    setLoading(true);
     try {
-      const response = await api.get("/api/v1/admin/tenants");
+      const response = await api.get("/api/v1/admin/tenants", {
+        params: searchTerm ? { search: searchTerm } : {},
+      });
       setTenants(response.data);
     } catch (err: any) {
       setError(
@@ -36,9 +42,19 @@ function AdminPanel() {
     }
   };
 
+  // Prvo učitavanje
   useEffect(() => {
     fetchTenants();
   }, []);
+
+  // Debounce pretrage — čeka 400ms nakon zadnjeg tastera prije poziva
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchTenants(search);
+    }, 400);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const handleAction = async (tenantId: number, action: "verify" | "suspend" | "reactivate") => {
     setError("");
@@ -47,7 +63,7 @@ function AdminPanel() {
     try {
       const response = await api.post(`/api/v1/admin/tenants/${tenantId}/${action}`);
       setSuccessMessage(response.data.detail);
-      fetchTenants();
+      fetchTenants(search);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom akcije.");
     }
@@ -60,6 +76,16 @@ function AdminPanel() {
         Pregled i verifikacija svih poslovnih subjekata na platformi
       </p>
 
+      <div className="mb-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Pretraga po nazivu, JIB-u, gradu, emailu ili vlasniku..."
+          className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       {successMessage && (
         <p className="text-green-600 text-sm mb-3">{successMessage}</p>
       )}
@@ -69,7 +95,9 @@ function AdminPanel() {
         <p>Učitavanje...</p>
       ) : tenants.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
-          Nema registrovanih poslovnih subjekata.
+          {search
+            ? "Nema rezultata za zadatu pretragu."
+            : "Nema registrovanih poslovnih subjekata."}
         </div>
       ) : (
         <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
@@ -77,6 +105,12 @@ function AdminPanel() {
             <tr className="text-left bg-slate-50">
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
                 Naziv
+              </th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
+                Vlasnik
+              </th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
+                Email
               </th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
                 Grad
@@ -99,6 +133,8 @@ function AdminPanel() {
             {tenants.map((t) => (
               <tr key={t.id} className="border-t border-slate-100">
                 <td className="px-4 py-3 font-medium">{t.name}</td>
+                <td className="px-4 py-3">{t.owner_name || "-"}</td>
+                <td className="px-4 py-3 text-sm">{t.owner_email || "-"}</td>
                 <td className="px-4 py-3">{t.city || "—"}</td>
                 <td className="px-4 py-3 font-mono text-sm">{t.jib || "—"}</td>
                 <td className="px-4 py-3">

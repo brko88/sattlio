@@ -66,6 +66,14 @@ function BookAppointment() {
   const handleBook = async () => {
     if (!selectedSlot || !selectedService) return;
     if (!token) {
+      localStorage.setItem(
+        "pending_booking",
+        JSON.stringify({
+          employee_id: Number(employeeId),
+          service_id: selectedService,
+          start_time: selectedSlot,
+        })
+      );
       navigate("/login");
       return;
     }
@@ -198,3 +206,4 @@ function BookAppointment() {
 }
 
 export default BookAppointment;
+

@@ -37,6 +37,22 @@ function Login() {
         }
       }
 
+      // Ako je korisnik usred rezervacije bio prekinut zahtjevom za login,
+      // zavrsi tu rezervaciju sad kad je token dostupan, pa ga vrati na Moje termine.
+      const pendingBookingRaw = localStorage.getItem("pending_booking");
+      if (pendingBookingRaw) {
+        try {
+          const pendingBooking = JSON.parse(pendingBookingRaw);
+          await api.post("/api/v1/public/appointments", pendingBooking);
+        } catch (err) {
+          // Rezervacija nije uspjela (npr. termin je u meduvremenu zauzet) -
+          // korisnik moze pokusati ponovo sa stranice salona.
+        }
+        localStorage.removeItem("pending_booking");
+        window.location.href = "/my-appointments";
+        return;
+      }
+
       // Hard redirect — osigurava da TenantContext počne svježe
       window.location.href = "/dashboard";
     } catch (err: any) {
@@ -102,3 +118,4 @@ function Login() {
 }
 
 export default Login;
+

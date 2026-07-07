@@ -341,3 +341,46 @@ def self_book_appointment(
     db.refresh(new_appointment)
 
     return new_appointment
+
+class PublicTenantDetailResponse(BaseModel):
+    id: int
+    name: str
+    slug: str
+    city: str | None
+    address: str | None
+    business_category: str | None
+    description: str | None
+    employees: list[PublicEmployeeResponse]
+    services: list[PublicServiceResponse]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/tenants/by-slug/{slug}", response_model=PublicTenantDetailResponse)
+def get_tenant_by_slug(slug: str, db: Session = Depends(get_db)):
+    tenant = db.query(Tenant).filter(
+        Tenant.slug == slug,
+        Tenant.is_active == True,
+        Tenant.verification_status == "verified",
+    ).first()
+
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Salon nije pronadjen.")
+
+    employees = db.query(Employee).filter(
+        Employee.tenant_id == tenant.id,
+        Employee.is_deleted == False,
+        Employee.is_active == True,
+        Employee.allow_self_booking == True,
+    ).all()
+
+    services = db.query(Service).filter(
+        Service.tenant_id == tenant.id,
+        Service.is_active == True,
+    ).all()
+
+    tenant.employees = employees
+    tenant.services = services
+
+    return tenant

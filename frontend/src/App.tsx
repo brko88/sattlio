@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+﻿import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useTenant } from "./contexts/TenantContext";
 
 import MyAppointments from "./pages/MyAppointments";
@@ -10,6 +10,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import BookAppointment from "./pages/BookAppointment";
+import SalonProfile from "./pages/SalonProfile";
 
 import OwnerLayout from "./layouts/OwnerLayout";
 import EmployeeLayout from "./layouts/EmployeeLayout";
@@ -31,6 +32,28 @@ import DashboardAdmin from "./pages/DashboardAdmin";
 import Analytics from "./pages/Analytics";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
+
+const RESERVED_PATHS = new Set([
+  "dashboard", "calendar", "appointments", "customers", "services",
+  "employees", "working-hours", "settings", "create-tenant",
+  "onboarding", "my-appointments", "book", "admin",
+]);
+
+function PublicOrApp() {
+  const location = useLocation();
+  const firstSegment = location.pathname.split("/").filter(Boolean)[0] || "";
+
+  if (!RESERVED_PATHS.has(firstSegment)) {
+    return (
+      <Routes>
+        <Route path=":slug" element={<SalonProfile />} />
+        <Route path="*" element={<RoleRouter />} />
+      </Routes>
+    );
+  }
+
+  return <RoleRouter />;
+}
 
 function RoleRouter() {
   const { tenants, isLoading } = useTenant();
@@ -150,13 +173,16 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/book/:employeeId" element={<BookAppointment />} />
 
-        <Route path="/*" element={<RoleRouter />} />
+        <Route path="/*" element={<PublicOrApp />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
 export default App;
+
+
+
 
 
 

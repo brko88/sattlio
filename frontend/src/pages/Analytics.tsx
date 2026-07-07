@@ -57,6 +57,15 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
   );
 }
 
+function PlaceholderCard({ label, note }: { label: string; note: string }) {
+  return (
+    <div className="bg-slate-50 rounded-lg p-5 border border-dashed border-slate-300">
+      <p className="text-xs font-semibold text-slate-400 uppercase mb-1">{label}</p>
+      <p className="text-sm text-slate-400">{note}</p>
+    </div>
+  );
+}
+
 function Analytics() {
   const [period, setPeriod] = useState<Period>("30d");
   const [data, setData] = useState<GrowthResponse | null>(null);
@@ -179,7 +188,7 @@ function Analytics() {
             )}
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-5">
+          <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
             <h2 className="text-sm font-semibold text-slate-700 uppercase mb-4">
               🚨 Health
             </h2>
@@ -187,22 +196,36 @@ function Analytics() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <SummaryCard label="Suspendovani saloni" value={health.suspended_tenants} />
                 <SummaryCard label="Na čekanju verifikacije" value={health.pending_tenants} />
-                <div className="bg-slate-50 rounded-lg p-5 border border-dashed border-slate-300">
-                  <p className="text-xs font-semibold text-slate-400 uppercase mb-1">
-                    Neuspjele prijave
-                  </p>
-                  <p className="text-sm text-slate-400">Uskoro</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-5 border border-dashed border-slate-300">
-                  <p className="text-xs font-semibold text-slate-400 uppercase mb-1">
-                    Greške sistema
-                  </p>
-                  <p className="text-sm text-slate-400">Uskoro (Sentry)</p>
-                </div>
+                <PlaceholderCard label="Neuspjele prijave" note="Uskoro" />
+                <PlaceholderCard label="Greške sistema" note="Uskoro (Sentry)" />
               </div>
             ) : (
               <p className="text-slate-400 text-sm">Učitavanje...</p>
             )}
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
+            <h2 className="text-sm font-semibold text-slate-700 uppercase mb-4">
+              💰 Revenue
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <PlaceholderCard label="MRR" note="Čeka Paddle" />
+              <PlaceholderCard label="ARR" note="Čeka Paddle" />
+              <PlaceholderCard label="Trial → Paid konverzija" note="Čeka Paddle" />
+              <PlaceholderCard label="Churn" note="Čeka Paddle" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-slate-700 uppercase mb-4">
+              ❤️ Usage
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <PlaceholderCard label="Aktivni saloni danas" note="Uskoro" />
+              <PlaceholderCard label="Aktivni korisnici danas" note="Uskoro" />
+              <PlaceholderCard label="Broj logina" note="Uskoro" />
+              <PlaceholderCard label="Prosjek rezervacija/salon" note="Uskoro" />
+            </div>
           </div>
         </>
       ) : null}

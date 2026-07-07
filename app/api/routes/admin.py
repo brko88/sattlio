@@ -15,6 +15,7 @@ from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.models.refresh_token import RefreshToken
+from app.models.admin_action_log import AdminActionLog
 from app.models.working_hours import WorkingHours
 from app.models.service import Service
 from app.schemas.tenant import TenantResponse, TenantAdminResponse
@@ -23,6 +24,17 @@ from app.core.analytics_period import resolve_period, generate_buckets
 import secrets
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+
+def log_admin_action(db: Session, admin_user_id: int, action: str, target_type: str, target_id: int, details: str | None = None):
+    """Tiho biljezi admin akciju - priprema za buduci Audit Log ekran."""
+    db.add(AdminActionLog(
+        admin_user_id=admin_user_id,
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        details=details,
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +127,7 @@ def verify_tenant(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
     tenant.verification_status = "verified"
     tenant.is_active = compute_is_active(tenant)
+    log_admin_action(db, current_user.id, "verify_tenant", "tenant", tenant.id, tenant.name)
     db.commit()
     return {"detail": "Tenant je verifikovan.", "verification_status": tenant.verification_status}
 
@@ -130,6 +143,7 @@ def suspend_tenant(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
     tenant.verification_status = "suspended"
     tenant.is_active = False  # moderacija uvijek pobjedjuje, bez obzira na billing
+    log_admin_action(db, current_user.id, "suspend_tenant", "tenant", tenant.id, tenant.name)
     db.commit()
     return {"detail": "Tenant je suspendovan.", "verification_status": tenant.verification_status}
 
@@ -145,6 +159,7 @@ def reactivate_tenant(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
     tenant.verification_status = "verified"  # FIX: ranije je pogresno vracalo na "pending"
     tenant.is_active = compute_is_active(tenant)
+    log_admin_action(db, current_user.id, "reactivate_tenant", "tenant", tenant.id, tenant.name)
     db.commit()
     return {"detail": "Tenant je reaktiviran.", "verification_status": tenant.verification_status}
 
@@ -360,6 +375,7 @@ def admin_reset_password(
     reset_token = secrets.token_hex(32)
     user.password_reset_token = reset_token
     user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+    log_admin_action(db, current_user.id, "reset_password", "user", user.id, user.email)
     db.commit()
 
     try:
@@ -394,6 +410,7 @@ def block_user(
         RefreshToken.is_revoked == False,
     ).update({"is_revoked": True})
 
+    log_admin_action(db, current_user.id, "block_user", "user", user.id, user.email)
     db.commit()
     return {"detail": f"Korisnik {user.email} je blokiran."}
 
@@ -409,6 +426,7 @@ def unblock_user(
         raise HTTPException(status_code=404, detail="Korisnik ne postoji.")
 
     user.is_active = True
+    log_admin_action(db, current_user.id, "unblock_user", "user", user.id, user.email)
     db.commit()
     return {"detail": f"Korisnik {user.email} je deblokiran."}
 
@@ -512,3 +530,5 @@ def get_health_analytics(
         "suspended_tenants": suspended_tenants,
         "pending_tenants": pending_tenants,
     }
+
+

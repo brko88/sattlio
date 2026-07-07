@@ -8,3 +8,4 @@ from app.models.appointment import Appointment
 from app.models.working_hours import WorkingHours
 from app.models.refresh_token import RefreshToken
 from app.models.special_day import SpecialDay
+from app.models.admin_action_log import AdminActionLog

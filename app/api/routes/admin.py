@@ -96,6 +96,13 @@ def list_all_tenants(
     return tenants
 
 
+def compute_is_active(tenant) -> bool:
+    """Salon je aktivan samo ako oba uslova prolaze - moderacija I billing."""
+    billing_ok = tenant.billing_status in ("trial", "active")
+    moderation_ok = tenant.verification_status == "verified"
+    return billing_ok and moderation_ok
+
+
 @router.post("/tenants/{tenant_id}/verify")
 def verify_tenant(
     tenant_id: int,
@@ -106,7 +113,7 @@ def verify_tenant(
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
     tenant.verification_status = "verified"
-    tenant.is_active = True
+    tenant.is_active = compute_is_active(tenant)
     db.commit()
     return {"detail": "Tenant je verifikovan.", "verification_status": tenant.verification_status}
 
@@ -121,7 +128,7 @@ def suspend_tenant(
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
     tenant.verification_status = "suspended"
-    tenant.is_active = False
+    tenant.is_active = False  # moderacija uvijek pobjedjuje, bez obzira na billing
     db.commit()
     return {"detail": "Tenant je suspendovan.", "verification_status": tenant.verification_status}
 
@@ -135,8 +142,8 @@ def reactivate_tenant(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
-    tenant.verification_status = "pending"
-    tenant.is_active = True
+    tenant.verification_status = "verified"  # FIX: ranije je pogresno vracalo na "pending"
+    tenant.is_active = compute_is_active(tenant)
     db.commit()
     return {"detail": "Tenant je reaktiviran.", "verification_status": tenant.verification_status}
 

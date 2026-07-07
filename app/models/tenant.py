@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+﻿from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -26,8 +26,10 @@ class Tenant(Base):
     is_active = Column(Boolean, default=True)
     slot_duration_minutes = Column(Integer, default=30, nullable=False)
     plan = Column(String, default="trial", nullable=False)
+    billing_status = Column(String, default="trial", nullable=False)  # trial | active | past_due | canceled
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     user_roles = relationship("UserTenantRole", back_populates="tenant")
+

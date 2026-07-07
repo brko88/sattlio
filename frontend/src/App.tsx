@@ -28,6 +28,7 @@ import AdminPanel from "./pages/AdminPanel";
 import Users from "./pages/Users";
 import ComingSoon from "./pages/ComingSoon";
 import DashboardAdmin from "./pages/DashboardAdmin";
+import Analytics from "./pages/Analytics";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
 
@@ -62,7 +63,7 @@ function RoleRouter() {
           <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/verifications" element={<ComingSoon title="Verifikacije" />} />
           <Route path="/admin/subscriptions" element={<ComingSoon title="Pretplate" />} />
-          <Route path="/admin/statistics" element={<ComingSoon title="Statistika" />} />
+          <Route path="/admin/statistics" element={<Analytics />} />
           <Route path="/admin/audit-log" element={<ComingSoon title="Audit log" />} />
           <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="*" element={<Navigate to="/admin/tenants" replace />} />
@@ -156,6 +157,7 @@ function App() {
 }
 
 export default App;
+
 
 
 

@@ -18,6 +18,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.working_hours import WorkingHours
 from app.models.service import Service
 from app.schemas.tenant import TenantResponse, TenantAdminResponse
+from app.core.analytics_period import resolve_period, generate_buckets
 
 import secrets
 
@@ -411,3 +412,85 @@ def unblock_user(
     db.commit()
     return {"detail": f"Korisnik {user.email} je deblokiran."}
 
+
+
+
+# ---------------------------------------------------------------------------
+# Platform Analytics - Growth
+# ---------------------------------------------------------------------------
+
+@router.get("/analytics/growth")
+def get_growth_analytics(
+    period: str = "30d",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    try:
+        period_range = resolve_period(period)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    buckets = generate_buckets(period_range)
+
+    def bucket_key(dt):
+        if period_range.granularity == "day":
+            return dt.date().isoformat()
+        return f"{dt.year:04d}-{dt.month:02d}"
+
+    new_tenants = db.query(Tenant.created_at).filter(
+        Tenant.created_at >= period_range.start,
+        Tenant.created_at <= period_range.end,
+    ).all()
+    tenant_counts = {b: 0 for b in buckets}
+    for (created_at,) in new_tenants:
+        key = bucket_key(created_at)
+        if key in tenant_counts:
+            tenant_counts[key] += 1
+
+    new_users = db.query(User.created_at).filter(
+        User.created_at >= period_range.start,
+        User.created_at <= period_range.end,
+        User.is_superadmin == False,
+    ).all()
+    user_counts = {b: 0 for b in buckets}
+    for (created_at,) in new_users:
+        key = bucket_key(created_at)
+        if key in user_counts:
+            user_counts[key] += 1
+
+    new_appointments = db.query(Appointment.created_at).filter(
+        Appointment.created_at >= period_range.start,
+        Appointment.created_at <= period_range.end,
+    ).all()
+    appointment_counts = {b: 0 for b in buckets}
+    for (created_at,) in new_appointments:
+        key = bucket_key(created_at)
+        if key in appointment_counts:
+            appointment_counts[key] += 1
+
+    series = [
+        {
+            "date": b,
+            "new_tenants": tenant_counts[b],
+            "new_users": user_counts[b],
+            "new_appointments": appointment_counts[b],
+        }
+        for b in buckets
+    ]
+
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    summary = {
+        "total_tenants": db.query(Tenant).count(),
+        "total_users": db.query(User).filter(User.is_superadmin == False).count(),
+        "total_appointments": db.query(Appointment).count(),
+        "new_tenants_today": db.query(Tenant).filter(Tenant.created_at >= today_start).count(),
+        "new_appointments_today": db.query(Appointment).filter(Appointment.created_at >= today_start).count(),
+    }
+
+    return {
+        "period": period,
+        "granularity": period_range.granularity,
+        "series": series,
+        "summary": summary,
+    }

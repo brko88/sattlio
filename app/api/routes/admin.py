@@ -494,3 +494,21 @@ def get_growth_analytics(
         "series": series,
         "summary": summary,
     }
+
+
+# ---------------------------------------------------------------------------
+# Platform Analytics - Health
+# ---------------------------------------------------------------------------
+
+@router.get("/analytics/health")
+def get_health_analytics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    suspended_tenants = db.query(Tenant).filter(Tenant.verification_status == "suspended").count()
+    pending_tenants = db.query(Tenant).filter(Tenant.verification_status == "pending").count()
+
+    return {
+        "suspended_tenants": suspended_tenants,
+        "pending_tenants": pending_tenants,
+    }

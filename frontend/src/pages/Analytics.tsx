@@ -35,6 +35,11 @@ interface GrowthResponse {
   summary: GrowthSummary;
 }
 
+interface HealthResponse {
+  suspended_tenants: number;
+  pending_tenants: number;
+}
+
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "today", label: "Danas" },
   { value: "7d", label: "7 dana" },
@@ -55,6 +60,7 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
 function Analytics() {
   const [period, setPeriod] = useState<Period>("30d");
   const [data, setData] = useState<GrowthResponse | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -73,10 +79,23 @@ function Analytics() {
     }
   };
 
+  const fetchHealth = async () => {
+    try {
+      const response = await api.get("/api/v1/admin/analytics/health");
+      setHealth(response.data);
+    } catch (err) {
+      setHealth(null);
+    }
+  };
+
   useEffect(() => {
     fetchGrowth(period);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
+
+  useEffect(() => {
+    fetchHealth();
+  }, []);
 
   return (
     <div>
@@ -117,7 +136,7 @@ function Analytics() {
             <SummaryCard label="Nove rezervacije danas" value={data.summary.new_appointments_today} />
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-5">
+          <div className="bg-white rounded-lg shadow-sm p-5 mb-6">
             <h2 className="text-sm font-semibold text-slate-700 uppercase mb-4">
               📈 Growth
             </h2>
@@ -157,6 +176,32 @@ function Analytics() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-slate-700 uppercase mb-4">
+              🚨 Health
+            </h2>
+            {health ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <SummaryCard label="Suspendovani saloni" value={health.suspended_tenants} />
+                <SummaryCard label="Na čekanju verifikacije" value={health.pending_tenants} />
+                <div className="bg-slate-50 rounded-lg p-5 border border-dashed border-slate-300">
+                  <p className="text-xs font-semibold text-slate-400 uppercase mb-1">
+                    Neuspjele prijave
+                  </p>
+                  <p className="text-sm text-slate-400">Uskoro</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-5 border border-dashed border-slate-300">
+                  <p className="text-xs font-semibold text-slate-400 uppercase mb-1">
+                    Greške sistema
+                  </p>
+                  <p className="text-sm text-slate-400">Uskoro (Sentry)</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-400 text-sm">Učitavanje...</p>
             )}
           </div>
         </>

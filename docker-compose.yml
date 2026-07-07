@@ -3,7 +3,7 @@
     image: postgres:16
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: smartbooking
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -21,7 +21,7 @@
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/smartbooking
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/smartbooking
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 60

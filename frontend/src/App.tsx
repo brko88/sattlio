@@ -31,12 +31,13 @@ import ComingSoon from "./pages/ComingSoon";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import Analytics from "./pages/Analytics";
 import Onboarding from "./pages/Onboarding";
+import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 
 const RESERVED_PATHS = new Set([
   "dashboard", "calendar", "appointments", "customers", "services",
   "employees", "working-hours", "settings", "create-tenant",
-  "onboarding", "my-appointments", "book", "admin",
+  "onboarding", "my-appointments", "book", "admin", "profile",
 ]);
 
 function PublicOrApp() {
@@ -149,6 +150,7 @@ function RoleRouter() {
       <Routes>
         <Route element={<CustomerLayout />}>
           <Route path="/my-appointments" element={<MyAppointments />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/book" element={<BookingLanding />} />
           <Route path="/book/:employeeId" element={<BookAppointment />} />
           <Route path="*" element={<Navigate to="/my-appointments" replace />} />
@@ -180,6 +182,7 @@ function App() {
 }
 
 export default App;
+
 
 
 

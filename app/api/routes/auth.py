@@ -27,6 +27,7 @@ from app.schemas.auth import (
     RefreshRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    ChangePasswordRequest,
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -228,3 +229,27 @@ def resend_verification(request: Request, db: Session = Depends(get_db), current
     send_verification_email(current_user.email, verification_token)
 
     return {"detail": "Verifikacijski email je ponovo poslan."}
+
+
+@router.post("/change-password")
+def change_password(
+    data: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Trenutna lozinka nije tacna.",
+        )
+
+    if len(data.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nova lozinka mora imati barem 8 karaktera.",
+        )
+
+    current_user.password_hash = hash_password(data.new_password)
+    db.commit()
+
+    return {"detail": "Lozinka je uspjesno promijenjena."}

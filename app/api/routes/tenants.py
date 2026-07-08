@@ -1,4 +1,4 @@
-import re
+﻿import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -24,8 +24,16 @@ class TenantUpdate(BaseModel):
 
 def slugify(name: str) -> str:
     slug = name.lower().strip()
+    # Transliteracija bosanskih/srpskih dijakritika u obicna slova
+    replacements = {
+        "č": "c", "ć": "c", "š": "s", "ž": "z", "đ": "dj",
+        "Č": "c", "Ć": "c", "Š": "s", "Ž": "z", "Đ": "dj",
+    }
+    for original, replacement in replacements.items():
+        slug = slug.replace(original, replacement)
     slug = re.sub(r"[^a-z0-9\s-]", "", slug)
     slug = re.sub(r"[\s-]+", "-", slug)
+    slug = slug.strip("-")
     return slug
 
 
@@ -38,7 +46,7 @@ def require_owner(db: Session, user_id: int, tenant_id: int):
     if role is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Samo vlasnik može mijenjati podešavanja.",
+            detail="Samo vlasnik moĹľe mijenjati podeĹˇavanja.",
         )
 
 
@@ -51,14 +59,14 @@ def create_tenant(
     if not current_user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email adresa mora biti potvrđena prije kreiranja poslovnog subjekta.",
+            detail="Email adresa mora biti potvrÄ‘ena prije kreiranja poslovnog subjekta.",
         )
 
     existing_jib = db.query(Tenant).filter(Tenant.jib == data.jib).first()
     if existing_jib is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Poslovni subjekat sa ovim JIB-om već postoji na platformi.",
+            detail="Poslovni subjekat sa ovim JIB-om veÄ‡ postoji na platformi.",
         )
 
     base_slug = slugify(data.name)
@@ -94,7 +102,7 @@ def create_tenant(
     db.add(owner_role)
     db.commit()
 
-    # Pošalji notifikaciju adminu
+    # PoĹˇalji notifikaciju adminu
     total_tenants = db.query(Tenant).count()
     owner_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
     send_new_tenant_notification(
@@ -120,7 +128,7 @@ def update_tenant(
 
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronaÄ‘en.")
 
     if data.slot_duration_minutes is not None:
         if data.slot_duration_minutes not in [15, 20, 30, 60]:

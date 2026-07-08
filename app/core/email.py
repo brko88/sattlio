@@ -77,3 +77,22 @@ def send_new_tenant_notification(
     except Exception as e:
         import logging
         logging.error(f"Notifikacija nije poslana: {e}")
+
+def send_employee_invitation_email(to_email: str, employee_name: str, tenant_name: str):
+    register_url = f"{settings.frontend_url}/register"
+    subject = f"Dodani ste kao zaposleni — {tenant_name}"
+    body = (
+        f"Pozdrav {employee_name},\n\n"
+        f"Dodani ste kao zaposleni u salon \"{tenant_name}\" na Sattlio platformi.\n\n"
+        f"Da biste pristupili svom rasporedu i rezervacijama, registrujte se "
+        f"koristeci OVU email adresu ({to_email}):\n"
+        f"{register_url}\n\n"
+        f"Vazno: obavezno se registrujte sa ovom email adresom, jer se tako "
+        f"automatski povezujete sa salonom.\n\n"
+        f"Ako mislite da je ovo greska, slobodno ignorisite ovaj email."
+    )
+    try:
+        send_email(to_email, subject, body)
+    except Exception as e:
+        import logging
+        logging.error(f"Employee invitation email nije poslan: {e}")

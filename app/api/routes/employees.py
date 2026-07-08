@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.email import send_employee_invitation_email
+from app.models.tenant import Tenant
 from app.models.employee import Employee
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
@@ -75,8 +77,17 @@ def create_employee(
             ))
 
     db.commit()
+    # Ako zaposleni jos nema nalog, posalji mu email da se registruje
+    if linked_user_id is None:
+        tenant = db.query(Tenant).filter(Tenant.id == data.tenant_id).first()
+        employee_full_name = f"{data.first_name} {data.last_name}".strip()
+        send_employee_invitation_email(
+            data.email,
+            employee_full_name,
+            tenant.name if tenant else "salon",
+        )
+
     db.refresh(new_employee)
-    return new_employee
 
     return new_employee
 
@@ -162,3 +173,4 @@ def delete_employee(
     db.commit()
 
     return {"detail": "Zaposleni je obrisan."}
+

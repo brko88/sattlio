@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import ShareSalonButton from "../components/ShareSalonButton";
 
 interface Employee {
   id: number;
@@ -191,6 +192,12 @@ function Dashboard() {
               <p className="text-3xl font-bold">{card.value}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-6 max-w-md">
+          <ShareSalonButton />
         </div>
       )}
     </div>

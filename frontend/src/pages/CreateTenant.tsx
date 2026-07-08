@@ -1,12 +1,12 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 
 const BUSINESS_CATEGORIES = [
   "Frizerski salon",
   "Barber salon",
-  "Kozmetički salon",
-  "Masažni studio",
+  "KozmetiÄŤki salon",
+  "MasaĹľni studio",
   "Manikir / Pedikir",
   "Tattoo studio",
   "Spa centar",
@@ -14,9 +14,9 @@ const BUSINESS_CATEGORIES = [
   "Ordinacija",
   "Fizioterapija",
   "Stomatologija",
-  "Servis računara",
+  "Servis raÄŤunara",
   "Servis mobilnih telefona",
-  "Automehaničar",
+  "AutomehaniÄŤar",
   "Vulkanizer",
   "Ostalo",
 ];
@@ -28,6 +28,7 @@ function CreateTenant() {
   const [phone, setPhone] = useState("");
   const [jib, setJib] = useState("");
   const [businessCategory, setBusinessCategory] = useState("");
+  const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -38,7 +39,7 @@ function CreateTenant() {
     const detail = err.response?.data?.detail;
     if (typeof detail === "string") return detail;
     if (Array.isArray(detail)) return detail.map((item) => item.msg || JSON.stringify(item)).join(" ");
-    return "Greška prilikom kreiranja salona.";
+    return "GreĹˇka prilikom kreiranja salona.";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,6 +56,7 @@ function CreateTenant() {
         phone: phone || null,
         jib,
         business_category: businessCategory || null,
+        description: description || null,
       });
 
       setTenantId(response.data.id);
@@ -91,16 +93,16 @@ function CreateTenant() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-white rounded-lg p-8 shadow-sm text-center">
-          <div className="text-green-500 text-5xl mb-4">✓</div>
+          <div className="text-green-500 text-5xl mb-4">âś“</div>
           <h2 className="text-xl font-bold text-slate-900 mb-2">
-            Salon je uspješno kreiran!
+            Salon je uspjeĹˇno kreiran!
           </h2>
           <p className="text-slate-500 mb-4">
-            Vaš salon je trenutno u statusu <span className="font-semibold text-amber-600">na čekanju</span>.
+            VaĹˇ salon je trenutno u statusu <span className="font-semibold text-amber-600">na ÄŤekanju</span>.
           </p>
           <p className="text-slate-400 text-sm">
-            Administrator platforme će pregledati vaše podatke i aktivirati salon u najkraćem roku.
-            Nakon aktivacije, vaš salon će biti vidljiv klijentima.
+            Administrator platforme Ä‡e pregledati vaĹˇe podatke i aktivirati salon u najkraÄ‡em roku.
+            Nakon aktivacije, vaĹˇ salon Ä‡e biti vidljiv klijentima.
           </p>
           <p className="text-slate-400 text-xs mt-4">
             Preusmjeravamo vas na dashboard za nekoliko sekundi...
@@ -117,12 +119,12 @@ function CreateTenant() {
           Kreiraj poslovni subjekt
         </h1>
         <p className="text-slate-500 mb-6">
-          Unesite podatke o vašem salonu ili poslovnom subjektu.
+          Unesite podatke o vaĹˇem salonu ili poslovnom subjektu.
         </p>
 
         {emailNotVerified && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-4 mb-6">
-            <p className="font-medium text-amber-800 text-sm">⚠️ Email nije potvrđen</p>
+            <p className="font-medium text-amber-800 text-sm">âš ď¸Ź Email nije potvrÄ‘en</p>
             <p className="text-amber-600 text-xs mt-1 mb-3">
               Morate potvrditi email adresu prije kreiranja poslovnog subjekta. 
               Provjerite inbox i spam folder.
@@ -136,11 +138,11 @@ function CreateTenant() {
                   await api.post("/api/v1/auth/resend-verification");
                   alert("Verifikacijski email je ponovo poslan.");
                 } catch {
-                  alert("Greška. Pokušajte se odjaviti i ponovo prijaviti.");
+                  alert("GreĹˇka. PokuĹˇajte se odjaviti i ponovo prijaviti.");
                 }
               }}
             >
-              Pošalji verifikacijski email ponovo →
+              PoĹˇalji verifikacijski email ponovo â†’
             </a>
           </div>
         )}
@@ -182,7 +184,7 @@ function CreateTenant() {
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
             />
             <p className="text-xs text-slate-400 mt-1">
-              Jedinstveni identifikacioni broj vašeg poslovnog subjekta
+              Jedinstveni identifikacioni broj vaĹˇeg poslovnog subjekta
             </p>
           </div>
 
@@ -215,6 +217,18 @@ function CreateTenant() {
               onChange={(e) => setPhone(e.target.value)}
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
             />
+          </div>
+          <div className="mb-4">
+            <textarea
+              placeholder="Kratak opis salona (opciono)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 resize-none"
+            />
+            <p className="text-xs text-slate-400 mt-1">
+              Prikazuje se na javnoj stranici vaseg salona.
+            </p>
           </div>
 
           {error && <p className="text-red-600 text-sm mb-3">{error}</p>}

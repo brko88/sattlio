@@ -86,6 +86,7 @@ def create_tenant(
         email=data.email,
         jib=data.jib,
         business_category=data.business_category,
+        description=data.description,
         verification_status="pending",
         plan="trial",
         trial_ends_at=datetime.now(timezone.utc) + timedelta(days=14),

@@ -18,6 +18,8 @@ from app.core.email import send_verification_email, send_password_reset_email
 from app.core.limiter import limiter
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
+from app.models.employee import Employee
+from app.models.user_tenant_role import UserTenantRole
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
@@ -75,6 +77,27 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Ako je ovaj email vec dodan kao zaposleni (bez naloga), povezi ga sad
+    pending_employees = db.query(Employee).filter(
+        Employee.email == new_user.email,
+        Employee.user_id == None,
+        Employee.is_deleted == False,
+    ).all()
+    for emp in pending_employees:
+        emp.user_id = new_user.id
+        existing_role = db.query(UserTenantRole).filter(
+            UserTenantRole.user_id == new_user.id,
+            UserTenantRole.tenant_id == emp.tenant_id,
+        ).first()
+        if existing_role is None:
+            db.add(UserTenantRole(
+                user_id=new_user.id,
+                tenant_id=emp.tenant_id,
+                role="employee",
+            ))
+    if pending_employees:
+        db.commit()
 
     send_verification_email(new_user.email, verification_token)
 
@@ -253,3 +276,4 @@ def change_password(
     db.commit()
 
     return {"detail": "Lozinka je uspjesno promijenjena."}
+

@@ -21,6 +21,7 @@ function Employees() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
@@ -54,10 +55,12 @@ function Employees() {
         first_name: firstName,
         last_name: lastName,
         phone: phone || null,
+        email: email,
       });
       setFirstName("");
       setLastName("");
       setPhone("");
+      setEmail("");
       fetchEmployees();
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom dodavanja zaposlenog.");
@@ -130,6 +133,19 @@ function Employees() {
         </div>
         <div className="mb-4">
           <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            Zaposleni se prijavljuje ovim emailom. Ako se registruje istim emailom, automatski dobija pristup salonu.
+          </p>
+        </div>
+        <div className="mb-4">
+          <input
             type="text"
             placeholder="Telefon (opciono)"
             value={phone}
@@ -160,6 +176,7 @@ function Employees() {
             <tr className="text-left bg-slate-50">
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Ime</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Prezime</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Email</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Telefon</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Online rezervacije</th>
@@ -185,6 +202,7 @@ function Employees() {
                         className="w-full px-2 py-1 border border-slate-200 rounded-md text-sm"
                       />
                     </td>
+                    <td className="px-4 py-2 text-slate-400 text-sm">{emp.email || "—"}</td>
                     <td className="px-4 py-2">
                       <input
                         value={editPhone}
@@ -225,6 +243,7 @@ function Employees() {
                   <>
                     <td className="px-4 py-3">{emp.first_name}</td>
                     <td className="px-4 py-3">{emp.last_name}</td>
+                    <td className="px-4 py-3 text-sm">{emp.email || "—"}</td>
                     <td className="px-4 py-3">{emp.phone || "—"}</td>
                     <td className="px-4 py-3">{emp.is_active ? "Aktivan" : "Neaktivan"}</td>
                     <td className="px-4 py-3">

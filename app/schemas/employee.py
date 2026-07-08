@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel
+﻿from pydantic import BaseModel, EmailStr
 
 
 class EmployeeCreate(BaseModel):
@@ -6,7 +6,7 @@ class EmployeeCreate(BaseModel):
     first_name: str
     last_name: str
     phone: str | None = None
-    email: str | None = None
+    email: EmailStr
 
 
 class EmployeeUpdate(BaseModel):

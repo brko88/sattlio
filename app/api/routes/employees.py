@@ -35,16 +35,48 @@ def create_employee(
 ):
     require_owner(db, current_user.id, data.tenant_id)
 
+    # Validacija: email ne smije vec biti dodijeljen drugom zaposlenom u istom salonu
+    existing_employee = db.query(Employee).filter(
+        Employee.tenant_id == data.tenant_id,
+        Employee.email == data.email,
+        Employee.is_deleted == False,
+    ).first()
+    if existing_employee is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ova email adresa je vec dodijeljena drugom zaposlenom.",
+        )
+
+    # Ako User sa ovim emailom vec postoji, povezi ga odmah
+    existing_user = db.query(User).filter(User.email == data.email).first()
+    linked_user_id = existing_user.id if existing_user else None
+
     new_employee = Employee(
         tenant_id=data.tenant_id,
+        user_id=linked_user_id,
         first_name=data.first_name,
         last_name=data.last_name,
         phone=data.phone,
         email=data.email,
     )
     db.add(new_employee)
+
+    # Ako je User povezan, dodijeli mu employee rolu za ovaj tenant (ako je vec nema)
+    if existing_user is not None:
+        existing_role = db.query(UserTenantRole).filter(
+            UserTenantRole.user_id == existing_user.id,
+            UserTenantRole.tenant_id == data.tenant_id,
+        ).first()
+        if existing_role is None:
+            db.add(UserTenantRole(
+                user_id=existing_user.id,
+                tenant_id=data.tenant_id,
+                role="employee",
+            ))
+
     db.commit()
     db.refresh(new_employee)
+    return new_employee
 
     return new_employee
 

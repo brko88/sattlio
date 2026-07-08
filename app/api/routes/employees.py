@@ -5,6 +5,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.email import send_employee_invitation_email
 from app.models.tenant import Tenant
+from app.core.plans import get_employee_limit
 from app.models.employee import Employee
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
@@ -36,6 +37,20 @@ def create_employee(
     current_user: User = Depends(get_current_user),
 ):
     require_owner(db, current_user.id, data.tenant_id)
+
+    # Provjeri limit broja radnika za trenutni plan salona
+    tenant_for_limit = db.query(Tenant).filter(Tenant.id == data.tenant_id).first()
+    employee_limit = get_employee_limit(tenant_for_limit.plan if tenant_for_limit else None)
+    if employee_limit is not None:
+        current_count = db.query(Employee).filter(
+            Employee.tenant_id == data.tenant_id,
+            Employee.is_deleted == False,
+        ).count()
+        if current_count >= employee_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Vas paket dozvoljava najvise {employee_limit} zaposlenih. Nadogradite paket za vise.",
+            )
 
     # Validacija: email ne smije vec biti dodijeljen drugom zaposlenom u istom salonu
     existing_employee = db.query(Employee).filter(
@@ -173,4 +188,5 @@ def delete_employee(
     db.commit()
 
     return {"detail": "Zaposleni je obrisan."}
+
 

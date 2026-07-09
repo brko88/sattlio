@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+﻿from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,6 +10,7 @@ from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.employee import Employee
 from app.models.service import Service
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.models.working_hours import WorkingHours
@@ -35,6 +36,45 @@ def require_member(db: Session, user_id: int, tenant_id: int):
             detail="Nemate pristup ovom poslovnom subjektu.",
         )
 
+
+def get_user_role(db: Session, user_id: int, tenant_id: int) -> str | None:
+    role = (
+        db.query(UserTenantRole)
+        .filter(
+            UserTenantRole.user_id == user_id,
+            UserTenantRole.tenant_id == tenant_id,
+        )
+        .first()
+    )
+    return role.role if role else None
+
+
+def require_can_modify_appointment(db: Session, current_user, appointment, action: str):
+    """
+    Owner/employee smiju sve. Customer smije samo otkazati SVOJ termin
+    (koji je sam kreirao), i ne smije oznaciti termin kao zavrsen.
+    """
+    role = get_user_role(db, current_user.id, appointment.tenant_id)
+    if role is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nemate pristup ovom poslovnom subjektu.",
+        )
+
+    if role in ("owner", "employee"):
+        return  # osoblje smije sve
+
+    # role == "customer" (ili slicno)
+    if action == "complete":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Klijent ne moze oznaciti termin kao zavrsen.",
+        )
+    if appointment.created_by_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Mozete otkazati samo vlastite rezervacije.",
+        )
 
 def check_working_hours(db: Session, tenant_id: int, employee_id: int, start_time: datetime, end_time: datetime):
     # Konvertuj u lokalno vrijeme za provjeru radnog vremena
@@ -82,7 +122,7 @@ def check_overlap(db: Session, employee_id: int, start_time: datetime, end_time:
     if overlapping is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Zaposleni je već zauzet u tom terminu.",
+            detail="Zaposleni je veÄ‡ zauzet u tom terminu.",
         )
 
 
@@ -111,6 +151,7 @@ def get_my_appointments(
     for a in appointments:
         service = db.query(Service).filter(Service.id == a.service_id).first()
         employee = db.query(Employee).filter(Employee.id == a.employee_id).first()
+        tenant = db.query(Tenant).filter(Tenant.id == a.tenant_id).first()
         result.append({
             "id": a.id,
             "employee_id": a.employee_id,
@@ -118,8 +159,9 @@ def get_my_appointments(
             "start_time": a.start_time,
             "end_time": a.end_time,
             "status": a.status,
-            "service_name": service.name if service else "—",
-            "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "—",
+            "service_name": service.name if service else "â€”",
+            "tenant_name": tenant.name if tenant else "-",
+            "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "â€”",
         })
 
     return result
@@ -142,7 +184,7 @@ def create_appointment(
     if start_time < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Termin ne može biti kreiran u prošlosti.",
+            detail="Termin ne moĹľe biti kreiran u proĹˇlosti.",
         )
 
     customer = db.query(Customer).filter(
@@ -216,12 +258,12 @@ def cancel_appointment(
     if appointment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rezervacija ne postoji.")
 
-    require_member(db, current_user.id, appointment.tenant_id)
+    require_can_modify_appointment(db, current_user, appointment, "cancel")
 
     if appointment.status in ("completed", "cancelled", "no_show"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Rezervacija sa statusom '{appointment.status}' ne može biti otkazana.",
+            detail=f"Rezervacija sa statusom '{appointment.status}' ne moĹľe biti otkazana.",
         )
 
     appointment.status = "cancelled"
@@ -241,12 +283,12 @@ def complete_appointment(
     if appointment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rezervacija ne postoji.")
 
-    require_member(db, current_user.id, appointment.tenant_id)
+    require_can_modify_appointment(db, current_user, appointment, "complete")
 
     if appointment.status in ("completed", "cancelled", "no_show"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Rezervacija sa statusom '{appointment.status}' ne može biti završena.",
+            detail=f"Rezervacija sa statusom '{appointment.status}' ne moĹľe biti zavrĹˇena.",
         )
 
     appointment.status = "completed"
@@ -254,3 +296,4 @@ def complete_appointment(
     db.refresh(appointment)
 
     return appointment
+

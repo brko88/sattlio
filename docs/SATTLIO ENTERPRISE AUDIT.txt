@@ -1,0 +1,1304 @@
+SMARTBOOKING / SATTLIO ENTERPRISE AUDIT — bez uljepšavanja
+Prvo jasno: audit radim na osnovu sadržaja koji sam uspio pročitati iz full_project_dump. Vidljiv dio dumpa sadrži stvarni FastAPI backend kod: app/main.py, admin rute, auth rute, appointments, public booking, tenants, customers, employees, services, working hours i special days. U dumpu se vidi i da je u export ušao __pycache__ binarni sadržaj, što je loš signal za kvalitet samog audit exporta i otežava statičku analizu. [hetzner.com]
+Najvažniji zaključak odmah:
+
+Ne bih odobrio puštanje SmartBooking/Sattlio u produkciju za prvih 100 salona u trenutnom stanju.
+
+Razlog nije zato što projekat izgleda loše. Naprotiv, vidi se da ima ozbiljan MVP: multi-tenant koncept, auth, refresh tokene, email verifikaciju, self-booking, radno vrijeme, special days, admin dashboard, trial/billing koncepte i rate-limit na neke auth rute. Ali trenutno postoje kritične rupe u RBAC-u i tenant izolaciji koje mogu dozvoliti customer korisniku da vidi ili mijenja podatke salona mnogo šire nego što smije. To je blocker za produkciju. [hetzner.com]
+
+Executive Summary
+Stanje projekta
+SmartBooking/Sattlio je funkcionalno već prešao nivo “demo aplikacije”. Ima:
+
+FastAPI backend sa modularnim rutama.
+SQLAlchemy pristup bazi.
+JWT access token + refresh token model.
+Multi-tenant poslovne subjekte.
+Role: owner, employee, customer; manager se ne vidi kao dosljedno implementiran u vidljivom backend kodu.
+Online self-booking.
+Public salon/employee/service/slot endpoint-e.
+Admin panel endpoint-e.
+Rate limit na register/login/forgot password/resend verification.
+Radno vrijeme i special day override.
+
+Međutim, arhitektura je trenutno tipični “feature-driven MVP”: dosta business logike je direktno u route handlerima, RBAC helperi su duplirani po fajlovima, nema jasnog service layer-a, nema centralizovane policy kontrole, nema repository sloja, a DTO/validation i business pravila su raštrkani. To je prihvatljivo za početni prototip, ali nije dovoljno sigurno za SaaS produkciju sa stvarnim korisnicima i ličnim podacima klijenata. [hetzner.com]
+Najveći blocker
+Najopasniji problem je da se u self-booking ruti korisniku automatski dodaje UserTenantRole(role="customer"), a više internih endpoint-a koristi samo require_member, što znači: bilo koji korisnik koji je “member” tenanta — uključujući customer — može potencijalno pristupiti endpoint-ima koji bi trebalo da budu samo za owner/manager/employee. Self-booking ruta dodaje customer rolu u tenant, a customers, appointments, working-hours, special-days i dio drugih ruta provjeravaju samo da rola postoji, ne i da ima odgovarajuću privilegiju. [hetzner.com]
+To znači da customer potencijalno može:
+
+vidjeti sve klijente salona preko /api/v1/customers,
+vidjeti sve termine salona preko /api/v1/appointments,
+kreirati interni appointment za proizvoljnog customer-a u tenant-u,
+gledati ili čak mijenjati working hours/special days ako endpoint dozvoljava member-a,
+dobiti pristup podacima koji nisu njegovi.
+
+To je Critical i mora se riješiti prije bilo kakve produkcije. [hetzner.com]
+
+1. Arhitektura
+Problem 1 — Business logika je u FastAPI rutama
+Prioritet: High
+Prije produkcije: Da, za kritične tokove auth/RBAC/booking obavezno.
+U vidljivom kodu route fajlovi rade skoro sve: validaciju, autorizaciju, query-je, business logiku, transakcije, generisanje tokena, slanje emailova i response oblikovanje. Primjeri su create_appointment, self_book_appointment, create_tenant, create_employee, create_or_update_working_hours. [hetzner.com]
+Zašto je problem:
+Kada route handler sadrži business logiku, teško je testirati pravila bez HTTP sloja, teško je garantovati konzistentnu autorizaciju, a isti obrazac autorizacije se kopira po fajlovima.
+Posljedice ako ostane:
+
+RBAC rupe se lako uvuku jer svaki fajl ima svoju verziju require_member ili require_owner.
+Refaktorisanje postaje skupo.
+Dodavanje manager role, multi-branch logike, plaćanja ili marketplace modula će biti bolno.
+Testovi će vjerovatno biti integracioni umjesto preciznih unit testova.
+
+Kako riješiti:
+Uvesti slojeve:
+Plain Textapp/  api/routes/  core/  domain/    appointments/      service.py      policies.py      repository.py      schemas.py    tenants/    customers/    employees/  infrastructure/    db/    email/    scheduler/Show more lines
+Posebno izdvojiti:
+
+AppointmentService
+BookingPolicy
+TenantAccessPolicy
+CustomerService
+EmployeeService
+WorkingHoursService
+AuthService
+RefreshTokenService
+
+
+Problem 2 — Duplirani RBAC helperi
+Prioritet: Critical
+Prije produkcije: Da.
+U više fajlova se vidi lokalna implementacija require_member ili require_owner: appointments, customers, services, working_hours, special_days, tenants, employees. Svaka implementacija provjerava drugačije nijanse i najčešće samo postojanje role. [hetzner.com]
+Zašto je problem:
+RBAC mora biti centralizovan. Ako nije, sigurnost zavisi od discipline u svakom endpoint-u.
+Posljedice:
+
+Customer može dobiti pristup internim podacima.
+Employee može raditi owner-only operacije ako neka ruta koristi pogrešan helper.
+Manager role se ne može dodati čisto.
+Nemoguće je lako auditirati dozvole.
+
+Kako riješiti:
+Napraviti centralni policy modul:
+Pythonclass TenantRole(str, Enum):    OWNER = "owner"    MANAGER = "manager"    EMPLOYEE = "employee"    CUSTOMER = "customer"def require_tenant_role(*allowed_roles):    ...def can_view_customers(role): ...def can_manage_schedule(role): ...def can_create_internal_appointment(role): ...def can_self_book(role): ...Show more lines
+I onda endpointi moraju eksplicitno reći:
+Pythoncurrent_role = require_tenant_role(db, user.id, tenant_id, ["owner", "manager", "employee"])Show more lines
+Nikako “member == bilo ko”.
+
+Problem 3 — Nema jasnog repository pattern-a
+Prioritet: Medium/High
+Prije produkcije: Nije blocker za prvih korisnika, ali jeste prije većeg scale-a.
+SQLAlchemy query-ji su direktno u rutama. Primjeri: admin analytics, appointments, tenant listing, customer listing. [hetzner.com]
+Zašto je problem:
+Query logika će se kopirati i širiti. Kasnije optimizacije, eager loading, caching i transakcije postaju teže.
+Kako riješiti:
+Uvesti repository sloj barem za:
+
+appointment repository,
+tenant repository,
+customer repository,
+employee repository,
+user/role repository.
+
+
+2. Backend FastAPI audit
+Problem 4 — Customer role može pristupiti internim customer endpoint-ima
+Prioritet: Critical
+Prije produkcije: Obavezno.
+U customers.py, get_customers koristi require_member, a require_member samo provjerava da postoji UserTenantRole za tenant_id. Nema zabrane za customer rolu. Endpoint vraća sve customer-e za tenant. [hetzner.com]
+Istovremeno, u public self-booking toku se korisniku automatski dodaje UserTenantRole(role="customer") za tenant. [hetzner.com]
+Zašto je problem:
+Customer koji jednom rezerviše termin može potencijalno pozvati /api/v1/customers?tenant_id=X i dobiti listu klijenata salona.
+Posljedice:
+
+Curenje ličnih podataka: imena, prezimena, telefoni, emailovi, notes.
+Potencijalni GDPR/privacy incident.
+Reputacijski i pravni rizik.
+Produkcijski blocker.
+
+Kako riješiti:
+GET /customers smije biti samo:
+
+owner,
+manager,
+employee.
+
+Customer mora imati poseban endpoint tipa:
+Plain TextGET /api/v1/me/appointmentsGET /api/v1/me/profileShow more lines
+Nikad generalni tenant customer list.
+
+Problem 5 — Customer može vidjeti sve termine salona
+Prioritet: Critical
+Prije produkcije: Obavezno.
+GET /api/v1/appointments koristi require_member, a zatim vraća sve appointments za tenant. Pošto self-booking dodaje customer rolu kao member-a, customer potencijalno može vidjeti sve termine salona. [hetzner.com]
+Zašto je problem:
+Appointment podaci mogu sadržati customer_id, employee_id, service_id, vremena termina i status. To je osjetljiv poslovni i lični podatak.
+Posljedice:
+
+Customer vidi tuđe rezervacije.
+Konkurencija ili zlonamjerni korisnik može pratiti promet salona.
+Kršenje privatnosti.
+
+Kako riješiti:
+Razdvojiti endpoint-e:
+Plain TextGET /appointments              -> owner/manager/employee onlyGET /appointments/my           -> customer vidi samo svojeGET /appointments/calendar     -> staff calendarShow more lines
+Za customer user-a obavezno filter:
+PythonAppointment.created_by_user_id == current_user.idShow more lines
+ili još bolje preko customer identity mapiranja.
+
+Problem 6 — Customer može kreirati interni appointment za proizvoljnog customer-a
+Prioritet: Critical
+Prije produkcije: Obavezno.
+POST /api/v1/appointments traži require_member, a zatim prima customer_id, employee_id, service_id, tenant_id. Pošto customer može postati member kroz self-booking, postoji rizik da customer kreira termin za drugog customer-a unutar istog tenant-a ako zna ili pogodi customer_id. [hetzner.com]
+Zašto je problem:
+Interni appointment endpoint treba biti staff-only. Self-booking endpoint treba biti zaseban i strogo vezan za current user-a.
+Posljedice:
+
+Neovlašteno kreiranje termina.
+Zagađenje kalendara salona.
+Mogući spam/DoS kroz kreiranje rezervacija.
+Privacy i integrity incident.
+
+Kako riješiti:
+POST /api/v1/appointments:
+
+owner/manager/employee only.
+
+POST /api/v1/public/appointments:
+
+current user može rezervisati samo za sebe.
+customer_id ne smije dolaziti iz requesta.
+backend sam određuje customer record.
+
+
+Problem 7 — Self-booking POST ne provjerava radno vrijeme i special day pravila
+Prioritet: Critical
+Prije produkcije: Obavezno.
+GET /public/employees/{employee_id}/slots računa slotove na osnovu radnog vremena, pauze, special day override-a, postojećih termina i trenutnog vremena. [hetzner.com]
+Ali POST /public/appointments direktno prima start_time, provjerava employee, service, past time i overlap, ali ne ponavlja provjeru da je termin unutar radnog vremena i ne primjenjuje special day zatvaranje/override. [hetzner.com]
+Zašto je problem:
+Frontend može prikazivati samo ispravne slotove, ali attacker može ručno poslati POST sa bilo kojim ISO datetime-om.
+Posljedice:
+
+Rezervacije izvan radnog vremena.
+Rezervacije na neradne dane.
+Rezervacije tokom pauze.
+Rezervacije na special day kada salon ne radi.
+Direktno narušavanje poslovnog procesa.
+
+Kako riješiti:
+U self_book_appointment obavezno pozvati istu domen logiku:
+PythonBookingPolicy.validate_bookable_slot(    tenant_id=employee.tenant_id,    employee_id=employee.id,    service_id=service.id,    start_time=start_time,    actor=current_user,    mode="self_booking")Show more lines
+Slot endpoint i booking endpoint moraju koristiti isti servis. Nikada ne vjerovati da je frontend izabrao validan slot.
+
+Problem 8 — Manual appointment create ignoriše special days
+Prioritet: High
+Prije produkcije: Da, ako special days postoje u MVP-u.
+create_appointment u appointments ruti poziva check_working_hours, ali ta funkcija provjerava standardni WorkingHours, ne SpecialDay. Public slot logika ima special day override. [hetzner.com]
+Zašto je problem:
+Ako je zaposlenom označen neradni dan/special day, interni appointment create i dalje može dozvoliti termin ako regularno radno vrijeme postoji.
+Posljedice:
+
+Nekonzistentan kalendar.
+Staff može napraviti termin na dan koji je zatvoren.
+Public i internal booking imaju različita pravila.
+
+Kako riješiti:
+Jedan AvailabilityService koji koristi:
+
+tenant timezone,
+working hours,
+special days,
+breaks,
+existing appointments,
+service duration,
+slot interval.
+
+I isti servis koristiti svuda.
+
+Problem 9 — Refresh token rotation ima race condition
+Prioritet: High
+Prije produkcije: Da.
+Refresh endpoint pronađe refresh token po hash-u, provjeri is_revoked, zatim ga setuje na revoked i commituje, pa issue-uje novi token. Nema SELECT ... FOR UPDATE, nema transaction boundary koji zaključava token red. [hetzner.com]
+Zašto je problem:
+Dva paralelna refresh requesta s istim tokenom mogu proći provjeru prije nego što jedan commit-uje revocation.
+Posljedice:
+
+Moguće izdavanje više novih refresh tokena iz jednog starog.
+Slabija detekcija token replay-a.
+Teže forenzičko praćenje kompromitovanog tokena.
+
+Kako riješiti:
+
+Zaključati refresh token red sa with_for_update().
+Rotaciju raditi u jednoj transakciji.
+Ako se već revoked token ponovo koristi, revoke all user sessions.
+Dodati jti, device metadata i IP/user-agent audit.
+
+
+Problem 10 — Password reset tokeni se čuvaju u plaintext-u
+Prioritet: High
+Prije produkcije: Da.
+Forgot/reset password koristi secrets.token_hex, upisuje token direktno u user.password_reset_token, a reset endpoint traži korisnika po tom tokenu. [hetzner.com]
+Zašto je problem:
+Ako baza procuri, reset tokeni se mogu odmah koristiti dok ne isteknu.
+Posljedice:
+
+Account takeover.
+Posebno opasno za owner/admin naloge.
+
+Kako riješiti:
+
+Čuvati samo hash reset tokena.
+Koristiti kratak expiry.
+Token jednokratno invalidirati.
+Poslije resetovanja revokovati sve refresh tokene korisnika.
+Rate-limit reset endpoint.
+
+
+Problem 11 — Login ne zahtijeva email verification
+Prioritet: Medium/High
+Prije produkcije: Preporučeno riješiti.
+login provjerava email/password i is_active, ali ne blokira email_verified == False. create_tenant zahtijeva verifikovan email, ali ostali tokovi mogu dozvoliti ne-verifikovanom korisniku korištenje dijelova sistema. [hetzner.com]
+Zašto je problem:
+Ako želiš pouzdanu identifikaciju korisnika i email-based ownership/customer matching, ne-verifikovani email je rizik.
+Kako riješiti:
+
+Ili blokirati login dok email nije verifikovan,
+ili dozvoliti login, ali blokirati sve osjetljive akcije dok email nije verified.
+
+
+3. Frontend React audit
+Napomena bez muljanja: iz vidljivog extracta imam potvrdu da repo/dump sadrži frontend dio, ali u prikazanom segmentu nisam dobio stvarni React kod. Zato ovdje ne tvrdim konkretne greške iz React komponenti; navodim produkcijske rizike koji direktno proizlaze iz backend API dizajna i koje frontend mora ispratiti. Vidim da je repo javno indeksiran kao Python/HTML/TypeScript/CSS projekat, sa frontend folderom na GitHub prikazu. [full_project_dump | Txt]
+Problem 12 — Frontend ne smije biti izvor istine za validnost slota
+Prioritet: Critical
+Prije produkcije: Da.
+Backend currently ima slot endpoint koji računa validne slotove, ali booking POST ne revalidira ista pravila. Ako frontend spriječi izbor pogrešnog slota, attacker i dalje može poslati ručni request. [hetzner.com]
+Rješenje:
+Frontend validation je UX, backend validation je security. Sve validacije moraju biti server-side.
+
+Problem 13 — Potrebno jasno razdvojiti staff UI i customer UI
+Prioritet: High
+Prije produkcije: Da.
+Zbog RBAC problema, frontend vjerovatno skriva neke ekrane po ulozi, ali backend trenutno ne garantuje sve te granice. Ako user ima customer rolu, API mora sam odbiti staff endpoint-e. [hetzner.com]
+Rješenje:
+
+Staff dashboard koristi samo staff-scoped endpoint-e.
+Customer portal koristi samo /me endpoint-e.
+UI role guard je dodatak, ne sigurnosna kontrola.
+
+
+4. PostgreSQL / DB audit
+Problem 14 — Potrebne su DB-level unique i integrity constraint kontrole
+Prioritet: High
+Prije produkcije: Da za kritične entitete.
+U vidljivom kodu postoje code-level provjere za JIB, slug, employee email u tenant-u i appointment overlap. Npr. create_tenant prvo provjerava postojeći JIB i slug, pa zatim insert; create_employee provjerava email po tenant-u; appointment overlap se provjerava query-jem. [hetzner.com]
+Zašto je problem:
+Code-level provjera bez DB constraint-a nije dovoljna pod konkurentnim requestima.
+Posljedice:
+
+Dupli slug.
+Dupli JIB.
+Dupli employee email.
+Dupli working hours za isti dan.
+Dvostruke rezervacije ako lock ne pokrije sve puteve.
+
+Kako riješiti u bazi:
+Minimalno:
+SQLUNIQUE (jib)UNIQUE (slug)UNIQUE (tenant_id, email) WHERE is_deleted = false -- employeesUNIQUE (tenant_id, employee_id, day_of_week) -- working_hoursUNIQUE (tenant_id, employee_id, date) -- special_daysINDEX appointments(employee_id, start_time, end_time)INDEX appointments(tenant_id, start_time)INDEX user_tenant_roles(user_id, tenant_id)UNIQUE user_tenant_roles(user_id, tenant_id)Show more lines
+Za appointment overlap u PostgreSQL-u još bolje:
+
+koristiti exclusion constraint sa tsrange/tstzrange,
+ili transakcijski lock + indeks + serializable za booking kritični dio.
+
+
+Problem 15 — N+1 query obrasci
+Prioritet: Medium/High
+Prije produkcije: Za MVP može, za 100+ salona treba popraviti najgore.
+get_my_appointments prvo dohvata appointments, pa u petlji za svaki appointment radi query za service, employee i tenant. To je klasičan N+1. get_my_tenants radi query tenant-a u petlji po roli. [hetzner.com]
+Posljedice:
+
+Sa 20 termina je OK.
+Sa 500+ termina postaje sporo.
+Sa mobile app-om i većim prometom baza trpi nepotrebno.
+
+Kako riješiti:
+
+joinedload, selectinload,
+ručni join query,
+DTO projection query.
+
+
+Problem 16 — Nema paginacije na list endpoint-ima
+Prioritet: High
+Prije produkcije: Da za admin i tenant/customer/appointments liste.
+Vidljivo je više endpoint-a koji rade .all() bez limit/offset/cursor: public tenants, employees, appointments, customers, admin users/tenants. [hetzner.com]
+Posljedice:
+
+Jedan request može povući hiljade redova.
+API response raste nekontrolisano.
+Admin dashboard može postati spor.
+Potencijalni DoS kroz skupe list endpoint-e.
+
+Rješenje:
+
+limit default 50, max 200.
+cursor pagination za appointments.
+filtriranje po datumu za calendar.
+obavezni date range za appointments.
+
+
+5. API audit
+Problem 17 — Preširoki endpoint-i po tenant_id parametru
+Prioritet: Critical/High
+Prije produkcije: Da.
+Mnogo endpoint-a prima tenant_id i onda koristi require_member. Pošto customer može postati member, parametar tenant_id postaje opasan ako endpoint nije role-restricted. [hetzner.com]
+Kako riješiti:
+
+Ne koristiti isti require_member za sve.
+Endpoint mora znati permission, ne samo tenant membership.
+Customer endpoint-i ne smiju primati proizvoljan tenant_id za interne resurse.
+
+
+Problem 18 — HTTP statusi uglavnom dobri, ali policy greške treba standardizovati
+Prioritet: Medium
+Prije produkcije: Nije blocker.
+Kod koristi 400, 401, 403, 404, 409 u dosta mjesta korektno. Npr. overlap vraća 409, unauthorized token vraća 401, role denial 403. [hetzner.com]
+Šta fali:
+
+Centralizovan exception handler.
+Standard error format:
+
+JSON{  "code": "APPOINTMENT_OVERLAP",  "message": "...",  "details": {}}Show more lines
+
+6. Sigurnost / OWASP audit
+A01 Broken Access Control — trenutno najveći rizik
+Prioritet: Critical
+Prije produkcije: Obavezno.
+Opisani customer/member problem je direktan Broken Access Control. To je najvažniji OWASP rizik ovog projekta. [hetzner.com]
+Fix prije produkcije:
+
+Centralizovati RBAC.
+Definisati permission matrix.
+Testirati svaki endpoint za svaku rolu.
+Dodati negative tests: customer ne smije listati customers/appointments/working-hours/admin.
+
+
+A02 Cryptographic Failures — reset/verification tokeni
+Prioritet: High
+Prije produkcije: Da.
+Reset token se čuva direktno. Verification token se takođe dodjeljuje direktno korisniku; u vidljivom kodu ne vidim expiry za verification token. [hetzner.com]
+Fix:
+
+Hash tokena u DB.
+Expiry.
+One-time use.
+Audit log po resetu.
+Revoke refresh tokens nakon password reset/change.
+
+
+A03 Injection
+Prioritet: Medium
+Prije produkcije: Provjeriti, nije vidljiv blocker.
+U vidljivom kodu većina DB pristupa koristi SQLAlchemy filtere, što smanjuje SQL injection rizik. Search koristi .ilike(f"%{search}%"), ali kroz SQLAlchemy param binding, ne ručni SQL string. [hetzner.com]
+Rizik ostaje:
+
+Ako negdje u nevidljivom dijelu ima raw SQL.
+Ako frontend renderuje user content bez escaping-a.
+
+
+A04 Insecure Design
+Prioritet: Critical
+Prije produkcije: Da.
+Najveći design propust: customer se tretira kao tenant member, a tenant member se tretira kao dovoljan za interne endpoint-e. To je design problem, ne samo bug. [hetzner.com]
+Pravi model:
+Customer ne bi trebao biti “member” salona u istom smislu kao owner/manager/employee. Bolje:
+Plain Texttenant_staff_membershipscustomer_profilescustomer_tenant_relationshipsShow more lines
+ili barem role-based policy koja customer-u skoro sve zabranjuje.
+
+A05 Security Misconfiguration
+Prioritet: Medium/High
+Prije produkcije: Da provjeriti.
+CORSMiddleware dozvoljava credentials, sve methods i sve headers, sa allow_origins=[settings.frontend_url]. To je OK ako je frontend_url striktan production origin. Ako u env-u bude wildcard ili pogrešan origin, rizik raste. [hetzner.com]
+Fix:
+
+Striktan production origin.
+Bez wildcard-a kada allow_credentials=True.
+Razdvojiti dev/prod config.
+Security headers na reverse proxyju: HSTS, X-Frame-Options/CSP, X-Content-Type-Options.
+
+
+A07 Identification and Authentication Failures
+Prioritet: High
+Prije produkcije: Da.
+Rate limiting postoji na register/login/forgot/resend, što je dobro. Ali refresh, reset-password, public slots i public appointments nemaju vidljiv rate-limit u prikazanom kodu. [hetzner.com]
+Fix:
+
+Rate-limit na:
+
+login,
+register,
+forgot,
+reset,
+refresh,
+public slots,
+public appointments,
+verification resend.
+
+
+Per IP + per account/email.
+Lockout ili progressive delay.
+
+
+7. RBAC audit
+Trenutno stanje
+Vidljive role:
+
+owner
+employee
+customer
+
+User request traži i manager, ali u vidljivim helperima se manager ne pojavljuje kao dosljedno podržana rola. require_owner dozvoljava samo owner, require_member dozvoljava bilo koju rolu, require_can_modify_appointment dozvoljava owner/employee sve, customer djelimično. [hetzner.com]
+Kritična permission matrica koju treba uvesti
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+AkcijaOwnerManagerEmployeeCustomerList all customers✅✅✅/ograničeno❌Create internal customer✅✅✅❌List all appointments✅✅✅/samo svoj kalendar❌Self-book own appointment✅ kao customer?✅ kao customer?✅ kao customer?✅Modify working hours✅✅❌/samo svoje ako dozvoliš❌Modify special days✅✅❌/samo svoje ako dozvoliš❌Manage employees✅✅ opciono❌❌Manage services✅✅❌❌Tenant settings✅❌/ograničeno❌❌Cancel own customer appointment✅✅✅✅ samo svojComplete appointment✅✅✅❌
+
+8. Docker i DevOps audit
+Napomena: vidljiv javni listing repozitorija potvrđuje Dockerfile, docker-compose.yml, requirements.txt, alembic.ini, alembic, test_suite i frontend folder.  U prikazanom code extractu nisam dobio sadržaj Dockerfile-a, zato neću izmišljati detalje njegove implementacije. [full_project_dump | Txt]
+Produkcijski DevOps minimum
+Prioritet: High
+Prije produkcije: Da.
+Za produkciju moraš imati:
+
+reverse proxy: Nginx/Caddy/Traefik,
+TLS automatski renew,
+PostgreSQL backup,
+log rotation,
+deployment rollback,
+migrations workflow,
+health check,
+monitoring,
+alerting,
+.env tajne van repozitorija,
+firewall,
+fail2ban ili ekvivalent,
+non-root container user,
+separate dev/prod config.
+
+Ako Dockerfile trenutno koristi jedan container za sve ili nema healthcheck/non-root user/multi-stage build, treba popraviti prije ozbiljne produkcije.
+
+9. Performance audit
+Najveća uska grla
+
+N+1 query-ji.
+.all() bez paginacije.
+Slot calculation po requestu bez cache-a.
+Admin analytics koji ručno iterira kroz rezultate umjesto agregacije u SQL-u.
+Synchronous SMTP pozivi u request flow-u.
+Booking transakcije koje zaključavaju employee red — bolje nego ništa, ali može postati bottleneck po popularnom zaposlenom.
+
+Vidljivo je da get_growth_analytics dohvaća datume pa bucketizuje u Pythonu, što je OK za male podatke, ali nije dobro za veću platformu. [hetzner.com]
+Šta uraditi
+
+SQL agregacije (date_trunc) umjesto Python bucketizacije.
+Paginacija.
+Eager loading.
+Redis cache za public tenant/service/employee listing.
+Background email queue.
+Indeksi za calendar queries.
+Query profiling prije produkcije.
+
+
+10. Scheduler i background jobs
+U vidljivom dijelu nema jasnog scheduler/background worker sistema. Emailovi se šalju direktno iz request flow-a: verification email, password reset email, employee invitation, new tenant notification. [hetzner.com]
+Problem 19 — Email u request-response toku
+Prioritet: High
+Prije produkcije: Da za pouzdanost.
+Zašto je problem:
+
+SMTP sporost usporava user request.
+SMTP failure može napraviti loš UX.
+Retry logika nije centralizovana.
+Nema queue-a, nema dead-letter logike.
+
+Kako riješiti:
+Za MVP:
+
+minimalno: background task u FastAPI za email.
+bolje: Redis + RQ/Celery/Arq.
+kasnije: dedicated worker service.
+
+
+11. QA audit — kako bih pokušao razbiti aplikaciju
+Kritični testovi koje treba odmah dodati
+RBAC negative testovi
+
+Customer napravi self-booking.
+Customer pozove GET /customers?tenant_id=....
+Customer pozove GET /appointments?tenant_id=....
+Customer pozove POST /appointments sa tuđim customer_id.
+Customer pozove POST /working-hours.
+Customer pozove POST /special-days.
+Employee pokuša manage services/employees.
+Manager, kad ga dodaš, pokuša svaki permission.
+
+Očekivanje: svi neovlašteni zahtjevi moraju vratiti 403.
+Booking edge cases
+
+Termin u prošlosti.
+Termin na neradni dan.
+Termin tokom pauze.
+Termin na special day closed.
+Termin koji počinje prije radnog vremena i završava unutar.
+Termin koji počinje unutar radnog vremena i završava poslije.
+Dva paralelna requesta za isti slot.
+DST promjena vremena.
+Service duration duži od radnog dana.
+Slot interval 20 min + service duration 45 min.
+
+Auth edge cases
+
+Dva paralelna refresh requesta.
+Reset token reused.
+Reset token expired.
+User blocked pa koristi postojeći access token.
+Password change ne revoke-uje existing refresh tokens.
+
+
+12. SaaS spremnost
+Da li je spremno za prve korisnike?
+Za zatvoreni pilot sa 1–3 prijateljska salona: možda, ako ručno kontrolišeš pristup i odmah popraviš RBAC customer problem.
+Za javni MVP: ne.
+Za 100 salona: ne.
+Glavni razlog: trenutni RBAC model može dovesti do curenja podataka između korisnika unutar istog salona, a možda i operativnih izmjena od strane customer role. To je produkcijski blocker. [hetzner.com]
+
+13. Skalabilnost
+Pretpostavke
+Pošto nema stvarnih produkcijskih metrika, koristim razumne pretpostavke:
+
+prosječno 5 zaposlenih po salonu,
+8–25 rezervacija dnevno po salonu,
+3–8 usluga po salonu,
+100–500 customer zapisa po salonu nakon nekog vremena,
+5–10% aktivnih staff korisnika u toku dana,
+public slot endpoint može biti najčešće pogođen,
+PostgreSQL na početku na istoj mašini.
+
+Ovo nisu egzaktne činjenice nego sizing model.
+Skaliranje po broju salona
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Broj salonaTrenutna arhitektura dovoljna?Prvo usko grloRedisDB odvojitiLoad balancerRizik20Da, nakon RBAC fix-aSMTP, N+1, backupsNe moraNeNeMedium100Tehnički da, ali samo nakon security fix-aDB query-ji bez paginacije, slot endpointPreporučenoJoš može zajednoNe moraHigh ako RBAC ostane300DjelimičnoPostgreSQL + API CPUDaPreporučenoJoš ne nužnoHigh500Ne bez optimizacijaDB, scheduler/email, analyticsDaDaMoždaHigh1.000Ne kao single-box monolitDB, background jobs, logsDaDaDaVery High5.000NeHorizontal API, DB tuning, queueDaDa, managed/dedicatedDaCritical bez redesign-a10.000Ne u trenutnoj formiMulti-region/partitioning/queueDaDa, ozbiljna DB arhitekturaDaNije realno bez platformskog rada
+CPU/RAM okvirno
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SaloniAPI CPURAM app+DBBazaScheduler/email202 vCPU ok4 GB okmalasync email još može, ali nije idealno1002–4 vCPU4–8 GBsrednjaqueue preporuka3004–8 vCPU8–16 GBtreba tuningqueue obavezno5008 vCPU16 GB+odvojiti DBworker obavezno1.0002+ API instance16–32 GB ukupnodedicated DBworker pool5.000horizontalno32–64 GB+dedicated/managedqueue + monitoring10.000platform architecture64 GB+ozbiljan HA plandistributed jobs
+
+14. Hetzner VPS preporuka
+Hetzner official cost-optimized cloud trenutno navodi CX23 sa 2 vCPU, 4 GB RAM, 40 GB SSD za max €5.99/mj, CX33 sa 4 vCPU, 8 GB RAM, 80 GB SSD za max €8.99/mj, CX43 sa 8 vCPU, 16 GB RAM, 160 GB SSD za max €16.49/mj i CX53 sa 16 vCPU, 32 GB RAM, 320 GB SSD za max €29.99/mj, cijene bez VAT-a.  Hetzner cijene su se mijenjale 2026; izvori navode povećanja cloud cijena u junu 2026, pa konačnu cijenu treba potvrditi u Hetzner konzoli prije kupovine. [hetzner.com] [northflank.com]
+Preporuka po nivou
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SaloniMinimalnoPreporučenoDB na istoj mašini?RedisMonitoringLB / više servera20CX23, 2 vCPU, 4 GB, 40 GBCX33, 4 vCPU, 8 GBDaNe moraBasicNe100CX33CX43Može, ako optimizuješPreporučenoDaNe mora300CX43CX53Bolje odvojitiDaDaMožda500CX53 + odvojeni DBAPI CX43 + DB CX43/CX53NeDaDaMožda/Da1.0002x API + dedicated DBLB + 2 API + DB + RedisNeDaObaveznoDa5.000Više serveraLB + API fleet + DB dedicated + Redis + workersNeDaObaveznoDa10.000Nije za single VPSozbiljna platformaNeDaObaveznoDa
+Da li je početni Hetzner VPS od oko 6 € dovoljan za MVP?
+Da, ali samo za tehnički mali MVP/pilot, ne za javni SaaS bez sigurnosnih popravki.
+CX23 klasa sa 2 vCPU / 4 GB RAM je dovoljna za:
+
+backend,
+frontend/proxy,
+PostgreSQL,
+mali broj salona,
+malu količinu termina,
+test/pilot.
+
+Ali nije dovoljan kao argument za produkcijsku spremnost. Produkcijski problem trenutno nije VPS snaga nego sigurnost i RBAC.
+
+15. Kvalitet koda
+Ocjena: 5.5/10
+Šta je dobro
+
+Kod je čitljiv na nivou route handlera.
+Business tokovi su razumljivi.
+Koristi se SQLAlchemy ORM.
+Postoje HTTPException statusi.
+Postoji rate limiting na neke auth endpoint-e.
+Appointment overlap ima pokušaj zaključavanja employee reda.
+Postoji soft delete za employees.
+Public slot generator je relativno pažljiv oko pauza, special days i existing bookings. [hetzner.com]
+
+Šta nije dobro
+
+Previše logike u rutama.
+RBAC kopiran i nedovoljno precizan.
+Nema centralnog permission sistema.
+Nema service/repository sloja.
+Nema konzistentne transakcijske strategije.
+Nema paginacije.
+N+1 query-ji.
+Email side effects u request flow-u.
+Ne postoji jasna domen granica između staff user-a i customer user-a.
+
+
+16. Budući razvoj
+Mobilne aplikacije
+Težina: Medium/High
+API mora prvo dobiti stabilne role-scoped endpoint-e. Mobile app će pojačati problem ako customer može zvati interne endpoint-e.
+Online plaćanja
+Težina: High
+Treba billing domain, webhook security, idempotency keys, invoice/payment state machine. Trenutni billing je više status/plan koncept nego payment-grade sistem.
+SMS notifikacije
+Težina: Medium
+Treba queue i notification service, ne slanje direktno iz requesta.
+Push notifikacije
+Težina: Medium/High
+Treba device tokens, opt-in, retry, worker.
+Marketplace modul
+Težina: High
+Public tenant/service model je početak, ali treba search, categories, ranking, location, reviews, merchant policies.
+AI funkcionalnosti
+Težina: Medium
+Moguće, ali treba data privacy i tenant isolation prvo.
+Više poslovnica
+Težina: High
+Trenutni tenant model izgleda kao jedan salon = tenant. Za multi-branch treba Branch/Location entitet ispod tenant-a.
+Više država, jezika i valuta
+Težina: Medium/High
+Već postoji timezone field u tenant update schema, ali dio logike hardkodira Europe/Sarajevo. To mora postati tenant-level timezone svuda. [hetzner.com]
+
+TOP 20 najvažnijih problema
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ProblemPrioritetPrije produkcije1Customer role tretirana kao običan tenant memberCriticalDa2Customer može potencijalno listati sve customersCriticalDa3Customer može potencijalno listati sve appointmentsCriticalDa4Customer može potencijalno kreirati internal appointmentCriticalDa5Self-book POST ne revalidira working hours/special daysCriticalDa6RBAC helperi duplirani i nekonzistentniCriticalDa7Manager role nije jasno implementiranHighDa ako je u MVP-u8Refresh token rotation race conditionHighDa9Password reset token plaintext u DBHighDa10Email u request flow-uHighPreporučeno11Nema paginacije na list endpoint-imaHighDa12N+1 query-jiMedium/HighZa 100+ salona13Special days nisu konzistentno primijenjeniHighDa14Nema centralnog service layer-aHighDjelimično15Nema centralnog permission matrix-aCriticalDa16Nema dokazane DB constraint zaštite od race-aHighDa provjeriti17Public slots/booking nemaju vidljiv rate limitHighDa18Hardkodiran timezone u booking logiciMediumPrije multi-country19Admin analytics radi Python bucketizacijuMediumKasnije20Export/repo uključuje __pycache__ u dumpLow/MediumOčistiti
+
+Šta OBAVEZNO riješiti prije prvih korisnika
+
+Centralizovati RBAC.
+Customer ne smije biti tretiran kao staff/member za interne endpoint-e.
+Zaključati /customers, /appointments, /working-hours, /special-days, /services, /employees po permission matrix-u.
+Self-book POST mora koristiti isti availability validator kao slot endpoint.
+Password reset token hash.
+Refresh token transakcijski lock.
+Paginacija za liste.
+Rate-limit za public slot i booking endpoint-e.
+DB unique/index constraint-i za kritične entitete.
+Test suite za RBAC negative cases.
+
+
+Šta može čekati verziju 2.0
+
+Marketplace.
+AI funkcionalnosti.
+Multi-country/multi-currency.
+Advanced analytics.
+Full CQRS/event-driven arhitektura.
+Horizontal scale.
+Dedicated worker fleet.
+Load balancer.
+Redis ako imaš manje od 100 salona i mali promet.
+Full observability stack ako testiraš pilot, ali za plaćene korisnike monitoring treba ranije.
+
+
+Šta je urađeno veoma dobro
+
+Multi-tenant koncept je već tu.
+Postoji odvojena public booking zona.
+Slot generator razmatra working hours, pauze, special days i postojeće termine. [hetzner.com]
+Appointment overlap koristi lock na employee redu — nije savršeno, ali vidi se svjesnost o concurrency problemu. [hetzner.com]
+Auth ima refresh token rotaciju i hash refresh tokena. [hetzner.com]
+Rate limiting postoji na login/register/forgot/resend. [hetzner.com]
+Admin dashboard/health koncept postoji. [hetzner.com]
+Trial/verification/billing status koncept postoji. [hetzner.com]
+
+
+Šta bi senior tim uradio drugačije
+Senior tim bi vjerovatno odmah uradio:
+
+Centralni RBAC/policy engine prije dodavanja feature-a.
+Domain services za booking, availability i tenant access.
+Strogo odvajanje staff membership od customer relationship.
+Database constraints prije UI polish-a.
+Booking kao transakcijski domain use-case.
+Email queue od početka.
+API pagination od početka.
+Test-first za RBAC.
+Observability minimum prije produkcije.
+DTO response modele koji ne izlažu nepotrebne podatke.
+
+
+Procjena tehničkog duga
+Tehnički dug: Medium/High
+Nije katastrofa. Projekat se može dovesti u dobro stanje bez kompletnog rewrite-a. Ali RBAC i booking domain treba refaktorisati prije nego što dodaješ još feature-a.
+Najveća opasnost: ako nastaviš dodavati funkcije preko postojećeg require_member obrasca, dug će eksplodirati.
+
+Održivost naredne 3 godine
+Ako ostane ovako
+Održavanje: 4/10
+Nakon 12–18 mjeseci dodavanje novih modula će biti sporo i rizično.
+Ako uradiš RBAC + service layer + DB constraints
+Održavanje: 7.5/10
+Projekat može živjeti 3 godine i rasti do ozbiljnog SaaS-a.
+
+Ocjene po oblastima
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+OblastOcjenaArhitektura5/10Backend6/10Frontend5/10, ograničena procjena jer frontend kod nije citljivo prikazan u extractuSigurnost3/10Baza5/10Performanse5/10Skalabilnost4/10DevOps5/10, ograničena procjena bez Dockerfile sadržajaKvalitet koda5.5/10Produkcijska spremnost3.5/10
+Ukupna production readiness ocjena
+3.5 / 10
+Ne zato što aplikacija ne radi, nego zato što sigurnosni model nije dovoljno zatvoren.
+
+Konačna CTO odluka
+Da sam CTO firme koja ulaže ozbiljan novac u ovaj SaaS, da li bih odobrio puštanje SmartBookinga u produkciju za prvih 100 salona?
+Ne.
+Ne bih odobrio produkciju za 100 salona u trenutnom stanju.
+Šta mora biti popravljeno prije mog odobrenja
+Minimalni CTO approval checklist:
+
+
+RBAC redesign
+
+customer nije isto što i staff member;
+svaki endpoint ima jasno definisane dozvole.
+
+
+
+Zatvoriti customer data leak
+
+customer ne smije listati sve customers;
+customer ne smije listati sve appointments;
+customer ne smije mijenjati working hours/special days.
+
+
+
+Booking validator
+
+POST booking mora revalidirati working hours, break, special day, service duration, overlap i tenant active status.
+
+
+
+Refresh token race fix
+
+with_for_update;
+replay detection;
+revoke-all on suspicious reuse.
+
+
+
+Password reset security
+
+hash reset tokena;
+revoke sessions after password reset/change.
+
+
+
+DB constraints
+
+unique role per user/tenant;
+unique slug/JIB;
+appointment indexes;
+working hours/special day uniqueness.
+
+
+
+Pagination
+
+all list endpoints.
+
+
+
+Rate limiting
+
+public booking;
+slots;
+reset;
+refresh.
+
+
+
+Automated tests
+
+RBAC negative tests su obavezni prije produkcije.
+
+
+
+Basic production ops
+
+
+
+backups;
+logging;
+deploy rollback;
+health checks;
+monitoring.
+
+Kada se ovo uradi, rekao bih da projekat može postati pristojan MVP za prvih 20–100 salona. Bez toga, rizik nije “možda će biti sporo”; rizik je curenje podataka i neovlaštene akcije.

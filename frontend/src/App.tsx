@@ -11,6 +11,7 @@ import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import BookAppointment from "./pages/BookAppointment";
 import SalonProfile from "./pages/SalonProfile";
+import { isReservedPath } from "./reservedPaths";
 
 import OwnerLayout from "./layouts/OwnerLayout";
 import EmployeeLayout from "./layouts/EmployeeLayout";
@@ -34,17 +35,10 @@ import Onboarding from "./pages/Onboarding";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 
-const RESERVED_PATHS = new Set([
-  "dashboard", "calendar", "appointments", "customers", "services",
-  "employees", "working-hours", "settings", "create-tenant",
-  "onboarding", "my-appointments", "book", "admin", "profile",
-]);
 
 function PublicOrApp() {
   const location = useLocation();
-  const firstSegment = location.pathname.split("/").filter(Boolean)[0] || "";
-
-  if (!RESERVED_PATHS.has(firstSegment)) {
+  if (!isReservedPath(location.pathname)) {
     return (
       <Routes>
         <Route path=":slug" element={<SalonProfile />} />
@@ -182,6 +176,7 @@ function App() {
 }
 
 export default App;
+
 
 
 

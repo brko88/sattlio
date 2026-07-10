@@ -1,0 +1,25 @@
+Zapisano. Evo svih ideja/stavki koje smo tokom sesija zapisali "za kasnije", grupisano:
+🔵 Veći blokovi / feature-i
+Beta → paid mehanizam
+beta_until globalni flag (svi besplatni + neograničeni radnici tokom bete), na kraju bete grace period 14 dana, sistem predloži paket na osnovu broja radnika ("imate 3 radnika → Start"), Paddle checkout. Koristi već postojeći billing_status + compute_is_active().
+Sajt-široka obavještenja/modali (admin CRUD)
+Za beta baner i "nova nadogradnja" poruke. Model + admin ekran + frontend modal sa "ne prikazuj danas" flag.
+Ručna izmjena sluga kroz Settings
+Da drugi "Salon Maja" ne mora imati ružan -2 sufiks. Uz upozorenje da stari link prestaje raditi.
+🟡 Srednje stavke (na aktivnoj listi za skoro)
+Rupa #1 — konflikt termina pri skraćivanju radnog vremena (verzija "upozori vlasnika")
+Rupa #2 — auto-expire termina (APScheduler + ponoćni job + no_show status/dugme) — zaseban dan
+Robusnija RESERVED_PATHS lista (centralni fajl)
+Najranije/najkasnije radno vrijeme svih salona (admin, za bezbjedan restart)
+🟢 Poboljšanja / dopune
+Share dugme na Employee prikazu (na Dashboard-u za owner već napravljeno, treba i kod radnika)
+"Prvi slobodan termin" prečica u self-bookingu (tvoja današnja ideja) — ~pola dana
+Customer ↔ User veza (Customer.user_id) — da klijent otkazuje svaki svoj termin, ne samo one koje je sam kreirao
+Cancel/complete/no_show na expired terminima (dio Rupe #2)⚙️ Tehničke optimizacije
+Email pozivi u pozadini (FastAPI BackgroundTasks) — kreiranje tenanta, verifikacija, pozivnica, reset lozinke svi trenutno blokiraju
+Encoding u bazi (Å iÅ¡anje → "Šišanje") — provjeriti da li se novi unosi kvare ili samo stari
+Landing cijene uskladiti sa plans.py (izvor istine)
+🆕 Iz ChatGPT audita (stvarno vrijedne)
+Javni /health endpoint · Paginacija na list endpointima · Soft delete pokrivenost (Customer) · Token cleanup (usput sa APScheduler) · Disaster recovery procedura · CORS pooštravanje
+
+Napomena: ovo su sve "kasnije" stavke — nijedna nije blocker. Tvoj MVP je funkcionalan. Kad se vratiš, glavni kandidati za sljedeći rad su Rupa #1/#2 (kvalitet termina) ili beta mehanizam (da možeš pustiti betu). Ostalo je dopuna.

@@ -1,6 +1,8 @@
-﻿venv/
+venv/
 __pycache__/
 *.pyc
 .env
 *.db
 .pytest_cache/
+full_project_dump.txt
+node_modules/

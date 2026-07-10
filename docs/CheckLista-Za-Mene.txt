@@ -1,153 +1,76 @@
-## 🔴 URGENTNO — ne čeka raspored, radi odmah
-
-☐ Ukloniti `.env` iz GitHub repo-a (git rm --cached + .gitignore) i rotirati sve kredencijale u njemu — ✅ URAĐENO
-☐ Sigurnosna provjera multi-tenant izolacije (IDOR) — svaki endpoint sa ID-jem u URL-u provjerava vlasništvo nad tenant_id
-
----
+## 🔴 URGENTNO — ne čeka raspored
+☑ Ukloniti .env iz GitHub repo-a + rotirati kredencijale — ✅ URAĐENO
+☑ IDOR sigurnosna provjera — ✅ URAĐENO (čisto)
 
 ## 🚀 30–14 dana prije lansiranja
 
 ### 🏗️ Produkcija
 ☐ VPS
 ☐ Cloudflare
-☐ SSL (Let's Encrypt)
-☐ Automatizovani backup baze
-☐ Backup upload-a (logo, slike zaposlenih...)
+☐ SSL (Let's Encrypt) / reverse proxy (HTTPS, security headers, gzip)
+☐ Automatizovani backup baze (dnevni pg_dump, više verzija, odvojena lokacija)
+☐ Backup upload-a (logo, slike zaposlenih)
 ☐ Monitoring disk prostora
 ☐ Test vraćanja (Restore) backup-a
+☐ Razdvojiti docker-compose.dev.yml / docker-compose.prod.yml (ukloniti bind mount-ove u prod)
+☐ Ne izlagati port 5432 javno u produkciji
 
 ### 🔒 Sigurnost
-☐ Promijeniti sve development lozinke — ✅ URAĐENO (DB, SMTP, SECRET_KEY)
+☑ Promijeniti dev lozinke — ✅ URAĐENO
+☑ Ukloniti hardkodirane kredencijale iz docker-compose.yml — ✅ URAĐENO
 ☐ Isključiti DEBUG mode
-☐ Provjeriti CORS
-☐ Provjeriti Rate Limiting
-☐ Dependency security scan (`pip list --outdated`, `npm audit`)
-☐ Ukloniti hardkodirane kredencijale iz `docker-compose.yml` (prebaci u `.env`) — ✅ URAĐENO
-☐ Ne izlagati port 5432 (baza) javno na VPS-u — ukloniti `ports: - "5432:5432"` za `db` servis u produkciji
+☐ Suziti CORS (allow_methods/headers) prije prod
+☐ Provjeriti da rate limiting pokriva SVE osjetljive endpointe (login/register već imaju slowapi)
+☐ Dependency security scan (pip list --outdated, npm audit)
+
+### 📊 Monitoring / Health
+☐ Javni GET /health endpoint (200 + SELECT 1 provjera baze) — za UptimeRobot, ~5 min
 
 ### 📧 Email infrastruktura
 ☐ SPF
 ☐ DKIM
 ☐ DMARC
-☐ Email sa vlastitog domena (npr. info@sattlio.ba umjesto Gmail adrese)
+☐ Email sa vlastitog domena (info@sattlio.ba)
+☐ Email pozivi u pozadini (BackgroundTasks — trenutno blokiraju odgovor)
 
-### 💳 Naplata (ako lansiraš sa aktivnom naplatom, ne samo trial)
-☐ Paddle integracija završena
-☐ Webhook-ovi testirani (uspješno plaćanje, neuspjelo plaćanje, otkazivanje)
-☐ Test kompletnog flow-a: trial → plaćanje → aktivan nalog
-☐ Test neuspjelog plaćanja → ispravan status naloga
+### 💳 Naplata (Faza 3 — Paddle)
+☐ Paddle integracija
+☐ Webhook-ovi testirani (uspješno/neuspješno plaćanje, otkazivanje)
+☐ Test flow: trial/beta → plaćanje → aktivan nalog
 
----
-
-## 14–7 dana prije lansiranja
+## 🚀 14–7 dana prije lansiranja
 
 ### 📜 Pravni dokumenti
 ☐ Privacy Policy
 ☐ Terms of Service
 ☐ Cookie Policy
 ☐ Cookie Consent Banner
-☐ Mehanizam za zahtjev brisanja/izvoza ličnih podataka (ne samo tekst u dokumentu — stvaran proces/email/endpoint)
-☐ Impressum / kontakt podaci firme (naziv, JIB, adresa) — vidljivo na sajtu
-
-Napomena: BiH ima Zakon o zaštiti ličnih podataka (sličan GDPR-u). Google Analytics, Meta Pixel i Microsoft Clarity koriste kolačiće, zbog čega prije njihove aktivacije treba imati Cookie Consent Banner i odgovarajuće pravne dokumente.
+☐ Mehanizam za brisanje/izvoz ličnih podataka
+☐ Impressum / kontakt podaci firme (naziv, JIB, adresa)
 
 ### 🧪 Testiranje
-☐ Opsežno testiranje kompletne platforme
-☐ Testiranje na Android uređajima
-☐ Testiranje na iPhone uređajima
-☐ Testiranje u Chrome, Edge i Safari preglednicima
+☐ Opsežno testiranje cijele platforme
+☐ Android / iPhone
+☐ Chrome / Edge / Safari
 
----
+## 🧹 Čišćenje podataka (par dana prije)
+☐ Backup baze PRIJE brisanja
+☐ Obrisati test termine/zaposlene/usluge/tenante/naloge
+☐ Promijeniti superadmin email/lozinku
+☐ Ažurirati ADMIN_EMAIL u email.py
+☐ Popraviti encoding u bazi (Šišanje umjesto Å iÅ¡anje) — provjeriti da li se NOVI unosi kvare ili samo stari
 
-## 🧹 Čišćenje podataka (nekoliko dana prije lansiranja, sa vremenom da se ispravi ako nešto pođe po zlu)
+## 🚀 Dan prije lansiranja
+☐ Aktivirati Sentry (24-48h ranije)
+☐ Aktivirati UptimeRobot (24h ranije)
+☐ Provjeriti backup, SSL, email
+☐ Test: registracija, rezervacija, self-booking, PWA, admin panel
 
-☐ Napraviti backup baze PRIJE brisanja
-☐ Obrisati sve test rezervacije/termine
-☐ Obrisati test zaposlene, usluge, radno vrijeme vezano za test salone
-☐ Obrisati sve test tenante (saloni: "Tes", "TESTMAIL", itd.) — poštovati redoslijed FK veza (appointments → employees/services/working_hours → user_tenant_roles → tenants → users)
-☐ Obrisati sve test korisničke naloge (boris.kalamanda+v*@gmail.com i slične)
-☐ Promijeniti email i lozinku glavnog superadmin naloga (ako je trenutno testni/development nalog)
-☐ Provjeriti da ne postoji više od jednog superadmin naloga bez razloga
-☐ Ažurirati `ADMIN_EMAIL` konstantu u `app/core/email.py` ako se mijenja adresa za notifikacije
-
----
-
-## Dan prije lansiranja
-
-☐ Aktivirati Sentry (bar 24-48h ranije, da uhvati bagove tokom tvog testiranja)
-☐ Aktivirati UptimeRobot (bar 24h ranije, da potvrdiš da monitoring radi)
-☐ Provjeriti backup
-☐ Provjeriti SSL
-☐ Provjeriti slanje emailova
-☐ Test registracije
-☐ Test rezervacije
-☐ Test self-bookinga
-☐ Test PWA instalacije
-☐ Test Admin panela
-
----
-
-## Dan lansiranja
-
+## 🚀 Dan lansiranja
 ☐ Google Analytics 4
 ☐ Google Search Console
 ☐ Meta Pixel
-☐ Finalna smoke-test provjera (5 ključnih flow-ova) nakon svakog deploya, ubuduće standardna praksa ne samo za lansiranje
 
----
-
-## Prva sedmica nakon lansiranja
-
-Provjeravati svaki dan:
-☐ Broj novih salona
-☐ Broj novih registracija
-☐ Broj rezervacija
-☐ Greške u Sentry-u
-☐ Status backup-a
-☐ Iskorištenost CPU-a, RAM-a i diska
-☐ Prijavljene bugove
-☐ Email isporuku (da ne završava u Spam folderu)
-
----
-
-## Prvi mjesec nakon lansiranja
-
-☐ Analizirati Google Analytics
-☐ Analizirati Search Console
-☐ Najčešće prijavljene bugove
-☐ Povratne informacije korisnika
-☐ Optimizacija performansi
-
----
-
-## 📌 Kasnije
-
-### UX i analitika
-☐ Microsoft Clarity
-☐ Plausible Analytics
-
-### DevOps
-☐ GitHub Actions (CI/CD)
-☐ Cloudflare R2 (slike i upload-ovi)
-
----
-
-## 🎯 Prvi pravi korisnici (1–5 salona)
-
-☐ Aktivno pratiti njihovo korištenje
-☐ Zabilježiti svaku sugestiju
-☐ Ispraviti kritične bugove u roku od 24 sata
-☐ Ne dodavati nove velike funkcionalnosti dok se ne stabilizuje MVP
-
----
-
-## ⭐ Prioriteti — rezime
-
-🔴 **Kritično (bez ovoga ne lansirati):**
-IDOR provjera, Produkcija (VPS, SSL, Cloudflare), Backup + Restore test, Sigurnost, Čišćenje test podataka, Pravni dokumenti, Email autentifikacija (SPF/DKIM/DMARC), Naplata (ako je aktivna od starta), Završno testiranje
-
-🟡 **Vrlo važno (isti ili naredni dan):**
-Google Analytics 4, Search Console, Sentry, UptimeRobot, Meta Pixel
-
-🟢 **Važno, ali može čekati nekoliko sedmica:**
-Microsoft Clarity, Plausible, GitHub Actions, Cloudflare R2
+## 🚀 Prva sedmica / prvi mjesec — kao ranije
+## 📌 Kasnije: Microsoft Clarity, Plausible, GitHub Actions, Cloudflare R2
+## 🎯 Prvi pravi korisnici (1-5 salona) — pratiti, feedback, brzi fix bugova

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
 from app.models.appointment import Appointment
 from app.models.customer import Customer
@@ -13,7 +14,6 @@ from app.models.service import Service
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
-from app.models.working_hours import WorkingHours
 from app.core.email import send_appointment_cancelled_email
 from app.schemas.appointment import AppointmentCreate, AppointmentResponse, CancelAppointmentRequest
 
@@ -81,29 +81,27 @@ def check_working_hours(db: Session, tenant_id: int, employee_id: int, start_tim
     # Konvertuj u lokalno vrijeme za provjeru radnog vremena
     local_start = start_time.astimezone(TZ)
     local_end = end_time.astimezone(TZ)
-    day_of_week = local_start.weekday()
 
-    wh = (
-        db.query(WorkingHours)
-        .filter(
-            WorkingHours.tenant_id == tenant_id,
-            WorkingHours.employee_id == employee_id,
-            WorkingHours.day_of_week == day_of_week,
-        )
-        .first()
-    )
+    hours = get_effective_hours(db, tenant_id, employee_id, local_start.date())
 
-    if wh is None or not wh.is_working_day:
+    if not hours.is_working_day:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Zaposleni ne radi tog dana.",
         )
 
-    if local_start.time() < wh.start_time or local_end.time() > wh.end_time:
+    if local_start.time() < hours.start_time or local_end.time() > hours.end_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Termin je izvan radnog vremena zaposlenog.",
         )
+
+    if hours.break_start and hours.break_end:
+        if local_start.time() < hours.break_end and local_end.time() > hours.break_start:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Termin se preklapa sa pauzom zaposlenog.",
+            )
 
 
 def check_overlap(db: Session, employee_id: int, start_time: datetime, end_time: datetime):

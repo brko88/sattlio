@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.models.employee import Employee
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.models.working_hours import WorkingHours
@@ -23,13 +24,49 @@ def require_member(db: Session, user_id: int, tenant_id: int):
         )
 
 
+def require_can_manage_hours(db: Session, current_user: User, tenant_id: int, employee_id: int):
+    """
+    Owner smije upravljati radnim vremenom bilo kog zaposlenog.
+    Employee smije upravljati SAMO svojim radnim vremenom, i samo ako
+    mu je vlasnik dodijelio can_manage_own_hours dozvolu.
+    """
+    role = db.query(UserTenantRole).filter(
+        UserTenantRole.user_id == current_user.id,
+        UserTenantRole.tenant_id == tenant_id,
+    ).first()
+    if role is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nemate pristup ovom poslovnom subjektu.",
+        )
+    if role.role == "owner":
+        return
+
+    employee = db.query(Employee).filter(
+        Employee.id == employee_id, Employee.tenant_id == tenant_id
+    ).first()
+    if employee is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zaposleni nije pronađen.")
+
+    if role.role != "employee" or employee.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Možete upravljati samo svojim radnim vremenom.",
+        )
+    if not employee.can_manage_own_hours:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nemate dozvolu da mijenjate svoje radno vrijeme. Obratite se vlasniku.",
+        )
+
+
 @router.post("", response_model=WorkingHoursResponse)
 def create_or_update_working_hours(
     data: WorkingHoursCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_member(db, current_user.id, data.tenant_id)
+    require_can_manage_hours(db, current_user, data.tenant_id, data.employee_id)
 
     # Provjeri validnost pauze
     if data.break_start and data.break_end:
@@ -103,7 +140,7 @@ def delete_working_hours(
     if wh is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Radno vrijeme nije pronađeno.")
 
-    require_member(db, current_user.id, wh.tenant_id)
+    require_can_manage_hours(db, current_user, wh.tenant_id, wh.employee_id)
 
     db.delete(wh)
     db.commit()

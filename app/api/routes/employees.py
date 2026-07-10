@@ -162,6 +162,8 @@ def update_employee(
         employee.email = data.email
     if data.allow_self_booking is not None:
         employee.allow_self_booking = data.allow_self_booking
+    if data.can_manage_own_hours is not None:
+        employee.can_manage_own_hours = data.can_manage_own_hours
 
     db.commit()
     db.refresh(employee)

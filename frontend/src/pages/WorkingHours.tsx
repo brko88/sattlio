@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import { formatDateTime as formatApptDateTime } from "../utils/time";
 
 interface Employee {
   id: number;
+  user_id: number | null;
   first_name: string;
   last_name: string;
+  can_manage_own_hours: boolean;
 }
 
 interface WorkingHour {
@@ -27,6 +30,16 @@ interface SpecialDay {
   note: string | null;
 }
 
+interface ConflictingAppointment {
+  id: number;
+  start_time: string;
+  end_time: string;
+  customer_name: string;
+  customer_phone: string | null;
+  customer_has_email: boolean;
+  service_name: string;
+}
+
 const DAYS = [
   "Ponedjeljak", "Utorak", "Srijeda", "Četvrtak",
   "Petak", "Subota", "Nedjelja",
@@ -36,8 +49,9 @@ const formatTime = (time: string) => time.slice(0, 5);
 const isValidTime = (time: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
 
 function WorkingHours() {
-  const { tenantId } = useTenant();
+  const { tenantId, currentRole } = useTenant();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [hours, setHours] = useState<WorkingHour[]>([]);
   const [specialDays, setSpecialDays] = useState<SpecialDay[]>([]);
@@ -61,11 +75,31 @@ function WorkingHours() {
   const [specialStart, setSpecialStart] = useState("09:00");
   const [specialEnd, setSpecialEnd] = useState("17:00");
   const [specialNote, setSpecialNote] = useState("");
+  const [conflicts, setConflicts] = useState<ConflictingAppointment[] | null>(null);
+  const [confirmingSpecialDay, setConfirmingSpecialDay] = useState(false);
 
   const fetchEmployees = async () => {
     const response = await api.get("/api/v1/employees", { params: { tenant_id: tenantId } });
     setEmployees(response.data);
   };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await api.get("/api/v1/auth/me");
+      setCurrentUserId(response.data.id);
+    } catch {
+      // ignore
+    }
+  };
+
+  const isOwner = currentRole === "owner";
+  const myEmployee = employees.find((e) => e.user_id === currentUserId) || null;
+  const canManageSelected = isOwner
+    ? true
+    : selectedEmployeeId !== "" &&
+      myEmployee !== null &&
+      String(myEmployee.id) === selectedEmployeeId &&
+      myEmployee.can_manage_own_hours;
 
   const fetchHours = async (employeeId: string) => {
     if (!employeeId) return;
@@ -91,7 +125,13 @@ function WorkingHours() {
     }
   };
 
-  useEffect(() => { fetchEmployees(); }, [tenantId]);
+  useEffect(() => { fetchEmployees(); fetchCurrentUser(); }, [tenantId]);
+
+  useEffect(() => {
+    if (!isOwner && myEmployee && selectedEmployeeId === "") {
+      setSelectedEmployeeId(String(myEmployee.id));
+    }
+  }, [isOwner, myEmployee, selectedEmployeeId]);
 
   useEffect(() => {
     fetchHours(selectedEmployeeId);
@@ -159,9 +199,20 @@ function WorkingHours() {
     } finally { setCopying(false); }
   };
 
+  const buildSpecialDayPayload = (force: boolean) => ({
+    tenant_id: tenantId,
+    employee_id: parseInt(selectedEmployeeId),
+    date: specialDate,
+    is_working_day: specialIsWorking,
+    start_time: specialIsWorking ? specialStart + ":00" : null,
+    end_time: specialIsWorking ? specialEnd + ":00" : null,
+    note: specialNote || null,
+    force,
+  });
+
   const handleAddSpecialDay = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(""); setSuccessMessage("");
+    setError(""); setSuccessMessage(""); setConflicts(null);
 
     if (!specialDate) { setError("Odaberite datum."); return; }
     if (specialIsWorking) {
@@ -170,20 +221,46 @@ function WorkingHours() {
     }
 
     try {
-      await api.post("/api/v1/special-days", {
-        tenant_id: tenantId,
-        employee_id: parseInt(selectedEmployeeId),
-        date: specialDate,
-        is_working_day: specialIsWorking,
-        start_time: specialIsWorking ? specialStart + ":00" : null,
-        end_time: specialIsWorking ? specialEnd + ":00" : null,
-        note: specialNote || null,
-      });
+      const response = await api.post("/api/v1/special-days", buildSpecialDayPayload(false));
+      if (!response.data.saved) {
+        setConflicts(response.data.conflicts);
+        return;
+      }
       setSuccessMessage("Specijalni dan sačuvan.");
       setSpecialDate(""); setSpecialNote(""); setSpecialIsWorking(false);
       fetchSpecialDays(selectedEmployeeId);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška.");
+    }
+  };
+
+  const handleConfirmSpecialDay = async () => {
+    setConfirmingSpecialDay(true);
+    setError("");
+    try {
+      const response = await api.post("/api/v1/special-days", buildSpecialDayPayload(true));
+      const cancelledList: ConflictingAppointment[] = response.data.conflicts || [];
+      if (cancelledList.length > 0) {
+        const withoutEmail = cancelledList.filter((c) => !c.customer_has_email);
+        let msg = `Specijalni dan sačuvan. Otkazano ${cancelledList.length} termin(a).`;
+        if (withoutEmail.length > 0) {
+          msg += ` ${withoutEmail.length} klijent(a) NEMA email — kontaktirajte ručno: ` +
+            withoutEmail.map((c) => `${c.customer_name}${c.customer_phone ? ` (${c.customer_phone})` : " (nema ni telefon)"}`).join(", ");
+        } else {
+          msg += " Svi klijenti su obaviješteni mailom.";
+        }
+        setSuccessMessage(msg);
+      } else {
+        setSuccessMessage("Specijalni dan sačuvan.");
+      }
+      setConflicts(null);
+      setSpecialDate(""); setSpecialNote(""); setSpecialIsWorking(false);
+      fetchSpecialDays(selectedEmployeeId);
+      fetchHours(selectedEmployeeId);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška.");
+    } finally {
+      setConfirmingSpecialDay(false);
     }
   };
 
@@ -203,18 +280,31 @@ function WorkingHours() {
 
       <div className="bg-white rounded-lg p-6 shadow-sm mb-6 max-w-md">
         <label className="block text-sm font-medium text-slate-500 mb-2">Zaposleni</label>
-        <select value={selectedEmployeeId} onChange={(e) => setSelectedEmployeeId(e.target.value)}
-          className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500">
-          <option value="">Izaberi zaposlenog</option>
-          {employees.map((emp) => (
-            <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
-          ))}
-        </select>
+        {isOwner ? (
+          <select value={selectedEmployeeId} onChange={(e) => setSelectedEmployeeId(e.target.value)}
+            className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500">
+            <option value="">Izaberi zaposlenog</option>
+            {employees.map((emp) => (
+              <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+            ))}
+          </select>
+        ) : myEmployee ? (
+          <p className="text-slate-700 font-medium">{myEmployee.first_name} {myEmployee.last_name} (vi)</p>
+        ) : (
+          <p className="text-slate-400 text-sm">Niste povezani ni sa jednim zaposlenim u ovom salonu.</p>
+        )}
       </div>
+
+      {!isOwner && myEmployee && !myEmployee.can_manage_own_hours && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6 max-w-md text-sm text-amber-800">
+          Nemate dozvolu da mijenjate svoje radno vrijeme. Obratite se vlasniku salona da vam omogući ovu opciju u podešavanjima zaposlenih. Ispod možete pregledati trenutno radno vrijeme.
+        </div>
+      )}
 
       {selectedEmployeeId && (
         <>
           {/* Forma za radno vrijeme */}
+          {canManageSelected && (
           <form onSubmit={handleAdd} className="bg-white rounded-lg p-6 shadow-sm mb-4 max-w-md">
             <h3 className="text-lg font-semibold mb-4">Dodaj / izmijeni radno vrijeme</h3>
 
@@ -269,8 +359,10 @@ function WorkingHours() {
               Sačuvaj za odabrani dan
             </button>
           </form>
+          )}
 
           {/* Copy sekcija */}
+          {canManageSelected && (
           <div className="bg-white rounded-lg p-6 shadow-sm mb-6 max-w-md">
             <h3 className="text-lg font-semibold mb-1">Kopiraj radno vrijeme</h3>
             <p className="text-sm text-slate-500 mb-4">Kopiraj trenutno uneseno radno vrijeme ({startTime} — {endTime}) na:</p>
@@ -287,6 +379,7 @@ function WorkingHours() {
               </button>
             </div>
           </div>
+          )}
 
           {/* Tabela radnog vremena */}
           <h3 className="text-lg font-semibold mb-3">Trenutno radno vrijeme</h3>
@@ -311,10 +404,12 @@ function WorkingHours() {
                     <td className="px-4 py-3">{formatTime(h.end_time)}</td>
                     <td className="px-4 py-3">{h.break_start && h.break_end ? formatTime(h.break_start) + " — " + formatTime(h.break_end) : "—"}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => handleDelete(h.id)}
-                        className="px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors">
-                        Obriši
-                      </button>
+                      {canManageSelected && (
+                        <button onClick={() => handleDelete(h.id)}
+                          className="px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors">
+                          Obriši
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -323,9 +418,12 @@ function WorkingHours() {
           )}
 
           {/* Specijalni dani */}
+          {canManageSelected && (
           <div className="bg-white rounded-lg p-6 shadow-sm mb-6 max-w-md">
-            <h3 className="text-lg font-semibold mb-1">Specijalni dani</h3>
-            <p className="text-sm text-slate-500 mb-4">Praznici, godišnji odmor, privremene izmjene rasporeda.</p>
+            <h3 className="text-lg font-semibold mb-1">Specijalni dani — skraćivanje/otkazivanje za JEDAN dan</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Ovdje privremeno mijenjate radno vrijeme samo za odabrani datum (npr. hitna obaveza, ljekar, godišnji odmor) — ne utiče na ostale sedmice. Ako postoje rezervacije koje više ne staju u novo vrijeme, sistem će vas upozoriti i tražiti potvrdu prije nego što ih automatski otkaže i obavijesti klijente mailom.
+            </p>
 
             <form onSubmit={handleAddSpecialDay} className="space-y-3">
               <div>
@@ -365,6 +463,7 @@ function WorkingHours() {
               </button>
             </form>
           </div>
+          )}
 
           {/* Lista specijalnih dana */}
           {specialDays.length > 0 && (
@@ -392,10 +491,12 @@ function WorkingHours() {
                       <td className="px-4 py-3">{sd.start_time && sd.end_time ? formatTime(sd.start_time) + " — " + formatTime(sd.end_time) : "—"}</td>
                       <td className="px-4 py-3 text-slate-500">{sd.note || "—"}</td>
                       <td className="px-4 py-3">
-                        <button onClick={() => handleDeleteSpecialDay(sd.id)}
-                          className="px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors">
-                          Obriši
-                        </button>
+                        {canManageSelected && (
+                          <button onClick={() => handleDeleteSpecialDay(sd.id)}
+                            className="px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors">
+                            Obriši
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -404,6 +505,49 @@ function WorkingHours() {
             </>
           )}
         </>
+      )}
+
+      {/* Modal — upozorenje o konfliktnim terminima */}
+      {conflicts && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setConflicts(null)}>
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-1">Upozorenje</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              U ovom periodu imate <span className="font-semibold">{conflicts.length}</span> {conflicts.length === 1 ? "rezervaciju" : "rezervacije/-a"} koje više ne staju u novo radno vrijeme. Da li ste sigurni da želite nastaviti? Ovi termini će biti otkazani, a klijenti sa email-om obaviješteni.
+            </p>
+            <div className="max-h-56 overflow-y-auto border border-slate-100 rounded-md divide-y divide-slate-100 mb-4">
+              {conflicts.map((c) => (
+                <div key={c.id} className="px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-slate-800">{c.customer_name}</p>
+                    {c.customer_has_email ? (
+                      <span className="text-xs text-green-600">✓ email</span>
+                    ) : (
+                      <span className="text-xs text-amber-600">⚠ nema email{c.customer_phone ? ` — ${c.customer_phone}` : ""}</span>
+                    )}
+                  </div>
+                  <p className="text-slate-500 text-xs">{c.service_name} — {formatApptDateTime(c.start_time)}</p>
+                </div>
+              ))}
+            </div>
+            {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={handleConfirmSpecialDay}
+                disabled={confirmingSpecialDay}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {confirmingSpecialDay ? "Čekajte..." : "Da, otkaži i nastavi"}
+              </button>
+              <button
+                onClick={() => setConflicts(null)}
+                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                Odustani
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ interface Employee {
   email: string | null;
   is_active: boolean;
   allow_self_booking: boolean;
+  can_manage_own_hours: boolean;
 }
 
 function Employees() {
@@ -28,6 +29,7 @@ function Employees() {
   const [editLastName, setEditLastName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editAllowSelfBooking, setEditAllowSelfBooking] = useState(false);
+  const [editCanManageOwnHours, setEditCanManageOwnHours] = useState(false);
 
   const fetchEmployees = async () => {
     try {
@@ -73,6 +75,7 @@ function Employees() {
     setEditLastName(emp.last_name);
     setEditPhone(emp.phone || "");
     setEditAllowSelfBooking(emp.allow_self_booking);
+    setEditCanManageOwnHours(emp.can_manage_own_hours);
   };
 
   const handleEdit = async (employeeId: number) => {
@@ -83,6 +86,7 @@ function Employees() {
         last_name: editLastName,
         phone: editPhone || null,
         allow_self_booking: editAllowSelfBooking,
+        can_manage_own_hours: editCanManageOwnHours,
       });
       setEditingId(null);
       fetchEmployees();
@@ -180,6 +184,7 @@ function Employees() {
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Telefon</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Online rezervacije</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Upravlja svojim vremenom</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Akcije</th>
             </tr>
           </thead>
@@ -223,6 +228,17 @@ function Employees() {
                       </label>
                     </td>
                     <td className="px-4 py-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editCanManageOwnHours}
+                          onChange={(e) => setEditCanManageOwnHours(e.target.checked)}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                        <span className="text-sm text-slate-600">Omogućeno</span>
+                      </label>
+                    </td>
+                    <td className="px-4 py-2">
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEdit(emp.id)}
@@ -253,6 +269,15 @@ function Employees() {
                           : "bg-slate-100 text-slate-500"
                       }`}>
                         {emp.allow_self_booking ? "Uključeno" : "Isključeno"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        emp.can_manage_own_hours
+                          ? "bg-green-100 text-green-700"
+                          : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {emp.can_manage_own_hours ? "Uključeno" : "Isključeno"}
                       </span>
                     </td>
                     <td className="px-4 py-3">

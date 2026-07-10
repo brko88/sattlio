@@ -15,17 +15,20 @@ class EmployeeUpdate(BaseModel):
     phone: str | None = None
     email: str | None = None
     allow_self_booking: bool | None = None
+    can_manage_own_hours: bool | None = None
 
 
 class EmployeeResponse(BaseModel):
     id: int
     tenant_id: int
+    user_id: int | None
     first_name: str
     last_name: str
     phone: str | None
     email: str | None
     is_active: bool
     allow_self_booking: bool
+    can_manage_own_hours: bool
 
     class Config:
         from_attributes = True

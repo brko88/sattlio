@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel
 
@@ -11,6 +11,8 @@ class SpecialDayCreate(BaseModel):
     start_time: time | None = None
     end_time: time | None = None
     note: str | None = None
+    force: bool = False
+    cancellation_reason: str | None = None
 
 
 class SpecialDayResponse(BaseModel):
@@ -25,3 +27,19 @@ class SpecialDayResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ConflictingAppointmentInfo(BaseModel):
+    id: int
+    start_time: datetime
+    end_time: datetime
+    customer_name: str
+    customer_phone: str | None
+    customer_has_email: bool
+    service_name: str
+
+
+class SpecialDaySaveResult(BaseModel):
+    saved: bool
+    special_day: SpecialDayResponse | None = None
+    conflicts: list[ConflictingAppointmentInfo] = []

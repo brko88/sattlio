@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
 from app.models.appointment import Appointment
 from app.models.customer import Customer
@@ -14,8 +15,6 @@ from app.models.service import Service
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
-from app.models.working_hours import WorkingHours
-from app.models.special_day import SpecialDay
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
 
@@ -168,33 +167,8 @@ def get_available_slots(
     except ValueError:
         raise HTTPException(status_code=400, detail="Neispravan format datuma. Koristite YYYY-MM-DD.")
 
-    day_of_week = booking_date.weekday()
-
-    wh = db.query(WorkingHours).filter(
-        WorkingHours.employee_id == employee_id,
-        WorkingHours.tenant_id == employee.tenant_id,
-        WorkingHours.day_of_week == day_of_week,
-    ).first()
-
-    # Provjeri specijalni dan (override standardnog radnog vremena)
-    special_day = db.query(SpecialDay).filter(
-        SpecialDay.employee_id == employee_id,
-        SpecialDay.tenant_id == employee.tenant_id,
-        SpecialDay.date == booking_date,
-    ).first()
-
-    if special_day is not None:
-        if not special_day.is_working_day:
-            return {"slots": []}
-        # Override radnog vremena sa specijalnim danom
-        class OverrideWH:
-            start_time = special_day.start_time
-            end_time = special_day.end_time
-            break_start = None
-            break_end = None
-            is_working_day = True
-        wh = OverrideWH()
-    elif wh is None or not wh.is_working_day:
+    hours = get_effective_hours(db, employee.tenant_id, employee_id, booking_date)
+    if not hours.is_working_day:
         return {"slots": []}
 
     # Dohvati slot interval iz tenanta
@@ -203,8 +177,8 @@ def get_available_slots(
     slot_interval = tenant_obj.slot_duration_minutes if tenant_obj else 30
 
     # Generišemo slotove u lokalnom vremenu (Europe/Sarajevo)
-    slot_start = datetime.combine(booking_date, wh.start_time).replace(tzinfo=TZ)
-    work_end = datetime.combine(booking_date, wh.end_time).replace(tzinfo=TZ)
+    slot_start = datetime.combine(booking_date, hours.start_time).replace(tzinfo=TZ)
+    work_end = datetime.combine(booking_date, hours.end_time).replace(tzinfo=TZ)
     duration = timedelta(minutes=service.duration_minutes)
     now = datetime.now(TZ)
 
@@ -228,9 +202,9 @@ def get_available_slots(
     # Pauza
     break_start_local = None
     break_end_local = None
-    if wh.break_start and wh.break_end:
-        break_start_local = datetime.combine(booking_date, wh.break_start).replace(tzinfo=TZ)
-        break_end_local = datetime.combine(booking_date, wh.break_end).replace(tzinfo=TZ)
+    if hours.break_start and hours.break_end:
+        break_start_local = datetime.combine(booking_date, hours.break_start).replace(tzinfo=TZ)
+        break_end_local = datetime.combine(booking_date, hours.break_end).replace(tzinfo=TZ)
 
     slots = []
     while slot_start + duration <= work_end:
@@ -279,12 +253,26 @@ def self_book_appointment(
 
     start_time = data.start_time
     if start_time.tzinfo is None:
-        start_time = start_time.replace(tzinfo=timezone.utc)
+        start_time = start_time.replace(tzinfo=TZ).astimezone(timezone.utc)
+    else:
+        start_time = start_time.astimezone(timezone.utc)
 
     if start_time < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Termin ne može biti u prošlosti.")
 
     end_time = start_time + timedelta(minutes=service.duration_minutes)
+
+    local_start = start_time.astimezone(TZ)
+    local_end = end_time.astimezone(TZ)
+    hours = get_effective_hours(db, employee.tenant_id, data.employee_id, local_start.date())
+
+    if not hours.is_working_day:
+        raise HTTPException(status_code=400, detail="Zaposleni ne radi tog dana.")
+    if local_start.time() < hours.start_time or local_end.time() > hours.end_time:
+        raise HTTPException(status_code=400, detail="Termin je izvan radnog vremena zaposlenog.")
+    if hours.break_start and hours.break_end:
+        if local_start.time() < hours.break_end and local_end.time() > hours.break_start:
+            raise HTTPException(status_code=400, detail="Termin se preklapa sa pauzom zaposlenog.")
 
     db.query(Employee).filter(Employee.id == data.employee_id).with_for_update().first()
 

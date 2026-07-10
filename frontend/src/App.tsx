@@ -132,6 +132,7 @@ function RoleRouter() {
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/working-hours" element={<WorkingHours />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

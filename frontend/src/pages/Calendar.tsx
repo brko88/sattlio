@@ -33,6 +33,7 @@ interface Customer {
   first_name: string;
   last_name: string;
   phone: string | null;
+  email: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -212,6 +213,16 @@ function Calendar() {
         cancelled_by_type: cancelType,
         reason: cancelReason.trim() || null,
       });
+      if (cancelType === "staff") {
+        const customer = customers.find((c) => c.id === selectedAppt.customer_id);
+        if (customer && !customer.email) {
+          setError(
+            `Termin je otkazan, ali klijent ${customer.first_name} ${customer.last_name} nema email — ${
+              customer.phone ? `obavijestite ga na ${customer.phone}.` : "nemate ni telefon, kontaktirajte ga drugim putem."
+            }`
+          );
+        }
+      }
       closeApptModal();
       fetchAll();
     } catch (err: any) {

@@ -17,6 +17,7 @@ function EmployeeLayout() {
     { to: "/calendar", label: "Kalendar" },
     { to: "/appointments", label: "Rezervacije" },
     { to: "/customers", label: "Klijenti" },
+    { to: "/working-hours", label: "Radno vrijeme" },
   ];
 
   return (

@@ -6,3 +6,4 @@ __pycache__/
 .pytest_cache/
 full_project_dump.txt
 node_modules/
+.claude/settings.local.json

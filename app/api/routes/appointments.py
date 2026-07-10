@@ -14,7 +14,8 @@ from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.models.working_hours import WorkingHours
-from app.schemas.appointment import AppointmentCreate, AppointmentResponse
+from app.core.email import send_appointment_cancelled_email
+from app.schemas.appointment import AppointmentCreate, AppointmentResponse, CancelAppointmentRequest
 
 router = APIRouter(prefix="/api/v1/appointments", tags=["appointments"])
 
@@ -122,7 +123,7 @@ def check_overlap(db: Session, employee_id: int, start_time: datetime, end_time:
     if overlapping is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Zaposleni je veÄ‡ zauzet u tom terminu.",
+            detail="Zaposleni je već zauzet u tom terminu.",
         )
 
 
@@ -159,9 +160,9 @@ def get_my_appointments(
             "start_time": a.start_time,
             "end_time": a.end_time,
             "status": a.status,
-            "service_name": service.name if service else "â€”",
+            "service_name": service.name if service else "—",
             "tenant_name": tenant.name if tenant else "-",
-            "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "â€”",
+            "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "—",
         })
 
     return result
@@ -181,10 +182,11 @@ def create_appointment(
     else:
         start_time = data.start_time.astimezone(timezone.utc)
 
+
     if start_time < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Termin ne moĹľe biti kreiran u proĹˇlosti.",
+            detail="Termin ne može biti kreiran u prošlosti.",
         )
 
     customer = db.query(Customer).filter(
@@ -251,6 +253,7 @@ def get_appointments(
 @router.post("/{appointment_id}/cancel", response_model=AppointmentResponse)
 def cancel_appointment(
     appointment_id: int,
+    data: CancelAppointmentRequest | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -263,12 +266,52 @@ def cancel_appointment(
     if appointment.status in ("completed", "cancelled", "no_show"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Rezervacija sa statusom '{appointment.status}' ne moĹľe biti otkazana.",
+            detail=f"Rezervacija sa statusom '{appointment.status}' ne može biti otkazana.",
         )
 
+    role = get_user_role(db, current_user.id, appointment.tenant_id)
+    reason = data.reason if data else None
+    customer = db.query(Customer).filter(Customer.id == appointment.customer_id).first()
+
+    if role == "customer":
+        cancelled_by_type = "customer"
+        cancelled_by_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
+    else:
+        cancelled_by_type = data.cancelled_by_type if data else None
+        if cancelled_by_type not in ("customer", "staff"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="cancelled_by_type mora biti 'customer' ili 'staff'.",
+            )
+        if cancelled_by_type == "staff":
+            cancelled_by_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
+        else:
+            cancelled_by_name = f"{customer.first_name} {customer.last_name}" if customer else None
+
     appointment.status = "cancelled"
+    appointment.cancelled_by_type = cancelled_by_type
+    appointment.cancelled_by_user_id = current_user.id
+    appointment.cancelled_by_name = cancelled_by_name
+    appointment.cancellation_reason = reason
+    appointment.cancelled_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(appointment)
+
+    if cancelled_by_type == "staff" and customer is not None and customer.email:
+        service = db.query(Service).filter(Service.id == appointment.service_id).first()
+        tenant = db.query(Tenant).filter(Tenant.id == appointment.tenant_id).first()
+        try:
+            send_appointment_cancelled_email(
+                to_email=customer.email,
+                customer_name=f"{customer.first_name} {customer.last_name}",
+                service_name=service.name if service else "-",
+                tenant_name=tenant.name if tenant else "-",
+                start_time=appointment.start_time,
+                reason=reason,
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Appointment cancellation email nije poslan: {e}")
 
     return appointment
 
@@ -288,7 +331,7 @@ def complete_appointment(
     if appointment.status in ("completed", "cancelled", "no_show"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Rezervacija sa statusom '{appointment.status}' ne moĹľe biti zavrĹˇena.",
+            detail=f"Rezervacija sa statusom '{appointment.status}' ne može biti završena.",
         )
 
     appointment.status = "completed"

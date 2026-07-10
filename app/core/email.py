@@ -1,9 +1,12 @@
 ﻿import smtplib
+from datetime import datetime
 from email.mime.text import MIMEText
+from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 
 ADMIN_EMAIL = "sattlio.app@gmail.com"
+TZ = ZoneInfo("Europe/Sarajevo")
 
 
 def send_email(to_email: str, subject: str, body: str):
@@ -77,6 +80,29 @@ def send_new_tenant_notification(
     except Exception as e:
         import logging
         logging.error(f"Notifikacija nije poslana: {e}")
+
+def send_appointment_cancelled_email(
+    to_email: str,
+    customer_name: str,
+    service_name: str,
+    tenant_name: str,
+    start_time: datetime,
+    reason: str | None,
+):
+    local_time = start_time.replace(tzinfo=ZoneInfo("UTC")).astimezone(TZ)
+    formatted_time = local_time.strftime("%d.%m.%Y. u %H:%M")
+    subject = f"Vaš termin je otkazan — {tenant_name}"
+    reason_line = f"\nRazlog otkazivanja: {reason}\n" if reason else ""
+    body = (
+        f"Pozdrav {customer_name},\n\n"
+        f"Obavještavamo vas da je vaš termin za uslugu \"{service_name}\" "
+        f"zakazan za {formatted_time} u salonu \"{tenant_name}\" otkazan.\n"
+        f"{reason_line}\n"
+        f"Za novi termin, slobodno nas kontaktirajte ili zakažite ponovo preko platforme.\n\n"
+        f"Izvinjavamo se zbog neugodnosti."
+    )
+    send_email(to_email, subject, body)
+
 
 def send_employee_invitation_email(to_email: str, employee_name: str, tenant_name: str):
     register_url = f"{settings.frontend_url}/register"

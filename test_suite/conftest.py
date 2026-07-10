@@ -15,7 +15,11 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.core.database import Base, get_db
+from app.core.limiter import limiter
+from app.models.user import User
 import app.core.email as email_module
+
+limiter.enabled = False
 
 TEST_DATABASE_URL = "sqlite:///./test_smartbooking.db"
 
@@ -83,11 +87,19 @@ def db_session():
 
 
 def register_and_login(client, email="test@example.com", password="lozinka123"):
-    """Pomoćna funkcija: registruje korisnika i vraća access_token."""
+    """Pomoćna funkcija: registruje korisnika, potvrđuje email (mimo API-ja, direktno u testnoj bazi) i vraća access_token."""
     client.post(
         "/api/v1/auth/register",
-        json={"email": email, "password": password},
+        json={"email": email, "password": password, "first_name": "Test", "last_name": "Korisnik"},
     )
+
+    session = TestSessionLocal()
+    user = session.query(User).filter(User.email == email).first()
+    if user:
+        user.email_verified = True
+        session.commit()
+    session.close()
+
     login_response = client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": password},
@@ -96,11 +108,15 @@ def register_and_login(client, email="test@example.com", password="lozinka123"):
     return token
 
 
+_jib_counter = [1000000000000]
+
+
 def create_tenant(client, token, name="Test Salon"):
     """Pomoćna funkcija: kreira tenant, vraća tenant_id."""
+    _jib_counter[0] += 1
     response = client.post(
         "/api/v1/tenants",
-        json={"name": name, "city": "Banja Luka"},
+        json={"name": name, "city": "Banja Luka", "jib": str(_jib_counter[0])},
         headers={"Authorization": f"Bearer {token}"},
     )
     return response.json()["id"]

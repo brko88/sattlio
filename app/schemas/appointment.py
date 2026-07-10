@@ -11,6 +11,11 @@ class AppointmentCreate(BaseModel):
     start_time: datetime
 
 
+class CancelAppointmentRequest(BaseModel):
+    cancelled_by_type: str | None = None  # "customer" ili "staff" - obavezno kad otkazuje owner/employee
+    reason: str | None = None
+
+
 class AppointmentResponse(BaseModel):
     id: int
     tenant_id: int
@@ -21,6 +26,10 @@ class AppointmentResponse(BaseModel):
     end_time: datetime
     status: str
     notes: str | None
+    cancelled_by_type: str | None
+    cancelled_by_name: str | None
+    cancellation_reason: str | None
+    cancelled_at: datetime | None
 
     class Config:
         from_attributes = True

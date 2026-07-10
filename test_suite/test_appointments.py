@@ -208,7 +208,11 @@ def test_cancelled_appointment_frees_up_the_slot(client):
     create_response = book(client, env, "2026-12-01T10:00:00")
     appt_id = create_response.json()["id"]
 
-    client.post(f"/api/v1/appointments/{appt_id}/cancel", headers=auth_headers(env["token"]))
+    client.post(
+        f"/api/v1/appointments/{appt_id}/cancel",
+        json={"cancelled_by_type": "staff"},
+        headers=auth_headers(env["token"]),
+    )
 
     response = book(client, env, "2026-12-01T10:00:00")
     assert response.status_code == 200

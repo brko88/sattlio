@@ -11,6 +11,9 @@ interface Appointment {
   start_time: string;
   end_time: string;
   status: string;
+  cancelled_by_type?: string | null;
+  cancelled_by_name?: string | null;
+  cancellation_reason?: string | null;
 }
 
 interface Employee {
@@ -59,6 +62,12 @@ function Calendar() {
 
   // Modal za detalje postojeće rezervacije
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
+
+  // Otkazivanje termina — potvrda + tip + razlog
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelType, setCancelType] = useState<"customer" | "staff" | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   // Modal za novu rezervaciju
   const [newApptModal, setNewApptModal] = useState(false);
@@ -188,13 +197,27 @@ function Calendar() {
     }
   };
 
-  const handleCancel = async (id: number) => {
+  const closeApptModal = () => {
+    setSelectedAppt(null);
+    setShowCancelConfirm(false);
+    setCancelType(null);
+    setCancelReason("");
+  };
+
+  const handleCancel = async () => {
+    if (!selectedAppt || !cancelType) return;
+    setCancelling(true);
     try {
-      await api.post(`/api/v1/appointments/${id}/cancel`);
-      setSelectedAppt(null);
+      await api.post(`/api/v1/appointments/${selectedAppt.id}/cancel`, {
+        cancelled_by_type: cancelType,
+        reason: cancelReason.trim() || null,
+      });
+      closeApptModal();
       fetchAll();
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška.");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -364,61 +387,157 @@ function Calendar() {
       {selectedAppt && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setSelectedAppt(null)}
+          onClick={closeApptModal}
         >
           <div
             className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold mb-4">Detalji rezervacije</h3>
-            <div className="space-y-2 text-sm mb-6">
-              <p>
-                <span className="text-slate-500">Klijent:</span>{" "}
-                <span className="font-medium">{getCustomerName(selectedAppt.customer_id)}</span>
-              </p>
-              <p>
-                <span className="text-slate-500">Zaposleni:</span>{" "}
-                <span className="font-medium">{getEmployeeName(selectedAppt.employee_id)}</span>
-              </p>
-              <p>
-                <span className="text-slate-500">Usluga:</span>{" "}
-                <span className="font-medium">{getServiceName(selectedAppt.service_id)}</span>
-              </p>
-              <p>
-                <span className="text-slate-500">Vrijeme:</span>{" "}
-                <span className="font-medium">
-                  {formatTime(selectedAppt.start_time, timezone)} - {formatTime(selectedAppt.end_time, timezone)}
-                </span>
-              </p>
-              <p>
-                <span className="text-slate-500">Status:</span>{" "}
-                <span className="font-medium">{selectedAppt.status}</span>
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {(selectedAppt.status === "created" || selectedAppt.status === "confirmed") && (
-                <>
+            {!showCancelConfirm ? (
+              <>
+                <h3 className="text-lg font-semibold mb-4">Detalji rezervacije</h3>
+                <div className="space-y-2 text-sm mb-6">
+                  <p>
+                    <span className="text-slate-500">Klijent:</span>{" "}
+                    <span className="font-medium">{getCustomerName(selectedAppt.customer_id)}</span>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Zaposleni:</span>{" "}
+                    <span className="font-medium">{getEmployeeName(selectedAppt.employee_id)}</span>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Usluga:</span>{" "}
+                    <span className="font-medium">{getServiceName(selectedAppt.service_id)}</span>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Vrijeme:</span>{" "}
+                    <span className="font-medium">
+                      {formatTime(selectedAppt.start_time, timezone)} - {formatTime(selectedAppt.end_time, timezone)}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Status:</span>{" "}
+                    <span className="font-medium">{selectedAppt.status}</span>
+                  </p>
+                  {selectedAppt.status === "cancelled" && selectedAppt.cancelled_by_name && (
+                    <>
+                      <p>
+                        <span className="text-slate-500">Otkazao:</span>{" "}
+                        <span className="font-medium">
+                          {selectedAppt.cancelled_by_name}
+                          {selectedAppt.cancelled_by_type === "customer" ? " (klijent)" : " (osoblje)"}
+                        </span>
+                      </p>
+                      {selectedAppt.cancellation_reason && (
+                        <p>
+                          <span className="text-slate-500">Razlog:</span>{" "}
+                          <span className="font-medium">{selectedAppt.cancellation_reason}</span>
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {(selectedAppt.status === "created" || selectedAppt.status === "confirmed") && (
+                    <>
+                      <button
+                        onClick={() => handleComplete(selectedAppt.id)}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        Završi
+                      </button>
+                      <button
+                        onClick={() => setShowCancelConfirm(true)}
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
+                      >
+                        Otkaži
+                      </button>
+                    </>
+                  )}
                   <button
-                    onClick={() => handleComplete(selectedAppt.id)}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                    onClick={closeApptModal}
+                    className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-50 transition-colors"
                   >
-                    Završi
+                    Zatvori
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold mb-1">Otkazivanje termina</h3>
+                <p className="text-sm text-slate-500 mb-4">
+                  Da li ste sigurni da želite otkazati ovaj termin?
+                </p>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Ko je otkazao?
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCancelType("customer")}
+                      className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
+                        cancelType === "customer"
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      Otkazao korisnik
+                    </button>
+                    <button
+                      onClick={() => setCancelType("staff")}
+                      className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
+                        cancelType === "staff"
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      Otkazao ja
+                    </button>
+                  </div>
+                  {cancelType === "staff" && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Klijent će dobiti email obavještenje o otkazivanju.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Razlog (opciono)
+                  </label>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    rows={3}
+                    placeholder="Npr. klijent se razbolio, promjena rasporeda..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCancel}
+                    disabled={!cancelType || cancelling}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {cancelling ? "Otkazujem..." : "Potvrdi otkazivanje"}
                   </button>
                   <button
-                    onClick={() => handleCancel(selectedAppt.id)}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
+                    onClick={() => {
+                      setShowCancelConfirm(false);
+                      setCancelType(null);
+                      setCancelReason("");
+                    }}
+                    className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-50 transition-colors"
                   >
-                    Otkaži
+                    Nazad
                   </button>
-                </>
-              )}
-              <button
-                onClick={() => setSelectedAppt(null)}
-                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-50 transition-colors"
-              >
-                Zatvori
-              </button>
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

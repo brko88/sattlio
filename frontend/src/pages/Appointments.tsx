@@ -12,6 +12,9 @@ interface Appointment {
   end_time: string;
   status: string;
   notes: string | null;
+  cancelled_by_type?: string | null;
+  cancelled_by_name?: string | null;
+  cancellation_reason?: string | null;
 }
 
 interface Employee {
@@ -74,6 +77,12 @@ function Appointments() {
   const [newLastName, setNewLastName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
+
+  // Otkazivanje termina — potvrda + tip + razlog
+  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
+  const [cancelType, setCancelType] = useState<"customer" | "staff" | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -189,12 +198,26 @@ function Appointments() {
     }
   };
 
-  const handleCancel = async (id: number) => {
+  const closeCancelModal = () => {
+    setCancelTarget(null);
+    setCancelType(null);
+    setCancelReason("");
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!cancelTarget || !cancelType) return;
+    setCancelling(true);
     try {
-      await api.post(`/api/v1/appointments/${id}/cancel`);
+      await api.post(`/api/v1/appointments/${cancelTarget.id}/cancel`, {
+        cancelled_by_type: cancelType,
+        reason: cancelReason.trim() || null,
+      });
+      closeCancelModal();
       fetchAll();
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška.");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -487,7 +510,7 @@ function Appointments() {
                           Završi
                         </button>
                         <button
-                          onClick={() => handleCancel(appt.id)}
+                          onClick={() => setCancelTarget(appt)}
                           className="px-3 py-1 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700"
                         >
                           Otkaži
@@ -500,6 +523,89 @@ function Appointments() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {/* Modal — potvrda otkazivanja */}
+      {cancelTarget && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={closeCancelModal}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-1">Otkazivanje termina</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Da li ste sigurni da želite otkazati termin za{" "}
+              <span className="font-medium">{getCustomerName(cancelTarget.customer_id)}</span>?
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Ko je otkazao?
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCancelType("customer")}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
+                    cancelType === "customer"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  Otkazao korisnik
+                </button>
+                <button
+                  onClick={() => setCancelType("staff")}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
+                    cancelType === "staff"
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  Otkazao ja
+                </button>
+              </div>
+              {cancelType === "staff" && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Klijent će dobiti email obavještenje o otkazivanju.
+                </p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Razlog (opciono)
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={3}
+                placeholder="Npr. klijent se razbolio, promjena rasporeda..."
+                className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancelConfirm}
+                disabled={!cancelType || cancelling}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {cancelling ? "Otkazujem..." : "Potvrdi otkazivanje"}
+              </button>
+              <button
+                onClick={closeCancelModal}
+                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                Nazad
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

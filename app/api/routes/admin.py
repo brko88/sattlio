@@ -38,7 +38,7 @@ def log_admin_action(db: Session, admin_user_id: int, action: str, target_type: 
 
 
 # ---------------------------------------------------------------------------
-# PostojeÄ‡e rute
+# Postojeće rute
 # ---------------------------------------------------------------------------
 
 @router.get("/tenants", response_model=list[TenantAdminResponse])
@@ -358,7 +358,7 @@ def list_all_users(
 
 
 # ---------------------------------------------------------------------------
-# Reset lozinke (admin Ĺˇalje link)
+# Reset lozinke (admin šalje link)
 # ---------------------------------------------------------------------------
 
 @router.post("/users/{user_id}/reset-password")

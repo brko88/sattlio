@@ -19,9 +19,9 @@ class TenantCreate(BaseModel):
     def validate_jib(cls, value: str) -> str:
         value = value.strip()
         if not re.fullmatch(r"\d{13}", value):
-            raise ValueError("JIB mora sadrĹľavati taÄŤno 13 cifara.")
+            raise ValueError("JIB mora sadržavati tačno 13 cifara.")
         if len(set(value)) == 1:
-            raise ValueError("JIB ne moĹľe sadrĹľavati istu cifru ponovljenu 13 puta.")
+            raise ValueError("JIB ne može sadržavati istu cifru ponovljenu 13 puta.")
         return value
 
 

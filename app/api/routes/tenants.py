@@ -46,7 +46,7 @@ def require_owner(db: Session, user_id: int, tenant_id: int):
     if role is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Samo vlasnik moĹľe mijenjati podeĹˇavanja.",
+            detail="Samo vlasnik može mijenjati podešavanja.",
         )
 
 
@@ -59,14 +59,14 @@ def create_tenant(
     if not current_user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email adresa mora biti potvrÄ‘ena prije kreiranja poslovnog subjekta.",
+            detail="Email adresa mora biti potvrđena prije kreiranja poslovnog subjekta.",
         )
 
     existing_jib = db.query(Tenant).filter(Tenant.jib == data.jib).first()
     if existing_jib is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Poslovni subjekat sa ovim JIB-om veÄ‡ postoji na platformi.",
+            detail="Poslovni subjekat sa ovim JIB-om već postoji na platformi.",
         )
 
     base_slug = slugify(data.name)
@@ -103,7 +103,7 @@ def create_tenant(
     db.add(owner_role)
     db.commit()
 
-    # PoĹˇalji notifikaciju adminu
+    # Pošalji notifikaciju adminu
     total_tenants = db.query(Tenant).count()
     owner_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
     send_new_tenant_notification(
@@ -129,7 +129,7 @@ def update_tenant(
 
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronaÄ‘en.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
 
     if data.slot_duration_minutes is not None:
         if data.slot_duration_minutes not in [15, 20, 30, 60]:

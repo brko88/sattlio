@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { formatTime } from "../utils/time";
 
 interface Service {
   id: number;
@@ -90,10 +91,7 @@ function BookAppointment() {
     }
   };
 
-  const formatSlot = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString("bs-BA", { hour: "2-digit", minute: "2-digit" });
-  };
+  const formatSlot = (iso: string) => formatTime(iso);
 
   const today = new Date().toISOString().split("T")[0];
 

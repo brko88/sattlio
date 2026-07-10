@@ -11,4 +11,6 @@ class SpecialDay(Base):
     is_working_day = Column(Boolean, default=False)
     start_time = Column(Time, nullable=True)
     end_time = Column(Time, nullable=True)
+    break_start = Column(Time, nullable=True)
+    break_end = Column(Time, nullable=True)
     note = Column(String, nullable=True)

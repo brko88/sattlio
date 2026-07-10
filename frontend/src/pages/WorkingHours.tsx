@@ -27,6 +27,8 @@ interface SpecialDay {
   is_working_day: boolean;
   start_time: string | null;
   end_time: string | null;
+  break_start: string | null;
+  break_end: string | null;
   note: string | null;
 }
 
@@ -74,6 +76,9 @@ function WorkingHours() {
   const [specialIsWorking, setSpecialIsWorking] = useState(false);
   const [specialStart, setSpecialStart] = useState("09:00");
   const [specialEnd, setSpecialEnd] = useState("17:00");
+  const [specialHasBreak, setSpecialHasBreak] = useState(false);
+  const [specialBreakStart, setSpecialBreakStart] = useState("12:00");
+  const [specialBreakEnd, setSpecialBreakEnd] = useState("13:00");
   const [specialNote, setSpecialNote] = useState("");
   const [conflicts, setConflicts] = useState<ConflictingAppointment[] | null>(null);
   const [confirmingSpecialDay, setConfirmingSpecialDay] = useState(false);
@@ -206,6 +211,8 @@ function WorkingHours() {
     is_working_day: specialIsWorking,
     start_time: specialIsWorking ? specialStart + ":00" : null,
     end_time: specialIsWorking ? specialEnd + ":00" : null,
+    break_start: specialIsWorking && specialHasBreak ? specialBreakStart + ":00" : null,
+    break_end: specialIsWorking && specialHasBreak ? specialBreakEnd + ":00" : null,
     note: specialNote || null,
     force,
   });
@@ -218,6 +225,10 @@ function WorkingHours() {
     if (specialIsWorking) {
       if (!isValidTime(specialStart) || !isValidTime(specialEnd)) { setError("Neispravan format vremena."); return; }
       if (specialStart >= specialEnd) { setError("Početak mora biti prije kraja."); return; }
+      if (specialHasBreak) {
+        if (!isValidTime(specialBreakStart) || !isValidTime(specialBreakEnd)) { setError("Neispravan format pauze."); return; }
+        if (specialBreakStart >= specialBreakEnd) { setError("Početak pauze mora biti prije kraja pauze."); return; }
+      }
     }
 
     try {
@@ -227,7 +238,7 @@ function WorkingHours() {
         return;
       }
       setSuccessMessage("Specijalni dan sačuvan.");
-      setSpecialDate(""); setSpecialNote(""); setSpecialIsWorking(false);
+      setSpecialDate(""); setSpecialNote(""); setSpecialIsWorking(false); setSpecialHasBreak(false);
       fetchSpecialDays(selectedEmployeeId);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška.");
@@ -254,7 +265,7 @@ function WorkingHours() {
         setSuccessMessage("Specijalni dan sačuvan.");
       }
       setConflicts(null);
-      setSpecialDate(""); setSpecialNote(""); setSpecialIsWorking(false);
+      setSpecialDate(""); setSpecialNote(""); setSpecialIsWorking(false); setSpecialHasBreak(false);
       fetchSpecialDays(selectedEmployeeId);
       fetchHours(selectedEmployeeId);
     } catch (err: any) {
@@ -452,6 +463,29 @@ function WorkingHours() {
                 </div>
               )}
 
+              {specialIsWorking && (
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <input type="checkbox" checked={specialHasBreak} onChange={(e) => setSpecialHasBreak(e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                    <span className="text-sm text-slate-700">Odsutnost usred dana (npr. "radim 8-16, nema me 12-13")</span>
+                  </label>
+                  {specialHasBreak && (
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs text-slate-500 mb-1">Odsutan/na od</label>
+                        <input type="text" placeholder="12:00" value={specialBreakStart} onChange={(e) => setSpecialBreakStart(e.target.value)} maxLength={5}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs text-slate-500 mb-1">Odsutan/na do</label>
+                        <input type="text" placeholder="13:00" value={specialBreakEnd} onChange={(e) => setSpecialBreakEnd(e.target.value)} maxLength={5}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Napomena (opciono)</label>
                 <input type="text" placeholder="npr. Državni praznik, Godišnji odmor..." value={specialNote} onChange={(e) => setSpecialNote(e.target.value)}
@@ -488,7 +522,12 @@ function WorkingHours() {
                           {sd.is_working_day ? "Izmijenjeno" : "Slobodan dan"}
                         </span>
                       </td>
-                      <td className="px-4 py-3">{sd.start_time && sd.end_time ? formatTime(sd.start_time) + " — " + formatTime(sd.end_time) : "—"}</td>
+                      <td className="px-4 py-3">
+                        {sd.start_time && sd.end_time ? formatTime(sd.start_time) + " — " + formatTime(sd.end_time) : "—"}
+                        {sd.break_start && sd.break_end && (
+                          <span className="text-slate-400 text-xs block">nema me {formatTime(sd.break_start)} — {formatTime(sd.break_end)}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-slate-500">{sd.note || "—"}</td>
                       <td className="px-4 py-3">
                         {canManageSelected && (

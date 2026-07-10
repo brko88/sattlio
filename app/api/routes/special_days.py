@@ -28,12 +28,13 @@ TZ = ZoneInfo("Europe/Sarajevo")
 
 
 def find_conflicting_appointments(
-    db: Session, tenant_id: int, employee_id: int, target_date, is_working_day: bool, start_time, end_time
+    db: Session, tenant_id: int, employee_id: int, target_date, is_working_day: bool, start_time, end_time,
+    break_start=None, break_end=None,
 ) -> list[Appointment]:
     """
     Vraća sve aktivne termine tog zaposlenog na dati datum koji NE STAJU
     u novo (predloženo) radno vrijeme - bilo zato što je dan sad slobodan,
-    bilo zato što je prozor uži nego prije.
+    prozor uži nego prije, ili termin upada u novu pauzu.
     """
     day_start_utc = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=TZ).astimezone(timezone.utc)
     day_end_utc = day_start_utc + timedelta(days=1)
@@ -53,6 +54,8 @@ def find_conflicting_appointments(
         if not is_working_day:
             conflicts.append(a)
         elif local_start.time() < start_time or local_end.time() > end_time:
+            conflicts.append(a)
+        elif break_start and break_end and local_start.time() < break_end and local_end.time() > break_start:
             conflicts.append(a)
     return conflicts
 
@@ -124,9 +127,21 @@ def create_special_day(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Početak mora biti prije kraja radnog vremena.",
             )
+        if data.break_start and data.break_end:
+            if data.break_start >= data.break_end:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Početak pauze mora biti prije kraja pauze.",
+                )
+            if data.break_start < data.start_time or data.break_end > data.end_time:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Pauza mora biti unutar radnog vremena.",
+                )
 
     conflicting = find_conflicting_appointments(
-        db, data.tenant_id, data.employee_id, data.date, data.is_working_day, data.start_time, data.end_time
+        db, data.tenant_id, data.employee_id, data.date, data.is_working_day, data.start_time, data.end_time,
+        data.break_start, data.break_end,
     )
 
     if conflicting and not data.force:
@@ -166,6 +181,8 @@ def create_special_day(
         existing.is_working_day = data.is_working_day
         existing.start_time = data.start_time
         existing.end_time = data.end_time
+        existing.break_start = data.break_start
+        existing.break_end = data.break_end
         existing.note = data.note
         saved_sd = existing
     else:
@@ -176,6 +193,8 @@ def create_special_day(
             is_working_day=data.is_working_day,
             start_time=data.start_time,
             end_time=data.end_time,
+            break_start=data.break_start,
+            break_end=data.break_end,
             note=data.note,
         )
         db.add(saved_sd)

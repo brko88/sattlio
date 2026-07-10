@@ -37,6 +37,8 @@ def get_effective_hours(db: Session, tenant_id: int, employee_id: int, target_da
             is_working_day=True,
             start_time=special_day.start_time,
             end_time=special_day.end_time,
+            break_start=special_day.break_start,
+            break_end=special_day.break_end,
         )
 
     day_of_week = target_date.weekday()

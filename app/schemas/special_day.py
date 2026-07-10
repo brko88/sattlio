@@ -10,6 +10,8 @@ class SpecialDayCreate(BaseModel):
     is_working_day: bool = False
     start_time: time | None = None
     end_time: time | None = None
+    break_start: time | None = None
+    break_end: time | None = None
     note: str | None = None
     force: bool = False
     cancellation_reason: str | None = None
@@ -23,6 +25,8 @@ class SpecialDayResponse(BaseModel):
     is_working_day: bool
     start_time: time | None
     end_time: time | None
+    break_start: time | None
+    break_end: time | None
     note: str | None
 
     class Config:

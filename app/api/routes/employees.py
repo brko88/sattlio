@@ -2,6 +2,7 @@
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.permissions import require_staff
 from app.core.security import get_current_user
 from app.core.email import send_employee_invitation_email
 from app.models.tenant import Tenant
@@ -113,19 +114,7 @@ def get_employees(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    role = (
-        db.query(UserTenantRole)
-        .filter(
-            UserTenantRole.user_id == current_user.id,
-            UserTenantRole.tenant_id == tenant_id,
-        )
-        .first()
-    )
-    if role is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nemate pristup ovom poslovnom subjektu.",
-        )
+    require_staff(db, current_user.id, tenant_id)
 
     employees = (
         db.query(Employee)

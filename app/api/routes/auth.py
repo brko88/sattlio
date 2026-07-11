@@ -35,7 +35,14 @@ from app.schemas.auth import (
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-def issue_tokens(db: Session, user_id: int) -> TokenResponse:
+def issue_tokens(db: Session, user_id: int, family_id: str | None = None) -> TokenResponse:
+    """
+    family_id povezuje sve refresh tokene nastale rotacijom iz istog
+    originalnog login-a ("porodica" sesije). Ako se ne proslijedi, ovo je
+    novi login pa se pravi nova porodica; ako se prosljeđuje (rotacija u
+    /refresh), novi token nasljeđuje porodicu prethodnika - to omogućava
+    da se pri replay napadu poništi CIJELI lanac, ne samo jedan token.
+    """
     access_token = create_access_token(user_id=user_id)
 
     raw_refresh_token = generate_refresh_token()
@@ -46,6 +53,7 @@ def issue_tokens(db: Session, user_id: int) -> TokenResponse:
     refresh_entry = RefreshToken(
         user_id=user_id,
         token_hash=hash_refresh_token(raw_refresh_token),
+        family_id=family_id or secrets.token_hex(16),
         expires_at=expires_at,
     )
     db.add(refresh_entry)
@@ -118,13 +126,37 @@ def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
 def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
     token_hash = hash_refresh_token(data.refresh_token)
 
+    # with_for_update() zaključava red do commit-a - drugi paralelni zahtjev
+    # sa ISTIM refresh tokenom mora čekati da prvi završi, pa onda vidi
+    # već ažurirano (is_revoked=True) stanje umjesto zastarjelog. Bez ovoga
+    # oba zahtjeva mogu proći provjeru prije nego ijedan commituje i oba
+    # dobiju validnu novu sesiju iz jednog tokena.
     stored_token = (
         db.query(RefreshToken)
         .filter(RefreshToken.token_hash == token_hash)
+        .with_for_update()
         .first()
     )
 
-    if stored_token is None or stored_token.is_revoked:
+    if stored_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token nije valjan.",
+        )
+
+    if stored_token.is_revoked:
+        # Replay detekcija: ovaj token je već iskorišten (rotiran) ranije.
+        # Legitimni klijent nikad ne bi trebao ponovo poslati stari token -
+        # ovo je znak da je token možda kompromitovan (ukraden pa iskorišten
+        # i od napadača i od pravog vlasnika). Poništi CIJELU porodicu
+        # (sve tokene nastale rotacijom iz istog originalnog login-a) da se
+        # prisili ponovna prijava na svim uređajima te sesije.
+        if stored_token.family_id:
+            db.query(RefreshToken).filter(
+                RefreshToken.family_id == stored_token.family_id,
+                RefreshToken.is_revoked == False,
+            ).update({"is_revoked": True})
+            db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token nije valjan.",
@@ -141,9 +173,10 @@ def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
         )
 
     stored_token.is_revoked = True
+    family_id = stored_token.family_id or secrets.token_hex(16)
     db.commit()
 
-    return issue_tokens(db, stored_token.user_id)
+    return issue_tokens(db, stored_token.user_id, family_id=family_id)
 
 
 @router.post("/logout")

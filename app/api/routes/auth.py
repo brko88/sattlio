@@ -80,7 +80,9 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
         first_name=data.first_name,
         last_name=data.last_name,
         email_verified=False,
-        verification_token=verification_token,
+        # Čuvamo samo heš (isti princip kao refresh_token) - ako baza procuri,
+        # sirovi token iz email-a se ne može rekonstruisati iz baze.
+        verification_token=hash_refresh_token(verification_token),
     )
     db.add(new_user)
     db.commit()
@@ -198,7 +200,7 @@ def logout(data: RefreshRequest, db: Session = Depends(get_db)):
 
 @router.post("/verify-email", response_model=UserResponse)
 def verify_email(data: VerifyEmailRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.verification_token == data.token).first()
+    user = db.query(User).filter(User.verification_token == hash_refresh_token(data.token)).first()
 
     if user is None:
         raise HTTPException(
@@ -242,7 +244,7 @@ def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session =
 
     if user:
         reset_token = secrets.token_hex(32)
-        user.password_reset_token = reset_token
+        user.password_reset_token = hash_refresh_token(reset_token)
         user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         db.commit()
         try:
@@ -256,7 +258,7 @@ def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session =
 
 @router.post("/reset-password")
 def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.password_reset_token == data.token).first()
+    user = db.query(User).filter(User.password_reset_token == hash_refresh_token(data.token)).first()
 
     if user is None:
         raise HTTPException(
@@ -294,7 +296,7 @@ def resend_verification(request: Request, db: Session = Depends(get_db), current
         return {"detail": "Email je već potvrđen."}
 
     verification_token = secrets.token_hex(16)
-    current_user.verification_token = verification_token
+    current_user.verification_token = hash_refresh_token(verification_token)
     db.commit()
 
     try:

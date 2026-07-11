@@ -1,9 +1,13 @@
-from datetime import date, time
+from datetime import date, datetime, time, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
+from app.models.appointment import Appointment
 from app.models.special_day import SpecialDay
 from app.models.working_hours import WorkingHours
+
+TZ = ZoneInfo("Europe/Sarajevo")
 
 
 class EffectiveHours:
@@ -58,3 +62,51 @@ def get_effective_hours(db: Session, tenant_id: int, employee_id: int, target_da
         break_start=wh.break_start,
         break_end=wh.break_end,
     )
+
+
+def find_weekly_conflicting_appointments(
+    db: Session, tenant_id: int, employee_id: int, day_of_week: int,
+    is_working_day: bool, start_time: time, end_time: time,
+    break_start: time | None = None, break_end: time | None = None,
+) -> list[Appointment]:
+    """
+    Vraća sve BUDUĆE aktivne termine tog zaposlenog koji padaju na dati
+    day_of_week i NE STAJU u novo predloženo sedmično radno vrijeme.
+
+    Termini na datum koji već ima svoj SpecialDay override se preskaču -
+    taj konkretan datum je posebno reguliran i sedmična izmjena ga ne dira
+    (isti princip kao get_effective_hours: SpecialDay > WorkingHours).
+    """
+    now_utc = datetime.now(timezone.utc)
+
+    appointments = db.query(Appointment).filter(
+        Appointment.tenant_id == tenant_id,
+        Appointment.employee_id == employee_id,
+        Appointment.status.in_(["created", "confirmed"]),
+        Appointment.start_time >= now_utc,
+    ).all()
+
+    conflicts = []
+    for a in appointments:
+        local_start = a.start_time.replace(tzinfo=timezone.utc).astimezone(TZ)
+        local_end = a.end_time.replace(tzinfo=timezone.utc).astimezone(TZ)
+
+        if local_start.weekday() != day_of_week:
+            continue
+
+        has_override = db.query(SpecialDay).filter(
+            SpecialDay.tenant_id == tenant_id,
+            SpecialDay.employee_id == employee_id,
+            SpecialDay.date == local_start.date(),
+        ).first()
+        if has_override is not None:
+            continue
+
+        if not is_working_day:
+            conflicts.append(a)
+        elif local_start.time() < start_time or local_end.time() > end_time:
+            conflicts.append(a)
+        elif break_start and break_end and local_start.time() < break_end and local_end.time() > break_start:
+            conflicts.append(a)
+
+    return conflicts

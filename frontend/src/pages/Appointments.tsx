@@ -446,7 +446,7 @@ function Appointments() {
             ) : slots.length === 0 ? (
               <p className="text-slate-400 text-sm">Nema slobodnih termina za odabrani datum.</p>
             ) : (
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                 {slots.map((slot) => (
                   <button
                     key={slot}
@@ -487,7 +487,8 @@ function Appointments() {
           Nema rezervacija.
         </div>
       ) : (
-        <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[720px]">
           <thead>
             <tr className="text-left bg-slate-50">
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Klijent</th>
@@ -495,7 +496,7 @@ function Appointments() {
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Usluga</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Datum i vrijeme</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
-              <th className="px-4 py-3 text-xs font-semibind text-slate-500 uppercase">Akcije</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Akcije</th>
             </tr>
           </thead>
           <tbody>
@@ -534,6 +535,7 @@ function Appointments() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {/* Modal — potvrda otkazivanja */}

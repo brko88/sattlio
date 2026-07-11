@@ -81,7 +81,23 @@ function WorkingHours() {
   const [specialBreakEnd, setSpecialBreakEnd] = useState("13:00");
   const [specialNote, setSpecialNote] = useState("");
   const [conflicts, setConflicts] = useState<ConflictingAppointment[] | null>(null);
+  const [conflictSource, setConflictSource] = useState<"special" | "weekly" | "copy" | null>(null);
   const [confirmingSpecialDay, setConfirmingSpecialDay] = useState(false);
+  const [confirmingWeekly, setConfirmingWeekly] = useState(false);
+  const [copyPendingConflictDays, setCopyPendingConflictDays] = useState<number[]>([]);
+
+  const buildCancelSummaryMessage = (savedLabel: string, cancelledList: ConflictingAppointment[]) => {
+    if (cancelledList.length === 0) return savedLabel;
+    const withoutEmail = cancelledList.filter((c) => !c.customer_has_email);
+    let msg = `${savedLabel} Otkazano ${cancelledList.length} termin(a).`;
+    if (withoutEmail.length > 0) {
+      msg += ` ${withoutEmail.length} klijent(a) NEMA email — kontaktirajte ručno: ` +
+        withoutEmail.map((c) => `${c.customer_name}${c.customer_phone ? ` (${c.customer_phone})` : " (nema ni telefon)"}`).join(", ");
+    } else {
+      msg += " Svi klijenti su obaviješteni mailom.";
+    }
+    return msg;
+  };
 
   const fetchEmployees = async () => {
     const response = await api.get("/api/v1/employees", { params: { tenant_id: tenantId } });
@@ -143,9 +159,20 @@ function WorkingHours() {
     fetchSpecialDays(selectedEmployeeId);
   }, [selectedEmployeeId]);
 
+  const buildWeeklyPayload = (force: boolean) => ({
+    tenant_id: tenantId,
+    employee_id: parseInt(selectedEmployeeId),
+    day_of_week: parseInt(dayOfWeek),
+    start_time: startTime + ":00",
+    end_time: endTime + ":00",
+    break_start: hasBreak ? breakStart + ":00" : null,
+    break_end: hasBreak ? breakEnd + ":00" : null,
+    force,
+  });
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(""); setSuccessMessage("");
+    setError(""); setSuccessMessage(""); setConflicts(null); setConflictSource(null);
 
     if (!isValidTime(startTime)) { setError("Neispravan format vremena za 'Od'."); return; }
     if (!isValidTime(endTime)) { setError("Neispravan format vremena za 'Do'."); return; }
@@ -156,19 +183,32 @@ function WorkingHours() {
     }
 
     try {
-      await api.post("/api/v1/working-hours", {
-        tenant_id: tenantId,
-        employee_id: parseInt(selectedEmployeeId),
-        day_of_week: parseInt(dayOfWeek),
-        start_time: startTime + ":00",
-        end_time: endTime + ":00",
-        break_start: hasBreak ? breakStart + ":00" : null,
-        break_end: hasBreak ? breakEnd + ":00" : null,
-      });
+      const response = await api.post("/api/v1/working-hours", buildWeeklyPayload(false));
+      if (!response.data.saved) {
+        setConflicts(response.data.conflicts);
+        setConflictSource("weekly");
+        return;
+      }
       setSuccessMessage("Radno vrijeme je sačuvano.");
       fetchHours(selectedEmployeeId);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška.");
+    }
+  };
+
+  const handleConfirmWeekly = async () => {
+    setConfirmingWeekly(true);
+    setError("");
+    try {
+      const response = await api.post("/api/v1/working-hours", buildWeeklyPayload(true));
+      setSuccessMessage(buildCancelSummaryMessage("Radno vrijeme je sačuvano.", response.data.conflicts || []));
+      setConflicts(null);
+      setConflictSource(null);
+      fetchHours(selectedEmployeeId);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška.");
+    } finally {
+      setConfirmingWeekly(false);
     }
   };
 
@@ -186,22 +226,55 @@ function WorkingHours() {
   const handleCopy = async () => {
     if (!isValidTime(startTime) || !isValidTime(endTime)) { setError("Unesite ispravno radno vrijeme."); return; }
     if (startTime >= endTime) { setError("Početak mora biti prije kraja."); return; }
-    setCopying(true); setError(""); setSuccessMessage("");
+    setCopying(true); setError(""); setSuccessMessage(""); setConflicts(null); setConflictSource(null);
     try {
       const targetDays = copyTarget === "all" ? [0,1,2,3,4,5,6] : copyTarget === "workdays" ? [0,1,2,3,4] : [parseInt(copyTarget)];
-      for (const day of targetDays) {
-        await api.post("/api/v1/working-hours", {
+      const results = await Promise.all(targetDays.map((day) =>
+        api.post("/api/v1/working-hours", {
           tenant_id: tenantId, employee_id: parseInt(selectedEmployeeId),
           day_of_week: day, start_time: startTime + ":00", end_time: endTime + ":00",
           break_start: hasBreak ? breakStart + ":00" : null,
           break_end: hasBreak ? breakEnd + ":00" : null,
-        });
+          force: false,
+        }).then((res) => ({ day, res }))
+      ));
+      const unsaved = results.filter((r) => !r.res.data.saved);
+      if (unsaved.length > 0) {
+        setConflicts(unsaved.flatMap((r) => r.res.data.conflicts));
+        setConflictSource("copy");
+        setCopyPendingConflictDays(unsaved.map((r) => r.day));
+        return;
       }
       setSuccessMessage(copyTarget === "all" ? "Kopirano na sve dane." : copyTarget === "workdays" ? "Kopirano na radne dane." : `Kopirano na ${DAYS[parseInt(copyTarget)]}.`);
       fetchHours(selectedEmployeeId);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška.");
     } finally { setCopying(false); }
+  };
+
+  const handleConfirmCopy = async () => {
+    setConfirmingWeekly(true);
+    setError("");
+    try {
+      const responses = await Promise.all(copyPendingConflictDays.map((day) =>
+        api.post("/api/v1/working-hours", {
+          tenant_id: tenantId, employee_id: parseInt(selectedEmployeeId),
+          day_of_week: day, start_time: startTime + ":00", end_time: endTime + ":00",
+          break_start: hasBreak ? breakStart + ":00" : null,
+          break_end: hasBreak ? breakEnd + ":00" : null,
+          force: true,
+        })
+      ));
+      setSuccessMessage(buildCancelSummaryMessage("Kopirano.", responses.flatMap((r) => r.data.conflicts || [])));
+      setConflicts(null);
+      setConflictSource(null);
+      setCopyPendingConflictDays([]);
+      fetchHours(selectedEmployeeId);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška.");
+    } finally {
+      setConfirmingWeekly(false);
+    }
   };
 
   const buildSpecialDayPayload = (force: boolean) => ({
@@ -235,6 +308,7 @@ function WorkingHours() {
       const response = await api.post("/api/v1/special-days", buildSpecialDayPayload(false));
       if (!response.data.saved) {
         setConflicts(response.data.conflicts);
+        setConflictSource("special");
         return;
       }
       setSuccessMessage("Specijalni dan sačuvan.");
@@ -250,21 +324,9 @@ function WorkingHours() {
     setError("");
     try {
       const response = await api.post("/api/v1/special-days", buildSpecialDayPayload(true));
-      const cancelledList: ConflictingAppointment[] = response.data.conflicts || [];
-      if (cancelledList.length > 0) {
-        const withoutEmail = cancelledList.filter((c) => !c.customer_has_email);
-        let msg = `Specijalni dan sačuvan. Otkazano ${cancelledList.length} termin(a).`;
-        if (withoutEmail.length > 0) {
-          msg += ` ${withoutEmail.length} klijent(a) NEMA email — kontaktirajte ručno: ` +
-            withoutEmail.map((c) => `${c.customer_name}${c.customer_phone ? ` (${c.customer_phone})` : " (nema ni telefon)"}`).join(", ");
-        } else {
-          msg += " Svi klijenti su obaviješteni mailom.";
-        }
-        setSuccessMessage(msg);
-      } else {
-        setSuccessMessage("Specijalni dan sačuvan.");
-      }
+      setSuccessMessage(buildCancelSummaryMessage("Specijalni dan sačuvan.", response.data.conflicts || []));
       setConflicts(null);
+      setConflictSource(null);
       setSpecialDate(""); setSpecialNote(""); setSpecialIsWorking(false); setSpecialHasBreak(false);
       fetchSpecialDays(selectedEmployeeId);
       fetchHours(selectedEmployeeId);
@@ -548,11 +610,14 @@ function WorkingHours() {
 
       {/* Modal — upozorenje o konfliktnim terminima */}
       {conflicts && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setConflicts(null)}>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => { setConflicts(null); setConflictSource(null); setCopyPendingConflictDays([]); }}>
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-1">Upozorenje</h3>
             <p className="text-sm text-slate-600 mb-4">
-              U ovom periodu imate <span className="font-semibold">{conflicts.length}</span> {conflicts.length === 1 ? "rezervaciju" : "rezervacije/-a"} koje više ne staju u novo radno vrijeme. Da li ste sigurni da želite nastaviti? Ovi termini će biti otkazani, a klijenti sa email-om obaviješteni.
+              {conflictSource === "weekly" || conflictSource === "copy"
+                ? "Ova izmjena sedmičnog radnog vremena utiče na "
+                : "U ovom periodu imate "}
+              <span className="font-semibold">{conflicts.length}</span> {conflicts.length === 1 ? "rezervaciju" : "rezervacije/-a"} koje više ne staju u novo radno vrijeme. Da li ste sigurni da želite nastaviti? Ovi termini će biti otkazani, a klijenti sa email-om obaviješteni.
             </p>
             <div className="max-h-56 overflow-y-auto border border-slate-100 rounded-md divide-y divide-slate-100 mb-4">
               {conflicts.map((c) => (
@@ -572,14 +637,18 @@ function WorkingHours() {
             {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
             <div className="flex gap-2">
               <button
-                onClick={handleConfirmSpecialDay}
-                disabled={confirmingSpecialDay}
+                onClick={
+                  conflictSource === "weekly" ? handleConfirmWeekly :
+                  conflictSource === "copy" ? handleConfirmCopy :
+                  handleConfirmSpecialDay
+                }
+                disabled={confirmingSpecialDay || confirmingWeekly}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                {confirmingSpecialDay ? "Čekajte..." : "Da, otkaži i nastavi"}
+                {confirmingSpecialDay || confirmingWeekly ? "Čekajte..." : "Da, otkaži i nastavi"}
               </button>
               <button
-                onClick={() => setConflicts(null)}
+                onClick={() => { setConflicts(null); setConflictSource(null); setCopyPendingConflictDays([]); }}
                 className="px-4 py-2 border border-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-50 transition-colors"
               >
                 Odustani

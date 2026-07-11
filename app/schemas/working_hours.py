@@ -2,6 +2,8 @@ from datetime import time
 
 from pydantic import BaseModel
 
+from app.schemas.special_day import ConflictingAppointmentInfo
+
 
 class WorkingHoursCreate(BaseModel):
     tenant_id: int
@@ -12,6 +14,8 @@ class WorkingHoursCreate(BaseModel):
     is_working_day: bool = True
     break_start: time | None = None
     break_end: time | None = None
+    force: bool = False
+    cancellation_reason: str | None = None
 
 
 class WorkingHoursResponse(BaseModel):
@@ -27,3 +31,9 @@ class WorkingHoursResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class WorkingHoursSaveResult(BaseModel):
+    saved: bool
+    working_hours: WorkingHoursResponse | None = None
+    conflicts: list[ConflictingAppointmentInfo] = []

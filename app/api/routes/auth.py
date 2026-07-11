@@ -78,28 +78,18 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
     db.commit()
     db.refresh(new_user)
 
-    # Ako je ovaj email vec dodan kao zaposleni (bez naloga), povezi ga sad
-    pending_employees = db.query(Employee).filter(
-        Employee.email == new_user.email,
-        Employee.user_id == None,
-        Employee.is_deleted == False,
-    ).all()
-    for emp in pending_employees:
-        emp.user_id = new_user.id
-        existing_role = db.query(UserTenantRole).filter(
-            UserTenantRole.user_id == new_user.id,
-            UserTenantRole.tenant_id == emp.tenant_id,
-        ).first()
-        if existing_role is None:
-            db.add(UserTenantRole(
-                user_id=new_user.id,
-                tenant_id=emp.tenant_id,
-                role="employee",
-            ))
-    if pending_employees:
-        db.commit()
+    # NAPOMENA: Povezivanje sa pending Employee zapisom (ako postoji) se NE radi
+    # ovdje - namjerno se odgađa dok se email ne potvrdi (vidi verify_email).
+    # Registracija sama po sebi ne dokazuje da korisnik zaista posjeduje taj
+    # email; bez ove odgode, napadač bi mogao registrovati tuđi email koji je
+    # vlasnik salona pozvao kao zaposlenog i odmah dobiti pristup klijentima
+    # i terminima tog salona, bez ikakve potvrde vlasništva nad email adresom.
 
-    send_verification_email(new_user.email, verification_token)
+    try:
+        send_verification_email(new_user.email, verification_token)
+    except Exception as e:
+        import logging
+        logging.error(f"Verifikacioni email nije poslan: {e}")
 
     return new_user
 
@@ -185,6 +175,27 @@ def verify_email(data: VerifyEmailRequest, db: Session = Depends(get_db)):
 
     user.email_verified = True
     user.verification_token = None
+
+    # Tek SAD, nakon dokazanog vlasništva nad email adresom, poveži pending
+    # Employee zapis (ako postoji) sa ovim nalogom i dodijeli employee rolu.
+    pending_employees = db.query(Employee).filter(
+        Employee.email == user.email,
+        Employee.user_id == None,
+        Employee.is_deleted == False,
+    ).all()
+    for emp in pending_employees:
+        emp.user_id = user.id
+        existing_role = db.query(UserTenantRole).filter(
+            UserTenantRole.user_id == user.id,
+            UserTenantRole.tenant_id == emp.tenant_id,
+        ).first()
+        if existing_role is None:
+            db.add(UserTenantRole(
+                user_id=user.id,
+                tenant_id=emp.tenant_id,
+                role="employee",
+            ))
+
     db.commit()
     db.refresh(user)
 
@@ -201,7 +212,11 @@ def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session =
         user.password_reset_token = reset_token
         user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         db.commit()
-        send_password_reset_email(user.email, reset_token)
+        try:
+            send_password_reset_email(user.email, reset_token)
+        except Exception as e:
+            import logging
+            logging.error(f"Password reset email nije poslan: {e}")
 
     return {"detail": "Ako email postoji u sistemu, poslan je link za reset lozinke."}
 
@@ -249,7 +264,15 @@ def resend_verification(request: Request, db: Session = Depends(get_db), current
     current_user.verification_token = verification_token
     db.commit()
 
-    send_verification_email(current_user.email, verification_token)
+    try:
+        send_verification_email(current_user.email, verification_token)
+    except Exception as e:
+        import logging
+        logging.error(f"Verifikacioni email nije poslan: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Slanje emaila trenutno nije moguće. Pokušajte ponovo kasnije.",
+        )
 
     return {"detail": "Verifikacijski email je ponovo poslan."}
 

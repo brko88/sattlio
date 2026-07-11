@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.permissions import require_staff
 from app.core.security import get_current_user
 from app.models.customer import Customer
 from app.models.user import User
@@ -58,7 +59,7 @@ def get_customers(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_member(db, current_user.id, tenant_id)
+    require_staff(db, current_user.id, tenant_id)
 
     query = db.query(Customer).filter(Customer.tenant_id == tenant_id)
 

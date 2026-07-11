@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.permissions import require_staff
 from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
 from app.models.appointment import Appointment
@@ -237,7 +238,7 @@ def get_appointments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_member(db, current_user.id, tenant_id)
+    require_staff(db, current_user.id, tenant_id)
 
     appointments = (
         db.query(Appointment)

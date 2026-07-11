@@ -23,22 +23,6 @@ router = APIRouter(prefix="/api/v1/appointments", tags=["appointments"])
 TZ = ZoneInfo("Europe/Sarajevo")
 
 
-def require_member(db: Session, user_id: int, tenant_id: int):
-    role = (
-        db.query(UserTenantRole)
-        .filter(
-            UserTenantRole.user_id == user_id,
-            UserTenantRole.tenant_id == tenant_id,
-        )
-        .first()
-    )
-    if role is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nemate pristup ovom poslovnom subjektu.",
-        )
-
-
 def get_user_role(db: Session, user_id: int, tenant_id: int) -> str | None:
     role = (
         db.query(UserTenantRole)
@@ -173,7 +157,7 @@ def create_appointment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_member(db, current_user.id, data.tenant_id)
+    require_staff(db, current_user.id, data.tenant_id)
 
     # Konvertuj u UTC sa timezone info
     if data.start_time.tzinfo is None:

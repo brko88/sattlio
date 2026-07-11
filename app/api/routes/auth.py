@@ -279,6 +279,15 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     user.password_hash = hash_password(data.new_password)
     user.password_reset_token = None
     user.password_reset_expires = None
+
+    # Poništi sve aktivne refresh tokene - ako je neko drugi (napadač) imao
+    # aktivnu sesiju, promjena lozinke ga mora izbaciti, ne samo blokirati
+    # buduće login pokušaje starom lozinkom.
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.is_revoked == False,
+    ).update({"is_revoked": True})
+
     db.commit()
 
     return {"detail": "Lozinka je uspješno promijenjena."}
@@ -331,6 +340,16 @@ def change_password(
         )
 
     current_user.password_hash = hash_password(data.new_password)
+
+    # Poništi sve aktivne refresh tokene (uklj. trenutnu sesiju) - isti razlog
+    # kao kod reset_password: ako je neko drugi imao pristup nalogu, promjena
+    # lozinke ga mora izbaciti iz svih sesija. Trenutni access_token ostaje
+    # važeći do isteka (kratak vijek), ali refresh više neće raditi.
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.id,
+        RefreshToken.is_revoked == False,
+    ).update({"is_revoked": True})
+
     db.commit()
 
     return {"detail": "Lozinka je uspjesno promijenjena."}

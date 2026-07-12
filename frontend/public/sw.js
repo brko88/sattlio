@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sattlio-v1';
+const CACHE_NAME = 'sattlio-v2';
 
 const STATIC_ASSETS = [
   '/',

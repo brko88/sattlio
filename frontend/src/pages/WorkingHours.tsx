@@ -459,7 +459,33 @@ function WorkingHours() {
           {hours.length === 0 ? (
             <div className="bg-white rounded-lg p-8 text-center text-slate-500 max-w-2xl mb-6">Nema postavljenog radnog vremena.</div>
           ) : (
-            <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden mb-6 max-w-2xl">
+            <>
+            {/* Mobilni prikaz - kartice (ispod md) */}
+            <div className="md:hidden space-y-2 mb-6">
+              {hours.map((h) => (
+                <div key={h.id} className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-900">{DAYS[h.day_of_week]}</p>
+                    <p className="text-sm text-slate-500">
+                      {formatTime(h.start_time)} — {formatTime(h.end_time)}
+                      {h.break_start && h.break_end && (
+                        <span className="text-slate-400"> (pauza {formatTime(h.break_start)} — {formatTime(h.break_end)})</span>
+                      )}
+                    </p>
+                  </div>
+                  {canManageSelected && (
+                    <button onClick={() => handleDelete(h.id)}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors shrink-0 ml-3">
+                      Obriši
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop/tablet prikaz - tabela (md i vece) */}
+            <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-x-auto mb-6 max-w-2xl">
+            <table className="w-full min-w-[500px]">
               <thead>
                 <tr className="text-left bg-slate-50">
                   <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Dan</th>
@@ -488,6 +514,8 @@ function WorkingHours() {
                 ))}
               </tbody>
             </table>
+            </div>
+            </>
           )}
 
           {/* Specijalni dani */}
@@ -565,7 +593,37 @@ function WorkingHours() {
           {specialDays.length > 0 && (
             <>
               <h3 className="text-lg font-semibold mb-3">Lista specijalnih dana</h3>
-              <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden max-w-2xl">
+
+              {/* Mobilni prikaz - kartice (ispod md) */}
+              <div className="md:hidden space-y-2 mb-6">
+                {specialDays.map((sd) => (
+                  <div key={sd.id} className="bg-white rounded-lg shadow-sm p-4">
+                    <div className="flex items-start justify-between mb-1">
+                      <p className="font-semibold text-slate-900">{new Date(sd.date + 'T00:00:00').toLocaleDateString("bs-BA")}</p>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold shrink-0 ${sd.is_working_day ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"}`}>
+                        {sd.is_working_day ? "Izmijenjeno" : "Slobodan dan"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {sd.start_time && sd.end_time ? formatTime(sd.start_time) + " — " + formatTime(sd.end_time) : "—"}
+                      {sd.break_start && sd.break_end && (
+                        <span className="text-slate-400"> (nema me {formatTime(sd.break_start)} — {formatTime(sd.break_end)})</span>
+                      )}
+                    </p>
+                    {sd.note && <p className="text-sm text-slate-500">{sd.note}</p>}
+                    {canManageSelected && (
+                      <button onClick={() => handleDeleteSpecialDay(sd.id)}
+                        className="mt-3 w-full px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors">
+                        Obriši
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop/tablet prikaz - tabela (md i vece) */}
+              <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-x-auto max-w-2xl">
+              <table className="w-full min-w-[560px]">
                 <thead>
                   <tr className="text-left bg-slate-50">
                     <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Datum</th>
@@ -603,6 +661,7 @@ function WorkingHours() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </>
           )}
         </>

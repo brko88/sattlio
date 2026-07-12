@@ -64,6 +64,9 @@ function Calendar() {
   // Modal za detalje postojeće rezervacije
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
 
+  // Mobilni prikaz - jedan zaposleni odjednom (kalendar mreza je preuska za vise kolona)
+  const [mobileEmployeeId, setMobileEmployeeId] = useState<number | null>(null);
+
   // Otkazivanje termina — potvrda + tip + razlog
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelType, setCancelType] = useState<"customer" | "staff" | null>(null);
@@ -112,6 +115,12 @@ function Calendar() {
   useEffect(() => {
     fetchAll();
   }, [tenantId]);
+
+  useEffect(() => {
+    if (mobileEmployeeId === null && employees.length > 0) {
+      setMobileEmployeeId(employees[0].id);
+    }
+  }, [employees, mobileEmployeeId]);
 
   // Pretraga klijenata
   useEffect(() => {
@@ -281,6 +290,75 @@ function Calendar() {
     }
   };
 
+  const renderGrid = (gridEmployees: Employee[]) => (
+    <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `70px repeat(${gridEmployees.length}, minmax(200px, 1fr))`,
+        }}
+      >
+        <div className="border-b border-r border-slate-100"></div>
+        {gridEmployees.map((emp) => (
+          <div
+            key={emp.id}
+            className="border-b border-r border-slate-100 p-3 font-semibold text-sm text-slate-700"
+          >
+            {emp.first_name} {emp.last_name}
+          </div>
+        ))}
+
+        <div className="relative border-r border-slate-100">
+          {timeLabels.map((hour) => (
+            <div
+              key={hour}
+              style={{ height: `${SLOT_HEIGHT * 2}px` }}
+              className="text-xs text-slate-400 text-right pr-2 border-b border-slate-50 pt-1"
+            >
+              {hour.toString().padStart(2, "0")}:00
+            </div>
+          ))}
+        </div>
+
+        {gridEmployees.map((emp) => (
+          <div
+            key={emp.id}
+            className="relative border-r border-slate-100"
+            style={{ height: `${SLOTS * SLOT_HEIGHT}px` }}
+          >
+            {Array.from({ length: SLOTS }).map((_, i) => (
+              <div
+                key={i}
+                style={{ height: `${SLOT_HEIGHT}px` }}
+                className={`border-b cursor-pointer hover:bg-blue-50 transition-colors ${
+                  i % 2 === 0 ? "border-slate-100" : "border-slate-50"
+                }`}
+                onClick={() => handleSlotClick(emp, i)}
+              />
+            ))}
+
+            {getEmployeeAppointments(emp.id).map((appt) => (
+              <button
+                key={appt.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedAppt(appt);
+                }}
+                style={getAppointmentStyle(appt)}
+                className={`absolute left-1 right-1 ${STATUS_COLORS[appt.status]} border-l-4 rounded p-1.5 text-xs overflow-hidden text-left cursor-pointer hover:brightness-95 transition-all z-10`}
+              >
+                <p className="font-semibold truncate">
+                  {getCustomerName(appt.customer_id)}
+                </p>
+                <p className="truncate">{getServiceName(appt.service_id)}</p>
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -326,72 +404,26 @@ function Calendar() {
           Nema zaposlenih za prikaz.
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
-          <div
-            className="grid"
-            style={{
-              gridTemplateColumns: `70px repeat(${employees.length}, minmax(200px, 1fr))`,
-            }}
-          >
-            <div className="border-b border-r border-slate-100"></div>
-            {employees.map((emp) => (
-              <div
-                key={emp.id}
-                className="border-b border-r border-slate-100 p-3 font-semibold text-sm text-slate-700"
-              >
-                {emp.first_name} {emp.last_name}
-              </div>
-            ))}
-
-            <div className="relative border-r border-slate-100">
-              {timeLabels.map((hour) => (
-                <div
-                  key={hour}
-                  style={{ height: `${SLOT_HEIGHT * 2}px` }}
-                  className="text-xs text-slate-400 text-right pr-2 border-b border-slate-50 pt-1"
-                >
-                  {hour.toString().padStart(2, "0")}:00
-                </div>
+        <>
+          {/* Mobilni prikaz - jedan zaposleni odjednom (ispod md) */}
+          <div className="md:hidden">
+            <select
+              value={mobileEmployeeId ?? ""}
+              onChange={(e) => setMobileEmployeeId(parseInt(e.target.value))}
+              className="w-full mb-3 px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+            >
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
               ))}
-            </div>
-
-            {employees.map((emp) => (
-              <div
-                key={emp.id}
-                className="relative border-r border-slate-100"
-                style={{ height: `${SLOTS * SLOT_HEIGHT}px` }}
-              >
-                {Array.from({ length: SLOTS }).map((_, i) => (
-                  <div
-                    key={i}
-                    style={{ height: `${SLOT_HEIGHT}px` }}
-                    className={`border-b cursor-pointer hover:bg-blue-50 transition-colors ${
-                      i % 2 === 0 ? "border-slate-100" : "border-slate-50"
-                    }`}
-                    onClick={() => handleSlotClick(emp, i)}
-                  />
-                ))}
-
-                {getEmployeeAppointments(emp.id).map((appt) => (
-                  <button
-                    key={appt.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedAppt(appt);
-                    }}
-                    style={getAppointmentStyle(appt)}
-                    className={`absolute left-1 right-1 ${STATUS_COLORS[appt.status]} border-l-4 rounded p-1.5 text-xs overflow-hidden text-left cursor-pointer hover:brightness-95 transition-all z-10`}
-                  >
-                    <p className="font-semibold truncate">
-                      {getCustomerName(appt.customer_id)}
-                    </p>
-                    <p className="truncate">{getServiceName(appt.service_id)}</p>
-                  </button>
-                ))}
-              </div>
-            ))}
+            </select>
+            {renderGrid(employees.filter((e) => e.id === mobileEmployeeId))}
           </div>
-        </div>
+
+          {/* Desktop/tablet prikaz - svi zaposleni jedan pored drugog (md i vece) */}
+          <div className="hidden md:block">
+            {renderGrid(employees)}
+          </div>
+        </>
       )}
 
       {/* Modal — detalji postojeće rezervacije */}

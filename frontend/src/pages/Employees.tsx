@@ -175,7 +175,117 @@ function Employees() {
           Nema zaposlenih.
         </div>
       ) : (
-        <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
+        <>
+        {/* Mobilni prikaz - kartice (ispod md) */}
+        <div className="md:hidden space-y-3">
+          {employees.map((emp) => (
+            <div key={emp.id} className="bg-white rounded-lg shadow-sm p-4">
+              {editingId === emp.id ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Ime</label>
+                    <input
+                      value={editFirstName}
+                      onChange={(e) => setEditFirstName(e.target.value)}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Prezime</label>
+                    <input
+                      value={editLastName}
+                      onChange={(e) => setEditLastName(e.target.value)}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Telefon</label>
+                    <input
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editAllowSelfBooking}
+                      onChange={(e) => setEditAllowSelfBooking(e.target.checked)}
+                      className="w-4 h-4 accent-blue-600"
+                    />
+                    <span className="text-sm text-slate-600">Online rezervacije omogućene</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editCanManageOwnHours}
+                      onChange={(e) => setEditCanManageOwnHours(e.target.checked)}
+                      className="w-4 h-4 accent-blue-600"
+                    />
+                    <span className="text-sm text-slate-600">Upravlja svojim radnim vremenom</span>
+                  </label>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => handleEdit(emp.id)}
+                      className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+                    >
+                      Sačuvaj
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="flex-1 px-3 py-2 bg-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-300"
+                    >
+                      Odustani
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="font-semibold text-slate-900">{emp.first_name} {emp.last_name}</p>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold shrink-0 ${
+                      emp.is_active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {emp.is_active ? "Aktivan" : "Neaktivan"}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-500 break-all">{emp.email || "—"}</p>
+                  <p className="text-sm text-slate-500 mb-3">{emp.phone || "—"}</p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      emp.allow_self_booking ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                    }`}>
+                      Online rezervacije: {emp.allow_self_booking ? "Uključeno" : "Isključeno"}
+                    </span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      emp.can_manage_own_hours ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                    }`}>
+                      Svoje radno vrijeme: {emp.can_manage_own_hours ? "Uključeno" : "Isključeno"}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEdit(emp)}
+                      className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                    >
+                      Uredi
+                    </button>
+                    <button
+                      onClick={() => handleDelete(emp.id, `${emp.first_name} ${emp.last_name}`)}
+                      className="flex-1 px-3 py-1.5 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+                    >
+                      Obriši
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop/tablet prikaz - tabela (md i vece) */}
+        <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[900px]">
           <thead>
             <tr className="text-left bg-slate-50">
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Ime</th>
@@ -302,6 +412,8 @@ function Employees() {
             ))}
           </tbody>
         </table>
+        </div>
+        </>
       )}
     </div>
   );

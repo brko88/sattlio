@@ -25,7 +25,7 @@ function EmployeeLayout() {
   return (
     <div className="lg:flex min-h-screen">
       {/* Mobilna gornja traka */}
-      <div className="lg:hidden flex items-center justify-between bg-slate-800 text-white px-4 py-3">
+      <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between bg-slate-800 text-white px-4 py-3">
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Otvori meni"

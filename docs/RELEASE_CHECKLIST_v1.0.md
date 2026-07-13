@@ -1,8 +1,16 @@
 # SmartBooking Platform — Release Checklist v1.0
 
-**Datum:** 26.06.2026. (ažurirano 28.06.2026.)
-**Status:** Faza A + Faza B + Faza C + Faza C.5 (Test Suite) + Docker — KOMPLETNE
-**Sljedeća faza:** Faza D nastavak — vidi konkretnu listu ispod
+**Datum:** 26.06.2026. (ažurirano 28.06.2026., pa 13.07.2026.)
+**Status:** Faza A + Faza B + Faza C + Faza C.5 (Test Suite) + Docker — KOMPLETNE. Veći dio Faze D takođe završen (vidi ažuriranje 13.07.2026. ispod).
+**Sljedeća faza:** Preostali Faza D infra/sigurnost/legal stavke — vidi ažuriranu listu u sekciji 5.
+
+---
+
+## AŽURIRANJE 13.07.2026. — provjera stanja koda naspram ovog dokumenta
+
+Ovaj dokument je bio zastario oko dvije sedmice (pisan 26-29.06, kod je od tada značajno napredovao). Sekcije ispod su ažurirane da odražavaju STVARNO stanje koda na 13.07.2026, provjereno direktno kroz čitanje `app/api/routes/*.py`, `app/main.py`, `app/models/*.py`, `frontend/src/`. Stavke koje su bile otvorene a sad su gotove su označene, dodane su nove poznate praznine, a jedna **nova, stvarna greška** je otkrivena:
+
+- **🐛 BUG: `/api/v1/support/report-issue` je neuklonjivo mrtva ruta.** `app/api/routes/support.py` definiše rutu i frontend `ReportIssue.tsx` je poziva, ALI `app/main.py` nikad ne radi `app.include_router(support.router)` — endpoint trenutno vraća 404 na produkciji. Stavka #1 u sekciji 0 ispod ("GOTOVO 29.06.2026") više NIJE tačna. Treba popraviti dodavanjem jedne linije u `main.py`.
 
 ---
 
@@ -10,25 +18,25 @@
 
 Redoslijed važan zbog zavisnosti između stavki. Detalji i tehničke skice za svaku stavku su u referenciranim dokumentima.
 
-1. ✅ **GOTOVO (29.06.2026.) Prijava problema (bug report).** Dva dugmeta u sidebar-u (Email: boris.kalamanda@gmail.com, WhatsApp: +387 65 497 119), implementirano i testirano — oba linka rade ispravno.
+1. 🟡 **DJELIMIČNO — regresija otkrivena 13.07.2026.** Prijava problema (bug report). Frontend stranica (`ReportIssue.tsx`) i backend ruta (`app/api/routes/support.py`) postoje, ali ruta nije registrovana u `app/main.py` → trenutno vraća 404. Vidi bug napomenu na vrhu dokumenta. Treba jednu liniju popravke.
 2. ✅ **GOTOVO (29.06.2026.) JIB verifikacija + Admin panel (osnova)** — implementirano i testirano: `jib`/`verification_status` polja, validacija, `is_superadmin` polje, `require_superadmin` zaštita, Admin panel rute (lista/verify/suspend/reactivate), frontend stranica. Vidi sekciju 5.2b i 5.2c za dalje proširenje.
-3. **Forgot Password flow (NOVO, dodato 29.06.2026.) — PRIORITET, ide prije Employee edit.** Otkriveno tokom razmišljanja o Admin reset lozinke (sekcija 5.2c) — "Forgot Password" mehanizam TRENUTNO NE POSTOJI NIGDJE u sistemu, ni za obične korisnike. Vlasnik je odlučio: implementirati JEDAN, opšti mehanizam (ne odvojeno za admina i za korisnike) — korisnik sam pokreće reset (klikom na "Zaboravljena lozinka" na Login stranici), I admin može pokrenuti isti mehanizam za korisnika kroz Admin panel (support slučaj). Tehnička skica: token-based reset (slično postojećem email verification tokenu), email sa linkom koji vodi na "Postavi novu lozinku" stranicu, token ističe nakon određenog vremena (npr. 1h). Koristi postojeći Gmail SMTP sistem.
-4. **Employee edit ruta/UI** — preduslov za stavku 5, može paralelno sa #2-3.
-5. **Self-booking sistem (privatno/javno po zaposlenom) — POTVRĐENO KAO BLOKIRAJUĆI PREDUSLOV PRIJE LIVE TESTA (29.06.2026.).** Vlasnik je eksplicitno potvrdio (29.06.2026.) da ovo MORA biti implementirano prije nego prvi salon (van vlasnika) počne koristiti platformu "live" — nije "nice to have" dodatak za kasnije, već temeljni dio toga kako owner bira da vodi svoje poslovanje. Finalna, potvrđena definicija:
+3. ✅ **GOTOVO (potvrđeno 13.07.2026.) Forgot Password flow.** `POST /api/v1/auth/forgot-password` i `POST /api/v1/auth/reset-password` implementirani u `app/api/routes/auth.py` (rate-limited 3/minute), koriste postojeći Gmail SMTP. Opšti mehanizam, ne odvojen za admina.
+4. ✅ **GOTOVO Employee edit ruta/UI** — `PUT /api/v1/employees/{employee_id}` postoji (`app/api/routes/employees.py`).
+5. ✅ **GOTOVO Self-booking sistem (privatno/javno po zaposlenom).** Vlasnik je eksplicitno potvrdio (29.06.2026.) da ovo MORA biti implementirano prije nego prvi salon (van vlasnika) počne koristiti platformu "live" — nije "nice to have" dodatak za kasnije, već temeljni dio toga kako owner bira da vodi svoje poslovanje. Finalna, potvrđena definicija:
    - **Mod A — "Privatno" (`allow_self_booking = False`, default):** SAMO owner/employee može upisati termin u kalendar. Klijent nema nikakav pristup kreiranju rezervacije, bez obzira da li ima nalog na platformi.
    - **Mod B — "Javno" (`allow_self_booking = True`):** I owner/employee I klijent (koji ima nalog na platformi) mogu upisati termin. Ovo NIJE zamjena jedne opcije drugom — obje opcije su dostupne ISTOVREMENO. Owner/employee i dalje može ručno unijeti rezervaciju (npr. nakon telefonskog poziva), ALI klijent sada DODATNO ima mogućnost da sam, kroz svoj nalog, rezerviše termin direktno, bez posredovanja owner-a/employee-a.
    - Vidi Dokument 18, sekcija 2.7 za kompletnu tehničku skicu (manji obim posla nego prvobitno procijenjeno — proširenje postojeće autorizacije na `appointments` ruti, NE treba nov "javni URL bez logovanja" sistem, jer klijent već ima nalog kroz postojeći login sistem). Vidi Dokument 14 za pozicioniranje u redoslijedu.
-6. **Responsive dizajn + PWA + Push notifikacije** — nezavisno od 2-5, može paralelno. Pet konkretnih UI specifikacija već zapisano (full-screen kalendar, 24h format vremena, rješenje za pretrpan raspored, PWA, Google Calendar vizuelni standard). **DODATO 28.06.2026.: Push notifikacije RADE kroz PWA (Android puna podrška, iOS 16.4+ uz instalaciju na Home Screen) — implementirati U ISTOJ sesiji kao PWA "Add to Home Screen", ne čekati native app. Realno pola dana do jedan dan dodatnog rada.** Vidi Dokument 14, stavka v1.1a/v1.1b, i Dokument 18, sekcija 2.15.
-7. **"Moji termini" lista** — agregirani pregled termina kroz sve salone, NE kalendar, samo lista. Manji posao, može nezavisno od self-booking sistema. Vidi Dokument 18, sekcija 2.10.
-8. **Employee delete ruta** — soft delete, infrastruktura (`is_deleted`/`deleted_at`) već postoji u bazi, samo nedostaje ruta. Vidi sekciju 4.1 ovog dokumenta.
-9. **Automatsko obnavljanje access tokena (refresh token interceptor) — KRITIČNO za UX, otkriveno 28.06.2026.** Trenutno: access token traje 60 minuta (`.env`, `ACCESS_TOKEN_EXPIRE_MINUTES=60`), refresh token postoji i radi (30 dana), ALI frontend (`api.ts`) trenutno NEMA automatski mehanizam koji bi, kad access token istekne, sam pozvao `/api/v1/auth/refresh` i ponovio zahtjev — korisnik trenutno dobija 401 grešku i mora se ponovo ulogovati svakih 60 minuta. Za vlasnika salona koji koristi app cijeli radni dan, ovo je loše iskustvo. Rješenje: axios response interceptor koji hvata 401, automatski pozove refresh, ponovi originalni zahtjev — sve nevidljivo za korisnika. Mali, ali bitan zadatak, treba ići uz ostatak liste.
-10. **Postaviti projekat (backend + frontend) na GitHub — DOGOVORENO 28.06.2026.** Razlog: Claude trenutno nema pouzdan, ažuran pristup frontend kodu (samo se "sjeća" iz ranijih poruka u razgovoru, što može biti netačno/zastarjelo) — backend kod je djelimično dostupan jer je generisan kroz raniju sesiju, ali frontend nikad nije sačuvan na isti način. Postavljanje kompletnog projekta na privatan GitHub repo omogućava Claude-u da fetch-uje i provjerava STVARNO, TRENUTNO stanje cijelog koda, ne samo backend dio ili ono što se "sjeća". Koraci: (1) inicijalizovati git repo u `D:\SmartBooking Platform` ako još nije, (2) kreirati privatan repo na github.com, (3) `git push` kompletnog projekta (provjeriti da `.gitignore` isključuje `venv/`, `node_modules/`, `.env`, `*.db` — osjetljivi/nepotrebni fajlovi), (4) dati Claude-u link na repo kad treba provjera koda. Ovo postaje POSEBNO važno prije nego se počne sa stavkama 4-8 ove liste, da Claude radi sa tačnim, ažurnim kodom, ne zastarjelim sjećanjem.
+6. ✅ **GOTOVO Responsive dizajn + PWA.** `frontend/public/manifest.json`, `sw.js`, ikone — prisutni. Hamburger meni u sva 4 layout fajla (Owner/Employee/Customer/Admin). Push notifikacije nisu nezavisno reverifikovane u ovoj reviziji.
+7. ✅ **GOTOVO "Moji termini" lista.** `GET /api/v1/appointments/my` implementirano (`app/api/routes/appointments.py`).
+8. ✅ **GOTOVO Employee delete ruta.** `DELETE /api/v1/employees/{employee_id}` (soft delete) implementirano.
+9. ✅ **GOTOVO Refresh token interceptor.** `frontend/src/services/api.ts` ima axios response interceptor: hvata 401, poziva `/api/v1/auth/refresh`, ponavlja originalni zahtjev sa retry queue-om.
+10. ✅ **GOTOVO Projekat je na GitHub-u** (`brko88/sattlio`) — ova revizija je urađena direktno protiv tog repoa.
 
-**Van ove liste, ali otvoreno/u toku:**
-- Čeka se odgovor od payment gateway providera (CorvusPay, Monri WSPay, Lemon Squeezy, Paddle, FastSpring) — vidi Dokument 19
-- **KRITIČNO, prije prve stvarne uplate: konsultacija sa knjigovođom u Banja Luci o poreskim obavezama** (status fizičko lice vs. preduzetnik s obzirom na redovnost prihoda, porez na dohodak, PDV tretman za MoR transakcije) — vidi Dokument 19, sekcija 3.3
-- Plan enforcement (provjera Solo/Start/Pro/Business limita u kodu) — NIJE prioritet dok se ne riješi payment gateway, vidi sekciju 5.1a ovog dokumenta
-- Cjenovnik po zaposlenom, OCR unos cjenovnika, "predloži sljedeći termin", usluge bez cijene — sve V2 ideje, vidi Dokument 18, sekcije 2.11-2.14
+**Van ove liste, i dalje otvoreno (potvrđeno 13.07.2026.):**
+- ❌ Payment gateway (CorvusPay/Monri/Lemon Squeezy/Paddle/FastSpring) — i dalje nikakve integracije u kodu; `app/core/plans.py` ima samo komentar koji referencira budući Paddle checkout.
+- Konsultacija sa knjigovođom o poreskim obavezama — otvoreno pravno/poslovno pitanje, van dometa koda (vidi i Dokument 25).
+- ❌ Plan enforcement (Solo/Start/Pro/Business limiti) — model postoji (`app/core/plans.py`, `Tenant.plan`/`billing_status`/`trial_ends_at`), ali kod i dalje NE provjerava limite nigdje u rutama.
+- Cjenovnik po zaposlenom (`employee_services`), OCR unos, "predloži sljedeći termin" — i dalje samo ideje, nema koda (vidi Dokument 18).
 
 ---
 
@@ -76,9 +84,36 @@ Redoslijed važan zbog zavisnosti između stavki. Detalji i tehničke skice za s
 - [x] Tailwind CSS dizajn sistem kroz cijelu aplikaciju (konzistentne boje, razmaci, komponente)
 - [x] Success/error povratne poruke na svim formama
 
+### 1.6 Admin panel (NOVO, dodano nakon 26.06.2026.) — DODATO 13.07.2026.
+- [x] Backend: `app/api/routes/admin.py` — lista/verify/suspend/reactivate tenant-a, `/stats`, `/health` (platforma), `/tenants/{id}/health` (Health Score), `/users` lista, `/users/{id}/reset-password`, `/users/{id}/block`/`unblock`, `/analytics/growth`, `/analytics/health`
+- [x] Frontend: `AdminLayout.tsx`, `AdminPanel.tsx`, `DashboardAdmin.tsx`
+- [ ] Audit log *ekran* — `AdminActionLog` model i `log_admin_action()` postoje i pišu se, ali nema GET/list rute za pregled zapisa
+
+### 1.7 Working Hours v2 / Specijalni dani — DODATO 13.07.2026.
+- [x] `app/models/special_day.py` + `app/api/routes/special_days.py` — jednokratna izmjena radnog vremena, neradni dan, pauza (`break_start`/`break_end`), sa detekcijom sukoba postojećih rezervacija prije primjene
+- [x] `app/core/scheduling.py::get_effective_hours` — zajednička logika prioriteta (SpecialDay > WorkingHours), koristi je i interni booking i self-booking
+- [ ] Samo jedna pauza po danu podržana (dokument traži više)
+
+### 1.8 Self-booking, forgot password, media uploads — DODATO 13.07.2026.
+- [x] Self-booking Mod A/Mod B (`allow_self_booking` na Employee, `app/api/routes/public.py`)
+- [x] Forgot/reset password flow (`app/api/routes/auth.py`)
+- [x] Upload logo/cover slike za tenant, avatar za zaposlenog (`app/core/media.py`, rute u `tenants.py`/`employees.py`)
+- [x] "Prijavi problem" support ruta postoji u kodu, ali NIJE registrovana u `main.py` — vidi bug napomenu na vrhu dokumenta
+
 ---
 
-## 2. Svi API endpointi
+## 2. Svi API endpointi (ažurirano 13.07.2026.)
+
+**Ukupno: 65 endpointa** (prebrojano direktno iz `app/api/routes/*.py`, decorator po decorator) — znatno više od originalnih 20 navedenih ispod. Tabela ispod je IZVORNA lista iz 26.06.2026. i više NIJE potpuna; nove grupe ruta dodane od tada:
+- **Admin** (`admin.py`): tenant lista/verify/suspend/reactivate/health, korisnici (lista/block/unblock/reset-password), platform stats, analytics/growth, analytics/health
+- **Public** (`public.py`): javna stranica salona (`/tenants/by-slug/{slug}`), lista salona, zaposleni + usluge + slobodni termini za self-booking, `POST` self-booking rezervacija
+- **Special Days** (`special_days.py`): CRUD za specijalne dane/pauze
+- **Auth dopune**: `forgot-password`, `reset-password`, `change-password`, `resend-verification`, `PUT /auth/me`
+- **Media**: upload/delete avatar (employee), logo/cover (tenant)
+- **Edit/delete rute** koje su ranije nedostajale: `PUT`/`DELETE` za employees, services, customers; `PATCH` za tenants
+- **Support**: `POST /support/report-issue` — postoji u kodu, ali ruter nije registrovan (bug, vidi vrh dokumenta)
+
+Originalna tabela (26.06.2026, i dalje tačna za ovih 20 — samo više nije kompletna lista):
 
 | Metoda | Putanja | Opis | Ovlaštenje |
 |--------|---------|------|-----------|
@@ -104,13 +139,13 @@ Redoslijed važan zbog zavisnosti između stavki. Detalji i tehničke skice za s
 | POST | `/api/v1/appointments/{id}/cancel` | Otkazivanje rezervacije | Member |
 | POST | `/api/v1/appointments/{id}/complete` | Završavanje rezervacije | Member |
 
-**Ukupno: 20 endpointa.**
+**Ukupno u ovoj tabeli: 20 (originalnih). Stvarno ukupno u kodu na 13.07.2026.: 65.**
 
 ---
 
 ## 3. Svi testovi (automatizovani test suite)
 
-**Ukupno: 46 testova, svi prolaze (`46 passed`).** Pokretanje: `pytest --html=test_report.html --self-contained-html` iz root foldera.
+**Ukupno: 46 test funkcija u `test_suite/` na 13.07.2026.** (isti broj kao 26.06 — nema novih testova dodanih uz svu novu funkcionalnost iz sekcija 1.6-1.8 iznad: admin panel, specijalni dani, self-booking, media upload nemaju test pokrivenost). Pokretanje: `pytest --html=test_report.html --self-contained-html` iz root foldera. Nije pokrenuto u ovoj reviziji (samo brojanje `def test_` po fajlu) — pass/fail status nije nezavisno potvrđen 13.07.2026.
 
 | Fajl | Broj testova | Pokriva |
 |---|---|---|
@@ -127,31 +162,38 @@ Redoslijed važan zbog zavisnosti između stavki. Detalji i tehničke skice za s
 
 ---
 
-## 4. Poznata ograničenja (trenutna verzija)
+## 4. Poznata ograničenja (ažurirano 13.07.2026.)
 
-### 4.1 Funkcionalna ograničenja
+### 4.1 Funkcionalna ograničenja — riješeno naspram 26.06.2026 verzije
+Sljedeće stavke iz originalne liste su GOTOVE, uklonjene odavde: edit/update rute za Employees/Services/Customers (sve tri imaju PUT), DELETE ruta za zaposlene, Admin panel, JIB/legitimnost salona provjera, responsive dizajn, PWA podrška.
+
+I dalje otvoreno:
 - Appointments podržavaju samo **jednu uslugu po rezervaciji** (BR-033, namjerno MVP ograničenje)
-- Nema podrške za **višestruke lokacije** po tenant-u u UI-ju (baza je spremna — `location_id` kolona postoji — ali UI/logika koriste samo jednu implicitnu lokaciju)
-- Nema **pauza/blokiranih termina** za zaposlene (zapisano u Dokumentu 18 kao V2 ideja)
+- Nema podrške za **višestruke lokacije** po tenant-u — potvrđeno 13.07.2026: nema `Location` modela/rute u kodu uopšte (ranija napomena o postojećoj `location_id` koloni nije potvrđena u trenutnoj šemi)
+- Nema **pauza/blokiranih termina** kao samostalnog koncepta (djelimično pokriveno kroz Specijalne dane — vidi 1.7 — ali nema "blokiraj slot direktno iz kalendara" akcije)
 - Nema **liste čekanja (waitlist)** za popunjene termine (Dokument 18)
-- Nema **edit/update rute** za Employees, Services, Customers (samo create + list trenutno; update postoji samo za Working Hours)
-- **Nema DELETE rute za zaposlene (potvrđeno 28.06.2026.)** — `Employee` model VEĆ IMA `is_deleted` i `deleted_at` kolone, i postojeća `GET` ruta VEĆ FILTRIRA `is_deleted == False` (soft-delete infrastruktura je spremna) — ali NE postoji nijedna ruta koja postavlja `is_deleted = True`. Treba implementirati `DELETE /api/v1/employees/{id}` (soft delete, NE hard delete iz baze — bitno da se ne pokvare historijske rezervacije koje referenciraju `employee_id`). Razmotriti i provjeru/upozorenje ako zaposleni ima buduće, aktivne rezervacije prije brisanja.
-- Appointments nemaju **PUT/update rutu** za izmjenu vremena postojeće rezervacije (samo cancel/complete)
-- Kalendar prikazuje samo **dnevni** pregled — sedmični/mjesečni prikaz nije implementiran
-- **Admin panel NE POSTOJI** (identifikovano 26.06.2026) — `superadmin` rola postoji u modelu, ali nema UI/rute za pregled svih tenant-a, korisnika, ili JIB verifikaciju. Vidi sekciju 5.2b za plan implementacije.
-- **Nema mehanizma provjere legitimnosti salona** — bilo koji korisnik može trenutno kreirati neograničen broj tenant-a bez bilo kakve provjere (vidi sekciju 5.2b)
-- **Nema responsive (mobilni) dizajna** — layout je desktop-first, nije testiran/prilagođen za male ekrane (vidi Dokument 14, stavka v1.1a)
-- **Nema PWA podrške** ("Add to Home Screen") — vidi Dokument 14, stavka v1.1b
+- Appointments nemaju **PUT/update rutu** za izmjenu vremena postojeće rezervacije (samo cancel/complete) — i dalje tačno
+- Kalendar prikazuje samo **dnevni** pregled — sedmični/mjesečni prikaz i dalje nije implementiran
+- **`employee_services`** (cjenovnik po zaposlenom) — i dalje ne postoji (Dokument 18, 2.14)
+- **Reliability Score / no-show tracking** — `no_show` postoji kao status vrijednost, ali nema rute koja ga postavlja niti `reliability_score` polja
+- **Plan enforcement** — `app/core/plans.py` definiše Solo/Start/Pro/Business, ali kod NE provjerava limite (broj zaposlenih i sl.) nigdje
+- **🐛 `/api/v1/support/report-issue` ruta nije registrovana u `main.py`** — nova regresija otkrivena 13.07.2026, vidi vrh dokumenta
+- **Nema paginacije ni na jednoj listing ruti** — sve liste vraćaju kompletan skup (`.all()`), problem će postati vidljiv sa rastom broja klijenata/rezervacija po tenant-u
+- **Audit log ekran** — podaci se pišu (`AdminActionLog`), ali nema rute za pregled u Admin panelu
 
-### 4.2 Infrastrukturna ograničenja
-- **Docker implementiran (26.06.2026)** — backend, frontend, i PostgreSQL kontejnerizovani kroz Docker Compose. Napomena: `Base.metadata.create_all()` u `app/main.py` treba ukloniti da Alembic bude jedini izvor istine za šemu baze (trenutno može dovesti do "column already exists" konflikta — vidi iskustvo iz sesije).
-- **Nema audit log servisa** — Dokument 06/10 traže bilježenje akcija (login, promjene, brisanja), trenutno nije implementirano
-- **Nema rate limiting-a** — endpointi nisu zaštićeni od učestalih zahtjeva sa istog IP-a
-- **Nema brute-force zaštite** na login ruti (neograničen broj pokušaja)
-- **Nema sigurnosnih HTTP headera** (HSTS, CSP, X-Frame-Options, itd.)
-- **CORS je ograničen samo na `localhost:5173`** — treba ažurirati za produkcijski domen
-- Lokalni `.env` sadrži **development SECRET_KEY** — mora se zamijeniti pravim, nasumično generisanim ključem prije produkcije
-- Nema CI/CD pipeline-a — deploy je trenutno ručan
+### 4.2 Infrastrukturna ograničenja — ažurirano 13.07.2026.
+- **Docker implementiran** — backend, frontend, PostgreSQL kroz Docker Compose. (Nije reverifikovano u ovoj reviziji da li `Base.metadata.create_all()` konflikt i dalje postoji.)
+- ✅ **Rate limiting implementiran** — `slowapi` (`app/core/limiter.py`), primijenjen na login (10/min), register (5/min), forgot/reset-password (3/min), support (5/min) — ranija stavka "nema rate limitinga" više NIJE tačna.
+- **CORS više NIJE hardkodiran na `localhost`** — sada čita `settings.frontend_url` iz env varijable (`app/main.py`); i dalje treba ručno potvrditi da produkcijski `.env` sadrži pravi domen, ne dev vrijednost.
+- Baza je i dalje **sinhrona** (SQLAlchemy + `psycopg2-binary`), ne async (`asyncpg`) — ako je async ikad bio plan, nije realizovan; nije nužno problem za trenutni obim.
+- **Nema brute-force zaštite u smislu lockout-a naloga** — rate limiting na `/login` (10/min) postoji, ali nema blokiranja naloga/IP-a nakon N uzastopnih neuspjelih pokušaja.
+- **Nema sigurnosnih HTTP headera** (HSTS, CSP, X-Frame-Options, itd.) — i dalje tačno, provjereno u `app/main.py`.
+- Lokalni `.env` sadrži **development SECRET_KEY** — i dalje treba zamijeniti prije produkcije (nije provjerljivo iz koda da li je promijenjeno na serveru).
+- Nema CI/CD pipeline-a (`.github/workflows` ne postoji) — i dalje tačno.
+- **Nema monitoringa** (Sentry ili sličan error/uptime alat) — i dalje tačno.
+- **Nema automatskog DB backup skripta** u repozitoriju — i dalje tačno.
+- **Nema `robots.txt`/`sitemap.xml`** u `frontend/public/` — blokira buduće SEO indeksiranje (Dokument 23).
+- **i18n i dalje nije implementiran** — potvrđeno u odvojenoj analizi istog dana (Dokument 20).
 
 ### 4.3 Sigurnosna ograničenja koja zahtijevaju pažnju
 - Email verifikacija postoji, ali **ne blokira** korištenje platforme (korisnik se može ulogovati i koristiti sistem i bez verifikovanog emaila) — Dokument 06, sekcija 12.1 traži da određene akcije budu blokirane dok email nije verifikovan
@@ -164,11 +206,11 @@ Redoslijed važan zbog zavisnosti između stavki. Detalji i tehničke skice za s
 
 ### 5.1 Infrastruktura (KRITIČNO)
 - [ ] Migracija sa lokalnog računara na VPS server (Hetzner/DigitalOcean, prema Dokumentu 08)
-- [ ] Docker + Docker Compose postavka
+- [x] Docker + Docker Compose postavka — `docker-compose.yml` (backend, frontend/nginx, postgres:16) — GOTOVO
 - [ ] Pravi domen registrovan i povezan (DNS)
 - [ ] SSL certifikat (Let's Encrypt) — HTTPS obavezan
-- [ ] PostgreSQL backup strategija (dnevni automatski backup)
-- [ ] Ažuriranje CORS podešavanja sa `localhost` na stvarni produkcijski domen
+- [ ] PostgreSQL backup strategija (dnevni automatski backup) — nema skripte u repou
+- [x] 🟡 CORS više nije hardkodiran (čita `settings.frontend_url`) — samo treba potvrditi da je env varijabla na produkciji postavljena na pravi domen, ne dev vrijednost
 
 ### 5.1a Plan Enforcement (NIJE KRITIČNO za beta, postaje bitno nakon naplate — odluka 28.06.2026.)
 
@@ -178,12 +220,12 @@ Dokument 13 definiše Solo/Start/Pro/Business pakete sa različitim limitima (br
 - [ ] Veza sa downgrade pravilima (Dokument 13, sekcija 9 — provjeriti limite prije dozvoljavanja downgrade-a)
 
 ### 5.2 Sigurnost (KRITIČNO)
-- [ ] Generisati novi, nasumičan `SECRET_KEY` za JWT (ne koristiti dev vrijednost)
+- [ ] Generisati novi, nasumičan `SECRET_KEY` za JWT (ne koristiti dev vrijednost) — nije provjerljivo iz koda, treba potvrditi na serveru
 - [ ] Premjestiti `.env` van git repozitorija ako već nije (provjeriti `.gitignore`)
-- [ ] Implementirati rate limiting (minimum na `/auth/login` i `/auth/register`)
-- [ ] Implementirati brute-force zaštitu (blokiranje IP-a nakon N neuspjelih login pokušaja)
-- [ ] Dodati sigurnosne HTTP headere (HSTS, X-Content-Type-Options, itd.)
-- [ ] Odlučiti i implementirati: da li email verifikacija treba blokirati funkcionalnost dok nije potvrđena
+- [x] **GOTOVO** Rate limiting implementiran — `slowapi`, na `/auth/login` (10/min), `/auth/register` (5/min), forgot/reset-password (3/min), support (5/min)
+- [ ] Implementirati brute-force zaštitu (blokiranje naloga/IP-a nakon N neuspjelih login pokušaja — rate limiting nije isto što i lockout)
+- [ ] Dodati sigurnosne HTTP headere (HSTS, X-Content-Type-Options, itd.) — i dalje nema u `app/main.py`
+- [ ] Odlučiti i implementirati: da li email verifikacija treba blokirati funkcionalnost dok nije potvrđena — i dalje ne blokira
 
 ### 5.2a Pravni dokumenti (KRITIČNO — odluka donesena 26.06.2026.)
 
@@ -237,16 +279,16 @@ Dopuna na osnovu Dokumenta 01, sekcija 3.1 (Super Administrator ovlaštenja) i n
 
 **Iz Dokumenta 01, sekcija 3.1 (dokumentovano, provjereno 29.06.2026):**
 - [x] Pregled svih poslovnih subjekata — GOTOVO
-- [ ] Upravljanje korisnicima (User nalozi, ne samo Tenant) — vidi stavke ispod
-- [ ] Upravljanje pretplatama — zavisi od payment gateway integracije (Dokument 19), ne prioritet dok ta odluka nije riješena
-- [ ] Pregled statistike (platforma-wide: broj salona, broj korisnika, broj rezervacija ukupno) — srednje lako, agregacioni upiti
-- [x] Blokiranje naloga — GOTOVO za Tenant (suspend), NEDOSTAJE za User (blokiranje pojedinačnog korisničkog naloga, ne cijelog salona)
+- [x] **GOTOVO (13.07.2026.)** Upravljanje korisnicima — `GET /admin/users`, `/users/{id}/block`, `/users/{id}/unblock`, `/users/{id}/reset-password` sve implementirano
+- [ ] Upravljanje pretplatama — zavisi od payment gateway integracije (Dokument 19), i dalje ne prioritet
+- [x] **GOTOVO** Pregled statistike — `GET /admin/stats`, `/admin/analytics/growth`, `/admin/analytics/health`
+- [x] Blokiranje naloga — GOTOVO i za Tenant (suspend) i za User (`block`/`unblock`)
 - [ ] Upravljanje sistemskim postavkama — nejasno definisano, van obima za sada
 
-**Nove ideje vlasnika (29.06.2026.):**
-- [ ] **Pretraga tenant-a** po nazivu, JIB-u — LAKO, dodatak search input-a na postojeću tabelu (filter na frontend strani, ili `?search=` parametar na backend ruti, slično postojećoj Customer pretrazi)
-- [ ] **Pretraga po email-u → koji tenant je registrovan na tom mailu** — SREDNJE LAKO. Nova ruta, npr. `GET /api/v1/admin/users/search?email=X`, koja vrati User podatke PLUS sve tenant-e gdje ta osoba ima `UserTenantRole` (join `users` → `user_tenant_roles` → `tenants`). Korisno za support slučajeve ("korisnik X se javio, koji salon kontroliše?").
-- [ ] **Reset lozinke korisniku (admin-initiated)** — SREDNJE LAKO. Nova ruta `POST /api/v1/admin/users/{id}/reset-password` — generiše novi privremeni password ili šalje email sa reset linkom (zavisi od toga da li "Forgot Password" flow uopšte postoji — TRENUTNO NE POSTOJI nigdje u sistemu, ni za obične korisnike, ni za admina; vrijedno razmotriti da se ovo radi ZAJEDNO sa običnim "Forgot Password" flow-om, ne odvojeno samo za admin slučaj).
+**Nove ideje vlasnika (29.06.2026.) — status 13.07.2026.:**
+- [x] **GOTOVO Pretraga tenant-a** po nazivu, JIB-u, gradu, email-u — `?search=` parametar na `GET /admin/tenants` (`admin.py`, filtrira `Tenant.name`/`jib`/`city`/`email` sa `ilike`)
+- [x] **GOTOVO Pretraga korisnika/email-a** — `?search=` parametar na `GET /admin/users`, filtrira po `User.email`/`first_name`/`last_name` i povezanom nazivu tenant-a
+- [x] **GOTOVO Reset lozinke korisniku (admin-initiated)** — `POST /admin/users/{id}/reset-password` implementirano, ISKORIŠTENO zajedno sa opštim forgot-password flow-om kako je predloženo
 
 **Dodatne ideje vrijedne razmatranja (predlog Claude-a, na osnovu iskustva sa sličnim sistemima):**
 - [ ] Brza statistika po tenant-u u tabeli (broj zaposlenih/usluga/rezervacija) — vizuelni dodatak postojećoj tabeli
@@ -278,12 +320,12 @@ Dopuna na osnovu Dokumenta 01, sekcija 3.1 (Super Administrator ovlaštenja) i n
 
 ---
 
-## 6. Zaključak
+## 6. Zaključak (ažurirano 13.07.2026.)
 
-Backend i frontend su funkcionalno kompletni za MVP definisan u Dokumentu 14 (Faza A kroz C.5). Automatizovani test suite potvrđuje da je poslovna logika (booking, tenant izolacija, auth) ispravna i otporna na regresiju. Sljedeći korak je Faza D — infrastrukturna i sigurnosna priprema za izlaganje sistema stvarnim korisnicima, prema listi u sekciji 5 ovog dokumenta.
+Backend i frontend su ne samo funkcionalno kompletni za originalni MVP (Dokument 14, Faza A-C.5), nego su od 29.06.2026. narasli znatno dalje: Admin panel, JIB verifikacija, self-booking, Working Hours v2 (specijalni dani), forgot-password, refresh-token interceptor, media upload i PWA su svi implementirani i potvrđeni u kodu (65 API endpointa naspram originalnih 20). Automatizovani test suite i dalje ima 46 testova — pokriva Fazu A dobro, ali NE pokriva ništa od nove funkcionalnosti dodane nakon 26.06 (admin, specijalni dani, self-booking, media).
 
-Nijedna stavka iz sekcije 5.1 i 5.2 ("KRITIČNO") ne treba biti preskočena prije nego prvi salon počne da koristi platformu.
+Preostale KRITIČNE stavke prije prvog pravog (van vlasnika) salona, po ovoj reviziji: VPS/domen/SSL/backup (5.1), sigurnosni HTTP headeri i brute-force lockout (5.2), pravni dokumenti — ToS/Privacy/Refund pravno pregledani (5.2a), monitoring (5.5), i popravka `support.router` regresije (vrh dokumenta). Payment gateway i plan enforcement ostaju namjerno odgođeni dok se ne donese odluka o naplati.
 
 ---
 
-*Dokument generisan 26.06.2026. na osnovu zajedničke razvojne sesije — SmartBooking Platform.*
+*Dokument generisan 26.06.2026., ažuriran 28-29.06.2026., pa 13.07.2026. na osnovu direktne provjere koda naspram ovog dokumenta — Sattlio Platform.*

@@ -113,14 +113,6 @@ function EmployeeLayout() {
           >
             Prijavi problem (Email)
           </a>
-          <a
-            href="https://wa.me/38765497119"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
-          >
-            Prijavi problem (WhatsApp)
-          </a>
         </div>
 
         <button

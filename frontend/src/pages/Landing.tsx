@@ -479,10 +479,6 @@ function ContactSection() {
           {CONTACT.supportEmail}
         </a>
 
-        <p className="text-sm text-slate-400 mt-4">
-          Kanali: {CONTACT.supportChannels.join(" · ")} · WhatsApp: {CONTACT.whatsapp}
-        </p>
-
         {/* Finalni CTA ka registraciji */}
         <div className="mt-10">
           <Link

@@ -23,6 +23,12 @@ function Customers() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+
   const fetchCustomers = async (searchTerm?: string) => {
     try {
       const response = await api.get("/api/v1/customers", {
@@ -69,6 +75,41 @@ function Customers() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchCustomers(search);
+  };
+
+  const startEdit = (c: Customer) => {
+    setEditingId(c.id);
+    setEditFirstName(c.first_name);
+    setEditLastName(c.last_name);
+    setEditPhone(c.phone || "");
+    setEditEmail(c.email || "");
+  };
+
+  const handleEditSave = async (customerId: number) => {
+    setError("");
+    try {
+      await api.put(`/api/v1/customers/${customerId}`, {
+        first_name: editFirstName,
+        last_name: editLastName,
+        phone: editPhone || null,
+        email: editEmail || null,
+      });
+      setEditingId(null);
+      fetchCustomers(search);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom uređivanja.");
+    }
+  };
+
+  const handleDelete = async (customerId: number, name: string) => {
+    if (!confirm(`Obrisati klijenta ${name}?`)) return;
+    setError("");
+    try {
+      await api.delete(`/api/v1/customers/${customerId}`);
+      fetchCustomers(search);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom brisanja.");
+    }
   };
 
   return (
@@ -169,31 +210,174 @@ function Customers() {
         <div className="md:hidden space-y-3">
           {customers.map((c) => (
             <div key={c.id} className="bg-white rounded-lg shadow-sm p-4">
-              <p className="font-semibold text-slate-900">{c.first_name} {c.last_name}</p>
-              <p className="text-sm text-slate-500">{c.phone || "—"}</p>
-              <p className="text-sm text-slate-500 break-all">{c.email || "—"}</p>
+              {editingId === c.id ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Ime</label>
+                    <input
+                      value={editFirstName}
+                      onChange={(e) => setEditFirstName(e.target.value)}
+                      maxLength={30}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Prezime</label>
+                    <input
+                      value={editLastName}
+                      onChange={(e) => setEditLastName(e.target.value)}
+                      maxLength={30}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Telefon</label>
+                    <input
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      maxLength={20}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => handleEditSave(c.id)}
+                      className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+                    >
+                      Sačuvaj
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="flex-1 px-3 py-2 bg-slate-200 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-300"
+                    >
+                      Odustani
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="font-semibold text-slate-900">{c.first_name} {c.last_name}</p>
+                  <p className="text-sm text-slate-500">{c.phone || "—"}</p>
+                  <p className="text-sm text-slate-500 break-all mb-3">{c.email || "—"}</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEdit(c)}
+                      className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                    >
+                      Uredi
+                    </button>
+                    <button
+                      onClick={() => handleDelete(c.id, `${c.first_name} ${c.last_name}`)}
+                      className="flex-1 px-3 py-1.5 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+                    >
+                      Obriši
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
 
         {/* Desktop/tablet prikaz - tabela (md i vece) */}
         <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-x-auto">
-        <table className="w-full min-w-[500px]">
+        <table className="w-full min-w-[650px]">
           <thead>
             <tr className="text-left bg-slate-50">
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Ime</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Prezime</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Telefon</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Email</th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Akcije</th>
             </tr>
           </thead>
           <tbody>
             {customers.map((c) => (
               <tr key={c.id} className="border-t border-slate-100">
-                <td className="px-4 py-3">{c.first_name}</td>
-                <td className="px-4 py-3">{c.last_name}</td>
-                <td className="px-4 py-3">{c.phone || "—"}</td>
-                <td className="px-4 py-3">{c.email || "—"}</td>
+                {editingId === c.id ? (
+                  <>
+                    <td className="px-4 py-2">
+                      <input
+                        value={editFirstName}
+                        onChange={(e) => setEditFirstName(e.target.value)}
+                        maxLength={30}
+                        className="w-full px-2 py-1 border border-slate-200 rounded-md text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={editLastName}
+                        onChange={(e) => setEditLastName(e.target.value)}
+                        maxLength={30}
+                        className="w-full px-2 py-1 border border-slate-200 rounded-md text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        maxLength={20}
+                        className="w-full px-2 py-1 border border-slate-200 rounded-md text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        className="w-full px-2 py-1 border border-slate-200 rounded-md text-sm"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditSave(c.id)}
+                          className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+                        >
+                          Sačuvaj
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-sm hover:bg-slate-300"
+                        >
+                          Odustani
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-4 py-3">{c.first_name}</td>
+                    <td className="px-4 py-3">{c.last_name}</td>
+                    <td className="px-4 py-3">{c.phone || "—"}</td>
+                    <td className="px-4 py-3">{c.email || "—"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEdit(c)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                        >
+                          Uredi
+                        </button>
+                        <button
+                          onClick={() => handleDelete(c.id, `${c.first_name} ${c.last_name}`)}
+                          className="px-3 py-1 bg-red-600 text-white rounded-md text-sm hover:bg-red-700"
+                        >
+                          Obriši
+                        </button>
+                      </div>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>

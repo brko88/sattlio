@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,7 +9,7 @@ from app.core.security import get_current_user
 from app.models.customer import Customer
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
-from app.schemas.customer import CustomerCreate, CustomerResponse
+from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 
 router = APIRouter(prefix="/api/v1/customers", tags=["customers"])
 
@@ -61,7 +63,7 @@ def get_customers(
 ):
     require_staff(db, current_user.id, tenant_id)
 
-    query = db.query(Customer).filter(Customer.tenant_id == tenant_id)
+    query = db.query(Customer).filter(Customer.tenant_id == tenant_id, Customer.is_deleted == False)
 
     if search:
         query = query.filter(
@@ -71,3 +73,59 @@ def get_customers(
         )
 
     return query.all()
+
+
+@router.put("/{customer_id}", response_model=CustomerResponse)
+def update_customer(
+    customer_id: int,
+    data: CustomerUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    customer = (
+        db.query(Customer)
+        .filter(Customer.id == customer_id, Customer.is_deleted == False)
+        .first()
+    )
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Klijent nije pronađen.")
+
+    require_staff(db, current_user.id, customer.tenant_id)
+
+    if data.first_name is not None:
+        customer.first_name = data.first_name
+    if data.last_name is not None:
+        customer.last_name = data.last_name
+    if data.phone is not None:
+        customer.phone = data.phone
+    if data.email is not None:
+        customer.email = data.email
+    if data.notes is not None:
+        customer.notes = data.notes
+
+    db.commit()
+    db.refresh(customer)
+    return customer
+
+
+@router.delete("/{customer_id}")
+def delete_customer(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    customer = (
+        db.query(Customer)
+        .filter(Customer.id == customer_id, Customer.is_deleted == False)
+        .first()
+    )
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Klijent nije pronađen.")
+
+    require_staff(db, current_user.id, customer.tenant_id)
+
+    customer.is_deleted = True
+    customer.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"detail": "Klijent je obrisan."}

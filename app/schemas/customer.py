@@ -10,6 +10,14 @@ class CustomerCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=300)
 
 
+class CustomerUpdate(BaseModel):
+    first_name: str | None = Field(default=None, max_length=30)
+    last_name: str | None = Field(default=None, max_length=30)
+    phone: str | None = Field(default=None, max_length=20)
+    email: str | None = None
+    notes: str | None = Field(default=None, max_length=300)
+
+
 class CustomerResponse(BaseModel):
     id: int
     tenant_id: int

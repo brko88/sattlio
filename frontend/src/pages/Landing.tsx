@@ -527,6 +527,16 @@ function LandingFooter() {
             </Link>
           </div>
         </div>
+
+        {/* Pravni linkovi */}
+        <div className="flex justify-center md:justify-start gap-4 text-xs mt-6 pt-6 border-t border-slate-700">
+          <Link to="/uslovi-koristenja" className={`${ANIMATION.transitionClass} hover:text-white`}>
+            Uslovi korištenja
+          </Link>
+          <Link to="/politika-privatnosti" className={`${ANIMATION.transitionClass} hover:text-white`}>
+            Politika privatnosti
+          </Link>
+        </div>
       </div>
     </footer>
   );

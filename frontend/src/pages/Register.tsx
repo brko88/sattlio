@@ -7,6 +7,7 @@ function Register() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
@@ -15,12 +16,18 @@ function Register() {
     e.preventDefault();
     setError("");
 
+    if (!termsAccepted) {
+      setError("Morate prihvatiti Uslove korištenja i Politiku privatnosti.");
+      return;
+    }
+
     try {
       await api.post("/api/v1/auth/register", {
         email,
         password,
         first_name: firstName,
         last_name: lastName,
+        terms_accepted: termsAccepted,
       });
 
       setSuccess(true);
@@ -129,11 +136,35 @@ function Register() {
             />
           </div>
 
+          <div className="mb-4">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                required
+                className="w-4 h-4 mt-0.5 accent-blue-600 shrink-0"
+              />
+              <span className="text-sm text-slate-600">
+                Pročitao/la sam i prihvatam{" "}
+                <Link to="/uslovi-koristenja" target="_blank" className="text-blue-600 hover:underline">
+                  Uslove korištenja
+                </Link>{" "}
+                i{" "}
+                <Link to="/politika-privatnosti" target="_blank" className="text-blue-600 hover:underline">
+                  Politiku privatnosti
+                </Link>
+                .
+              </span>
+            </label>
+          </div>
+
           {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
           <button
             type="submit"
-            className="w-full px-5 py-2.5 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+            disabled={!termsAccepted}
+            className="w-full px-5 py-2.5 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Registruj se
           </button>

@@ -9,6 +9,8 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import BookAppointment from "./pages/BookAppointment";
 import SalonProfile from "./pages/SalonProfile";
 import { isReservedPath } from "./reservedPaths";
@@ -34,6 +36,7 @@ import Analytics from "./pages/Analytics";
 import Onboarding from "./pages/Onboarding";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import ReportIssue from "./pages/ReportIssue";
 
 
 function PublicOrApp() {
@@ -138,6 +141,7 @@ function RoleRouter() {
           <Route path="/working-hours" element={<WorkingHours />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/report-issue" element={<ReportIssue />} />
           <Route path="/create-tenant" element={<CreateTenant />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
@@ -156,6 +160,7 @@ function RoleRouter() {
           <Route path="/customers" element={<Customers />} />
           <Route path="/working-hours" element={<WorkingHours />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/report-issue" element={<ReportIssue />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
@@ -169,6 +174,7 @@ function RoleRouter() {
         <Route element={<CustomerLayout />}>
           <Route path="/my-appointments" element={<MyAppointments />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/report-issue" element={<ReportIssue />} />
           <Route path="/book" element={<BookingLanding />} />
           <Route path="/book/:employeeId" element={<BookAppointment />} />
           <Route path="*" element={<Navigate to="/my-appointments" replace />} />
@@ -191,6 +197,8 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/uslovi-koristenja" element={<TermsOfService />} />
+        <Route path="/politika-privatnosti" element={<PrivacyPolicy />} />
         <Route path="/book/:employeeId" element={<BookAppointment />} />
 
         <Route path="/*" element={<PublicOrApp />} />

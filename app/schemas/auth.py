@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel, EmailStr, Field
+﻿from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class RegisterRequest(BaseModel):
@@ -6,6 +6,14 @@ class RegisterRequest(BaseModel):
     password: str
     first_name: str = Field(max_length=30)
     last_name: str = Field(max_length=30)
+    terms_accepted: bool
+
+    @field_validator("terms_accepted")
+    @classmethod
+    def validate_terms_accepted(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("Morate prihvatiti Uslove korištenja i Politiku privatnosti.")
+        return value
 
 
 class LoginRequest(BaseModel):

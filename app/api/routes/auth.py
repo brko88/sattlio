@@ -84,6 +84,9 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
         # Čuvamo samo heš (isti princip kao refresh_token) - ako baza procuri,
         # sirovi token iz email-a se ne može rekonstruisati iz baze.
         verification_token=hash_refresh_token(verification_token),
+        # terms_accepted je vec potvrdjen kao True na nivou sheme (RegisterRequest) -
+        # ovdje samo biljezimo KADA je prihvatio, kao dokaz pristanka.
+        terms_accepted_at=datetime.now(timezone.utc),
     )
     db.add(new_user)
     db.commit()

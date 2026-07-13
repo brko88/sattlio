@@ -1,18 +1,18 @@
 ﻿from datetime import datetime
 import re
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class TenantCreate(BaseModel):
-    name: str
-    address: str | None = None
-    city: str | None = None
+    name: str = Field(max_length=100)
+    address: str | None = Field(default=None, max_length=150)
+    city: str | None = Field(default=None, max_length=50)
     country: str | None = None
-    phone: str | None = None
+    phone: str | None = Field(default=None, max_length=20)
     email: str | None = None
     jib: str
     business_category: str | None = None
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=800)
 
     @field_validator("jib")
     @classmethod

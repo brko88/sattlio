@@ -88,6 +88,7 @@ function Customers() {
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             required
+            maxLength={30}
             className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -99,6 +100,7 @@ function Customers() {
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             required
+            maxLength={30}
             className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -109,6 +111,7 @@ function Customers() {
             placeholder="Telefon (opciono)"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            maxLength={20}
             className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -142,7 +145,7 @@ function Customers() {
           placeholder="Pretraga (ime, prezime, telefon)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+          className="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
         />
         <button
           type="submit"
@@ -161,7 +164,21 @@ function Customers() {
           Nema klijenata.
         </div>
       ) : (
-        <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
+        <>
+        {/* Mobilni prikaz - kartice (ispod md) */}
+        <div className="md:hidden space-y-3">
+          {customers.map((c) => (
+            <div key={c.id} className="bg-white rounded-lg shadow-sm p-4">
+              <p className="font-semibold text-slate-900">{c.first_name} {c.last_name}</p>
+              <p className="text-sm text-slate-500">{c.phone || "—"}</p>
+              <p className="text-sm text-slate-500 break-all">{c.email || "—"}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop/tablet prikaz - tabela (md i vece) */}
+        <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[500px]">
           <thead>
             <tr className="text-left bg-slate-50">
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Ime</th>
@@ -181,6 +198,8 @@ function Customers() {
             ))}
           </tbody>
         </table>
+        </div>
+        </>
       )}
     </div>
   );

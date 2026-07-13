@@ -122,6 +122,7 @@ function Employees() {
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             required
+            maxLength={30}
             className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -132,6 +133,7 @@ function Employees() {
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             required
+            maxLength={30}
             className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -154,6 +156,7 @@ function Employees() {
             placeholder="Telefon (opciono)"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            maxLength={20}
             className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -187,6 +190,7 @@ function Employees() {
                     <input
                       value={editFirstName}
                       onChange={(e) => setEditFirstName(e.target.value)}
+                      maxLength={30}
                       className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
                     />
                   </div>
@@ -195,6 +199,7 @@ function Employees() {
                     <input
                       value={editLastName}
                       onChange={(e) => setEditLastName(e.target.value)}
+                      maxLength={30}
                       className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
                     />
                   </div>
@@ -203,6 +208,7 @@ function Employees() {
                     <input
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
+                      maxLength={20}
                       className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
                     />
                   </div>
@@ -307,6 +313,7 @@ function Employees() {
                       <input
                         value={editFirstName}
                         onChange={(e) => setEditFirstName(e.target.value)}
+                        maxLength={30}
                         className="w-full px-2 py-1 border border-slate-200 rounded-md text-sm"
                       />
                     </td>
@@ -314,6 +321,7 @@ function Employees() {
                       <input
                         value={editLastName}
                         onChange={(e) => setEditLastName(e.target.value)}
+                        maxLength={30}
                         className="w-full px-2 py-1 border border-slate-200 rounded-md text-sm"
                       />
                     </td>
@@ -322,6 +330,7 @@ function Employees() {
                       <input
                         value={editPhone}
                         onChange={(e) => setEditPhone(e.target.value)}
+                        maxLength={20}
                         className="w-full px-2 py-1 border border-slate-200 rounded-md text-sm"
                       />
                     </td>

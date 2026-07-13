@@ -1,11 +1,11 @@
-﻿from pydantic import BaseModel, EmailStr
+﻿from pydantic import BaseModel, EmailStr, Field
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
-    first_name: str
-    last_name: str
+    first_name: str = Field(max_length=30)
+    last_name: str = Field(max_length=30)
 
 
 class LoginRequest(BaseModel):

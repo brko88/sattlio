@@ -553,6 +553,7 @@ function Calendar() {
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
                     rows={3}
+                    maxLength={300}
                     placeholder="Npr. klijent se razbolio, promjena rasporeda..."
                     className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
                   />

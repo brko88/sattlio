@@ -1,6 +1,6 @@
 from datetime import date, datetime, time
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SpecialDayCreate(BaseModel):
@@ -12,9 +12,9 @@ class SpecialDayCreate(BaseModel):
     end_time: time | None = None
     break_start: time | None = None
     break_end: time | None = None
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=300)
     force: bool = False
-    cancellation_reason: str | None = None
+    cancellation_reason: str | None = Field(default=None, max_length=300)
 
 
 class SpecialDayResponse(BaseModel):

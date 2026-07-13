@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AppointmentCreate(BaseModel):
@@ -13,7 +13,7 @@ class AppointmentCreate(BaseModel):
 
 class CancelAppointmentRequest(BaseModel):
     cancelled_by_type: str | None = None  # "customer" ili "staff" - obavezno kad otkazuje owner/employee
-    reason: str | None = None
+    reason: str | None = Field(default=None, max_length=300)
 
 
 class AppointmentResponse(BaseModel):

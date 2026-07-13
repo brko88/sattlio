@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.limiter import limiter
@@ -62,7 +62,7 @@ class SelfBookingCreate(BaseModel):
     employee_id: int
     service_id: int
     start_time: datetime
-    note: str | None = None
+    note: str | None = Field(default=None, max_length=300)
 
 
 class SelfBookingResponse(BaseModel):

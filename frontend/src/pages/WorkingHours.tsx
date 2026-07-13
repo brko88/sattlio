@@ -578,7 +578,7 @@ function WorkingHours() {
 
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Napomena (opciono)</label>
-                <input type="text" placeholder="npr. Državni praznik, Godišnji odmor..." value={specialNote} onChange={(e) => setSpecialNote(e.target.value)}
+                <input type="text" placeholder="npr. Državni praznik, Godišnji odmor..." value={specialNote} onChange={(e) => setSpecialNote(e.target.value)} maxLength={300}
                   className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 text-sm" />
               </div>
 

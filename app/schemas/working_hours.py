@@ -1,6 +1,6 @@
 from datetime import time
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.special_day import ConflictingAppointmentInfo
 
@@ -15,7 +15,7 @@ class WorkingHoursCreate(BaseModel):
     break_start: time | None = None
     break_end: time | None = None
     force: bool = False
-    cancellation_reason: str | None = None
+    cancellation_reason: str | None = Field(default=None, max_length=300)
 
 
 class WorkingHoursResponse(BaseModel):

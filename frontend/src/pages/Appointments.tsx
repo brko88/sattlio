@@ -487,7 +487,41 @@ function Appointments() {
           Nema rezervacija.
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm overflow-x-auto">
+        <>
+        {/* Mobilni prikaz - kartice (ispod md) */}
+        <div className="md:hidden space-y-3">
+          {appointments.map((appt) => (
+            <div key={appt.id} className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex items-start justify-between mb-2">
+                <p className="font-semibold text-slate-900">{getCustomerName(appt.customer_id)}</p>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold shrink-0 ${STATUS_COLORS[appt.status]}`}>
+                  {STATUS_LABELS[appt.status]}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500">{getServiceName(appt.service_id)} — {getEmployeeName(appt.employee_id)}</p>
+              <p className="text-sm text-slate-500 mb-3">{formatDateTime(appt.start_time, timezone)}</p>
+              {(appt.status === "created" || appt.status === "confirmed") && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleComplete(appt.id)}
+                    className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                  >
+                    Završi
+                  </button>
+                  <button
+                    onClick={() => setCancelTarget(appt)}
+                    className="flex-1 px-3 py-1.5 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
+                  >
+                    Otkaži
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop/tablet prikaz - tabela (md i vece) */}
+        <div className="hidden md:block bg-white rounded-lg shadow-sm overflow-x-auto">
         <table className="w-full min-w-[720px]">
           <thead>
             <tr className="text-left bg-slate-50">
@@ -536,6 +570,7 @@ function Appointments() {
           </tbody>
         </table>
         </div>
+        </>
       )}
 
       {/* Modal — potvrda otkazivanja */}
@@ -595,6 +630,7 @@ function Appointments() {
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 rows={3}
+                maxLength={300}
                 placeholder="Npr. klijent se razbolio, promjena rasporeda..."
                 className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
               />

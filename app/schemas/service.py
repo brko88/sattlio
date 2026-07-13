@@ -1,9 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ServiceCreate(BaseModel):
     tenant_id: int
-    name: str
+    name: str = Field(max_length=60)
     description: str | None = None
     duration_minutes: int
     price: float

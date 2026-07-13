@@ -156,6 +156,7 @@ function CreateTenant() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              maxLength={100}
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -195,6 +196,7 @@ function CreateTenant() {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               required
+              maxLength={50}
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -205,6 +207,7 @@ function CreateTenant() {
               placeholder="Adresa (ulica i broj)"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
+              maxLength={150}
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -215,6 +218,7 @@ function CreateTenant() {
               placeholder="Telefon"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              maxLength={20}
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -224,6 +228,7 @@ function CreateTenant() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
+              maxLength={800}
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 resize-none"
             />
             <p className="text-xs text-slate-400 mt-1">

@@ -36,8 +36,10 @@ function ShareSalonButton({ hasEnabledEmployee }: ShareSalonButtonProps) {
     }
   };
 
+  const shareText = `Rezervišite termin u salonu ${activeTenant.name}: ${salonUrl}`;
+
   const handleShare = async () => {
-    // Native share (mobilni - otvara WhatsApp/Viber/Instagram itd.)
+    // Native share - dostupno samo u sigurnom kontekstu (HTTPS), otvara sistemski meni.
     if (navigator.share) {
       try {
         await navigator.share({
@@ -52,6 +54,12 @@ function ShareSalonButton({ hasEnabledEmployee }: ShareSalonButtonProps) {
       // Desktop fallback - samo kopiraj
       handleCopy();
     }
+  };
+
+  const handleWhatsApp = () => {
+    // Ne zavisi od HTTPS/sigurnog konteksta kao native share - uvijek radi.
+    // Bez fiksnog broja - otvara WhatsApp da korisnik sam izabere kontakt.
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -72,12 +80,18 @@ function ShareSalonButton({ hasEnabledEmployee }: ShareSalonButtonProps) {
         />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={handleCopy}
           className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
         >
           {copied ? "✓ Kopirano!" : "Kopiraj link"}
+        </button>
+        <button
+          onClick={handleWhatsApp}
+          className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
+        >
+          WhatsApp
         </button>
         {typeof navigator !== "undefined" && "share" in navigator && (
           <button

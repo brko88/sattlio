@@ -1,11 +1,12 @@
 ﻿from datetime import datetime, timedelta, timezone, date, time
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
 from app.models.appointment import Appointment
@@ -19,6 +20,10 @@ from app.models.user_tenant_role import UserTenantRole
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
 
 TZ = ZoneInfo("Europe/Sarajevo")
+
+# Anti-abuse limiti za self-booking (vidi memory: project_critical_security_todos #12)
+MAX_ACTIVE_APPOINTMENTS_PER_TENANT = 5
+MAX_BOOKING_DAYS_AHEAD = 90
 
 
 class PublicTenantResponse(BaseModel):
@@ -57,6 +62,7 @@ class SelfBookingCreate(BaseModel):
     employee_id: int
     service_id: int
     start_time: datetime
+    note: str | None = None
 
 
 class SelfBookingResponse(BaseModel):
@@ -66,6 +72,7 @@ class SelfBookingResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     status: str
+    notes: str | None
 
     class Config:
         from_attributes = True
@@ -227,11 +234,19 @@ def get_available_slots(
 
 
 @router.post("/appointments", response_model=SelfBookingResponse)
+@limiter.limit("10/30 seconds")
 def self_book_appointment(
+    request: Request,
     data: SelfBookingCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not current_user.email_verified:
+        raise HTTPException(
+            status_code=403,
+            detail="Morate potvrditi email adresu prije nego što možete rezervisati termin.",
+        )
+
     employee = db.query(Employee).filter(
         Employee.id == data.employee_id,
         Employee.is_deleted == False,
@@ -260,6 +275,32 @@ def self_book_appointment(
     if start_time < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Termin ne može biti u prošlosti.")
 
+    if start_time > datetime.now(timezone.utc) + timedelta(days=MAX_BOOKING_DAYS_AHEAD):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Termin ne može biti zakazan više od {MAX_BOOKING_DAYS_AHEAD} dana unaprijed.",
+        )
+
+    # Anti-abuse: klijent smije imati najviše N AKTIVNIH (created/confirmed) termina
+    # u ovom salonu istovremeno - sprječava da jedan nalog zauzme cijeli kalendar
+    # rezervišući desetine termina koje nikad ne planira iskoristiti.
+    existing_customer = db.query(Customer).filter(
+        Customer.tenant_id == employee.tenant_id,
+        Customer.email == current_user.email,
+    ).first()
+    if existing_customer is not None:
+        active_count = db.query(Appointment).filter(
+            Appointment.tenant_id == employee.tenant_id,
+            Appointment.customer_id == existing_customer.id,
+            Appointment.status.in_(["created", "confirmed"]),
+        ).count()
+        if active_count >= MAX_ACTIVE_APPOINTMENTS_PER_TENANT:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Imate maksimalan broj aktivnih rezervacija ({MAX_ACTIVE_APPOINTMENTS_PER_TENANT}) u ovom salonu. "
+                       "Otkažite ili sačekajte da neki termin prođe prije nove rezervacije.",
+            )
+
     end_time = start_time + timedelta(minutes=service.duration_minutes)
 
     local_start = start_time.astimezone(TZ)
@@ -286,11 +327,7 @@ def self_book_appointment(
     if overlapping:
         raise HTTPException(status_code=409, detail="Termin je već zauzet.")
 
-    customer = db.query(Customer).filter(
-        Customer.tenant_id == employee.tenant_id,
-        Customer.email == current_user.email,
-    ).first()
-
+    customer = existing_customer
     if customer is None:
         customer = Customer(
             tenant_id=employee.tenant_id,
@@ -323,6 +360,7 @@ def self_book_appointment(
         start_time=start_time,
         end_time=end_time,
         status="created",
+        notes=data.note,
     )
     db.add(new_appointment)
     db.commit()

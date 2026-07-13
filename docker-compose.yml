@@ -33,6 +33,7 @@
     volumes:
       - ./alembic:/app/alembic
       - ./app:/app/app
+      - media_data:/app/media
     ports:
       - "8000:8000"
 
@@ -45,3 +46,4 @@
 
 volumes:
   postgres_data:
+  media_data:

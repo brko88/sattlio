@@ -15,6 +15,7 @@ class Employee(Base):
     last_name = Column(String, nullable=False)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
 
     is_active = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)

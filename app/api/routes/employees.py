@@ -1,7 +1,8 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status
+﻿from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.media import delete_media_file, process_and_save_image
 from app.core.permissions import require_staff
 from app.core.security import get_current_user
 from app.core.email import send_employee_invitation_email
@@ -13,6 +14,8 @@ from app.models.user_tenant_role import UserTenantRole
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate, EmployeeResponse
 
 router = APIRouter(prefix="/api/v1/employees", tags=["employees"])
+
+MAX_AVATAR_BYTES = 2 * 1024 * 1024
 
 
 def require_owner(db: Session, user_id: int, tenant_id: int):
@@ -154,6 +157,56 @@ def update_employee(
     if data.can_manage_own_hours is not None:
         employee.can_manage_own_hours = data.can_manage_own_hours
 
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
+@router.post("/{employee_id}/avatar", response_model=EmployeeResponse)
+async def upload_employee_avatar(
+    employee_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    employee = (
+        db.query(Employee)
+        .filter(Employee.id == employee_id, Employee.is_deleted == False)
+        .first()
+    )
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Zaposleni nije pronadjen.")
+
+    require_owner(db, current_user.id, employee.tenant_id)
+
+    new_url = await process_and_save_image(
+        file, subdir=f"employees/{employee_id}", prefix="avatar",
+        max_bytes=MAX_AVATAR_BYTES, square_size=512,
+    )
+    delete_media_file(employee.avatar_url)
+    employee.avatar_url = new_url
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
+@router.delete("/{employee_id}/avatar", response_model=EmployeeResponse)
+def delete_employee_avatar(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    employee = (
+        db.query(Employee)
+        .filter(Employee.id == employee_id, Employee.is_deleted == False)
+        .first()
+    )
+    if employee is None:
+        raise HTTPException(status_code=404, detail="Zaposleni nije pronadjen.")
+
+    require_owner(db, current_user.id, employee.tenant_id)
+    delete_media_file(employee.avatar_url)
+    employee.avatar_url = None
     db.commit()
     db.refresh(employee)
     return employee

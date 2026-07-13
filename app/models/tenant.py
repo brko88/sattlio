@@ -19,6 +19,7 @@ class Tenant(Base):
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
+    cover_url = Column(String, nullable=True)
     timezone = Column(String, default="Europe/Sarajevo")
     currency = Column(String, default="BAM")
     jib = Column(String, unique=True, nullable=True, index=True)

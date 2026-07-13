@@ -38,6 +38,8 @@ class TenantResponse(BaseModel):
     slot_duration_minutes: int
     plan: str
     trial_ends_at: datetime | None
+    logo_url: str | None
+    cover_url: str | None
 
     class Config:
         from_attributes = True
@@ -56,6 +58,8 @@ class TenantWithRoleResponse(BaseModel):
     timezone: str
     plan: str
     trial_ends_at: datetime | None
+    logo_url: str | None
+    cover_url: str | None
 
     class Config:
         from_attributes = True

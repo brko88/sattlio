@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../services/api";
+import Avatar from "../components/Avatar";
 
 interface PublicEmployee {
   id: number;
   first_name: string;
   last_name: string;
   allow_self_booking: boolean;
+  avatar_url: string | null;
 }
 
 interface PublicService {
@@ -24,6 +26,8 @@ interface SalonDetail {
   address: string | null;
   business_category: string | null;
   description: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
   employees: PublicEmployee[];
   services: PublicService[];
 }
@@ -73,8 +77,16 @@ function SalonProfile() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {salon.cover_url && (
+        <div className="w-full h-40 md:h-56 bg-slate-200">
+          <img src={salon.cover_url} alt="" className="w-full h-full object-cover" />
+        </div>
+      )}
       <div className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold text-slate-900 mb-1">{salon.name}</h1>
+        <div className="flex items-center gap-4 mb-1">
+          <Avatar src={salon.logo_url} firstName={salon.name} size={64} />
+          <h1 className="text-3xl font-bold text-slate-900">{salon.name}</h1>
+        </div>
         <p className="text-slate-500 mb-1">
           {[salon.address, salon.city].filter(Boolean).join(", ") || "—"}
         </p>
@@ -115,9 +127,12 @@ function SalonProfile() {
                 to={`/book/${e.id}`}
                 className="bg-white rounded-lg shadow-sm px-4 py-3 flex items-center justify-between hover:shadow-md transition-shadow"
               >
-                <p className="font-medium text-slate-900">
-                  {e.first_name} {e.last_name}
-                </p>
+                <div className="flex items-center gap-3">
+                  <Avatar src={e.avatar_url} firstName={e.first_name} lastName={e.last_name} size={40} />
+                  <p className="font-medium text-slate-900">
+                    {e.first_name} {e.last_name}
+                  </p>
+                </div>
                 <span className="text-sm text-purple-700 font-semibold">Rezerviši →</span>
               </Link>
             ))}

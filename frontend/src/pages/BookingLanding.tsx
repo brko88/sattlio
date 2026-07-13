@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import Avatar from "../components/Avatar";
 
 interface Tenant {
   id: number;
@@ -9,6 +10,8 @@ interface Tenant {
   address: string | null;
   business_category: string | null;
   description: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
 }
 
 interface Employee {
@@ -16,24 +19,8 @@ interface Employee {
   first_name: string;
   last_name: string;
   allow_self_booking: boolean;
+  avatar_url: string | null;
 }
-
-const AVATAR_COLORS = [
-  "bg-blue-600",
-  "bg-emerald-600",
-  "bg-violet-600",
-  "bg-amber-600",
-  "bg-rose-600",
-  "bg-cyan-600",
-];
-
-const colorForName = (name: string) => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-};
-
-const initials = (a: string, b?: string) => `${a?.[0] ?? ""}${b?.[0] ?? ""}`.toUpperCase();
 
 function SkeletonCard() {
   return (
@@ -139,9 +126,7 @@ function BookingLanding() {
                   className="group bg-white rounded-xl p-5 shadow-sm text-left transition-all duration-200 border border-slate-100 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5"
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-11 h-11 rounded-full ${colorForName(tenant.name)} text-white flex items-center justify-center font-semibold text-sm shrink-0`}>
-                      {initials(tenant.name)}
-                    </div>
+                    <Avatar src={tenant.logo_url} firstName={tenant.name} size={44} />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-900 text-base truncate">{tenant.name}</p>
                       {tenant.business_category && (
@@ -174,9 +159,7 @@ function BookingLanding() {
           </button>
 
           <div className="bg-white rounded-xl p-5 shadow-sm mb-6 max-w-lg border border-slate-100 flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full ${colorForName(selectedTenant.name)} text-white flex items-center justify-center font-semibold shrink-0`}>
-              {initials(selectedTenant.name)}
-            </div>
+            <Avatar src={selectedTenant.logo_url} firstName={selectedTenant.name} size={48} />
             <div>
               <p className="font-semibold text-slate-900">{selectedTenant.name}</p>
               {selectedTenant.business_category && (
@@ -214,9 +197,7 @@ function BookingLanding() {
                   onClick={() => navigate(`/book/${emp.id}`)}
                   className="group bg-white rounded-xl p-5 shadow-sm text-left transition-all duration-200 border border-slate-100 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 flex items-center gap-3"
                 >
-                  <div className={`w-11 h-11 rounded-full ${colorForName(`${emp.first_name}${emp.last_name}`)} text-white flex items-center justify-center font-semibold text-sm shrink-0`}>
-                    {initials(emp.first_name, emp.last_name)}
-                  </div>
+                  <Avatar src={emp.avatar_url} firstName={emp.first_name} lastName={emp.last_name} size={44} />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900 truncate">
                       {emp.first_name} {emp.last_name}

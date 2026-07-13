@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import Avatar from "../components/Avatar";
 
 const SLOT_OPTIONS = [
   { value: 15, label: "15 minuta" },
@@ -35,12 +36,18 @@ function Settings() {
   const [customValue, setCustomValue] = useState("");
   const [isCustom, setIsCustom] = useState(false);
   const [timezone, setTimezone] = useState("Europe/Sarajevo");
+  const [tenantName, setTenantName] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [mediaError, setMediaError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const loadTenant = () => {
     api
       .get("/api/v1/tenants/my")
       .then((res) => {
@@ -56,11 +63,78 @@ function Settings() {
             setCustomValue(val.toString());
           }
           if (tenant.timezone) setTimezone(tenant.timezone);
+          setTenantName(tenant.name);
+          setLogoUrl(tenant.logo_url);
+          setCoverUrl(tenant.cover_url);
         }
       })
       .catch(() => setError("Greška prilikom učitavanja podešavanja."))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadTenant();
   }, [tenantId]);
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    setMediaError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post(`/api/v1/tenants/${tenantId}/logo`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setLogoUrl(res.data.logo_url);
+      await refreshTenants();
+    } catch (err: any) {
+      setMediaError(err.response?.data?.detail || "Greška prilikom uploada loga.");
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      await api.delete(`/api/v1/tenants/${tenantId}/logo`);
+      setLogoUrl(null);
+      await refreshTenants();
+    } catch (err: any) {
+      setMediaError(err.response?.data?.detail || "Greška prilikom brisanja loga.");
+    }
+  };
+
+  const handleCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCover(true);
+    setMediaError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post(`/api/v1/tenants/${tenantId}/cover`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setCoverUrl(res.data.cover_url);
+    } catch (err: any) {
+      setMediaError(err.response?.data?.detail || "Greška prilikom uploada cover slike.");
+    } finally {
+      setUploadingCover(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveCover = async () => {
+    try {
+      await api.delete(`/api/v1/tenants/${tenantId}/cover`);
+      setCoverUrl(null);
+    } catch (err: any) {
+      setMediaError(err.response?.data?.detail || "Greška prilikom brisanja cover slike.");
+    }
+  };
 
   const getEffectiveValue = (): number => {
     if (isCustom) {
@@ -106,6 +180,57 @@ function Settings() {
       {loading ? (
         <p>Učitavanje...</p>
       ) : (
+        <>
+        <div className="bg-white rounded-lg p-6 shadow-sm max-w-md space-y-6 mb-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-1">Logo salona</h3>
+            <p className="text-sm text-slate-500 mb-3">
+              Prikazuje se na javnoj stranici salona, self-booking stranici i u emailovima. JPG, PNG ili WEBP, do 5 MB.
+            </p>
+            <div className="flex items-center gap-4">
+              <Avatar src={logoUrl} firstName={tenantName} size={72} />
+              <div className="flex flex-col gap-2">
+                <label className="px-4 py-2 bg-slate-100 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-200 transition-colors cursor-pointer text-center">
+                  {uploadingLogo ? "Učitavanje..." : "Promijeni logo"}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoChange} disabled={uploadingLogo} />
+                </label>
+                {logoUrl && (
+                  <button type="button" onClick={handleRemoveLogo} className="text-sm text-red-600 hover:underline">
+                    Ukloni logo
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-1">Cover slika (opciono)</h3>
+            <p className="text-sm text-slate-500 mb-3">
+              Banner na vrhu javne stranice salona. JPG, PNG ili WEBP, do 5 MB.
+            </p>
+            {coverUrl ? (
+              <img src={coverUrl} alt="Cover" className="w-full h-32 object-cover rounded-md mb-3" />
+            ) : (
+              <div className="w-full h-32 bg-slate-100 rounded-md mb-3 flex items-center justify-center text-slate-400 text-sm">
+                Nema cover slike
+              </div>
+            )}
+            <div className="flex gap-3">
+              <label className="px-4 py-2 bg-slate-100 text-slate-700 rounded-md text-sm font-medium hover:bg-slate-200 transition-colors cursor-pointer">
+                {uploadingCover ? "Učitavanje..." : "Promijeni cover"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleCoverChange} disabled={uploadingCover} />
+              </label>
+              {coverUrl && (
+                <button type="button" onClick={handleRemoveCover} className="text-sm text-red-600 hover:underline">
+                  Ukloni cover
+                </button>
+              )}
+            </div>
+          </div>
+
+          {mediaError && <p className="text-red-600 text-sm">{mediaError}</p>}
+        </div>
+
         <form onSubmit={handleSave} className="bg-white rounded-lg p-6 shadow-sm max-w-md space-y-6">
 
           {/* Timezone */}
@@ -203,6 +328,7 @@ function Settings() {
             {saving ? "Čuvanje..." : "Sačuvaj podešavanja"}
           </button>
         </form>
+        </>
       )}
     </div>
   );

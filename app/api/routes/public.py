@@ -33,6 +33,8 @@ class PublicTenantResponse(BaseModel):
     address: str | None
     business_category: str | None
     description: str | None
+    logo_url: str | None
+    cover_url: str | None
 
     class Config:
         from_attributes = True
@@ -43,6 +45,7 @@ class PublicEmployeeResponse(BaseModel):
     first_name: str
     last_name: str
     allow_self_booking: bool
+    avatar_url: str | None
 
     class Config:
         from_attributes = True
@@ -376,6 +379,8 @@ class PublicTenantDetailResponse(BaseModel):
     address: str | None
     business_category: str | None
     description: str | None
+    logo_url: str | None
+    cover_url: str | None
     employees: list[PublicEmployeeResponse]
     services: list[PublicServiceResponse]
 

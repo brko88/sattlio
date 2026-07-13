@@ -1,10 +1,11 @@
 ﻿import re
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.media import delete_media_file, process_and_save_image
 from app.core.security import get_current_user
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -13,6 +14,9 @@ from datetime import datetime, timedelta, timezone
 
 from app.schemas.tenant import TenantCreate, TenantResponse, TenantWithRoleResponse
 from app.core.email import send_new_tenant_notification
+
+MAX_LOGO_BYTES = 5 * 1024 * 1024
+MAX_COVER_BYTES = 5 * 1024 * 1024
 
 router = APIRouter(prefix="/api/v1/tenants", tags=["tenants"])
 
@@ -145,6 +149,86 @@ def update_tenant(
     return tenant
 
 
+@router.post("/{tenant_id}/logo", response_model=TenantResponse)
+async def upload_tenant_logo(
+    tenant_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_owner(db, current_user.id, tenant_id)
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
+
+    new_url = await process_and_save_image(
+        file, subdir=f"tenants/{tenant_id}", prefix="logo",
+        max_bytes=MAX_LOGO_BYTES, square_size=512,
+    )
+    delete_media_file(tenant.logo_url)
+    tenant.logo_url = new_url
+    db.commit()
+    db.refresh(tenant)
+    return tenant
+
+
+@router.delete("/{tenant_id}/logo", response_model=TenantResponse)
+def delete_tenant_logo(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_owner(db, current_user.id, tenant_id)
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
+    delete_media_file(tenant.logo_url)
+    tenant.logo_url = None
+    db.commit()
+    db.refresh(tenant)
+    return tenant
+
+
+@router.post("/{tenant_id}/cover", response_model=TenantResponse)
+async def upload_tenant_cover(
+    tenant_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_owner(db, current_user.id, tenant_id)
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
+
+    new_url = await process_and_save_image(
+        file, subdir=f"tenants/{tenant_id}", prefix="cover",
+        max_bytes=MAX_COVER_BYTES, banner_size=(1600, 480),
+    )
+    delete_media_file(tenant.cover_url)
+    tenant.cover_url = new_url
+    db.commit()
+    db.refresh(tenant)
+    return tenant
+
+
+@router.delete("/{tenant_id}/cover", response_model=TenantResponse)
+def delete_tenant_cover(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_owner(db, current_user.id, tenant_id)
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
+    delete_media_file(tenant.cover_url)
+    tenant.cover_url = None
+    db.commit()
+    db.refresh(tenant)
+    return tenant
+
+
 @router.get("/my", response_model=list[TenantWithRoleResponse])
 def get_my_tenants(
     db: Session = Depends(get_db),
@@ -173,6 +257,8 @@ def get_my_tenants(
                 timezone=tenant.timezone or "Europe/Sarajevo",
                 plan=tenant.plan or "trial",
                 trial_ends_at=tenant.trial_ends_at,
+                logo_url=tenant.logo_url,
+                cover_url=tenant.cover_url,
             )
         )
 

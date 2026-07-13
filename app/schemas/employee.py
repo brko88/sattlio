@@ -29,6 +29,7 @@ class EmployeeResponse(BaseModel):
     is_active: bool
     allow_self_booking: bool
     can_manage_own_hours: bool
+    avatar_url: str | None
 
     class Config:
         from_attributes = True

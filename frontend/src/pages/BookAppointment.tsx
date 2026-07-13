@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { formatTime } from "../utils/time";
+import Avatar from "../components/Avatar";
 
 interface Service {
   id: number;
@@ -14,6 +15,7 @@ interface Employee {
   id: number;
   first_name: string;
   last_name: string;
+  avatar_url: string | null;
 }
 
 function BookAppointment() {
@@ -122,9 +124,12 @@ function BookAppointment() {
 
         <h1 className="text-2xl font-bold text-slate-900 mb-1">Online rezervacija</h1>
         {employee && (
-          <p className="text-slate-500 mb-6">
-            {employee.first_name} {employee.last_name}
-          </p>
+          <div className="flex items-center gap-2 mb-6">
+            <Avatar src={employee.avatar_url} firstName={employee.first_name} lastName={employee.last_name} size={32} />
+            <p className="text-slate-500">
+              {employee.first_name} {employee.last_name}
+            </p>
+          </div>
         )}
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-4">

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import Avatar from "../components/Avatar";
 
 interface Employee {
   id: number;
@@ -11,6 +12,7 @@ interface Employee {
   is_active: boolean;
   allow_self_booking: boolean;
   can_manage_own_hours: boolean;
+  avatar_url: string | null;
 }
 
 function Employees() {
@@ -30,6 +32,7 @@ function Employees() {
   const [editPhone, setEditPhone] = useState("");
   const [editAllowSelfBooking, setEditAllowSelfBooking] = useState(false);
   const [editCanManageOwnHours, setEditCanManageOwnHours] = useState(false);
+  const [uploadingAvatarId, setUploadingAvatarId] = useState<number | null>(null);
 
   const fetchEmployees = async () => {
     try {
@@ -95,6 +98,26 @@ function Employees() {
     }
   };
 
+  const handleAvatarChange = async (employeeId: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatarId(employeeId);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      await api.post(`/api/v1/employees/${employeeId}/avatar`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      fetchEmployees();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom uploada slike.");
+    } finally {
+      setUploadingAvatarId(null);
+      e.target.value = "";
+    }
+  };
+
   const handleDelete = async (employeeId: number, name: string) => {
     if (!confirm(`Obrisati zaposlenog ${name}?`)) return;
     setError("");
@@ -105,6 +128,21 @@ function Employees() {
       setError(err.response?.data?.detail || "Greška prilikom brisanja.");
     }
   };
+
+  const renderAvatarUpload = (emp: Employee, size: number) => (
+    <label className="relative cursor-pointer group inline-block rounded-full shrink-0" title="Promijeni sliku">
+      <Avatar src={emp.avatar_url} firstName={emp.first_name} lastName={emp.last_name} size={size} />
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => handleAvatarChange(emp.id, e)}
+      />
+      <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-full transition-colors flex items-center justify-center text-white opacity-0 group-hover:opacity-100" style={{ fontSize: size * 0.22 }}>
+        {uploadingAvatarId === emp.id ? "..." : "✎"}
+      </span>
+    </label>
+  );
 
   return (
     <div>
@@ -248,7 +286,10 @@ function Employees() {
               ) : (
                 <>
                   <div className="flex items-start justify-between mb-2">
-                    <p className="font-semibold text-slate-900">{emp.first_name} {emp.last_name}</p>
+                    <div className="flex items-center gap-3">
+                      {renderAvatarUpload(emp, 44)}
+                      <p className="font-semibold text-slate-900">{emp.first_name} {emp.last_name}</p>
+                    </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold shrink-0 ${
                       emp.is_active ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
                     }`}>
@@ -294,6 +335,7 @@ function Employees() {
         <table className="w-full min-w-[900px]">
           <thead>
             <tr className="text-left bg-slate-50">
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Slika</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Ime</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Prezime</th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Email</th>
@@ -309,6 +351,9 @@ function Employees() {
               <tr key={emp.id} className="border-t border-slate-100">
                 {editingId === emp.id ? (
                   <>
+                    <td className="px-4 py-2">
+                      {renderAvatarUpload(emp, 40)}
+                    </td>
                     <td className="px-4 py-2">
                       <input
                         value={editFirstName}
@@ -376,6 +421,9 @@ function Employees() {
                   </>
                 ) : (
                   <>
+                    <td className="px-4 py-3">
+                      {renderAvatarUpload(emp, 40)}
+                    </td>
                     <td className="px-4 py-3">{emp.first_name}</td>
                     <td className="px-4 py-3">{emp.last_name}</td>
                     <td className="px-4 py-3 text-sm">{emp.email || "—"}</td>

@@ -1,15 +1,24 @@
-﻿from fastapi import FastAPI
+﻿import mimetypes
+from pathlib import Path
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.limiter import limiter
 from app.core.config import settings
+from app.core.media import MEDIA_ROOT
 from app.api.routes import auth, tenants, employees, services, working_hours as working_hours_routes, customers, appointments, admin, public, special_days
 
 app = FastAPI(title="Sattlio API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+mimetypes.add_type("image/webp", ".webp")
+Path(MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
+app.mount("/api/media", StaticFiles(directory=MEDIA_ROOT), name="media")
 
 app.add_middleware(
     CORSMiddleware,

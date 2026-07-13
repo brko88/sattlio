@@ -51,7 +51,7 @@ function PublicOrApp() {
 }
 
 function RoleRouter() {
-  const { tenants, isLoading } = useTenant();
+  const { tenants, isLoading, fetchError, refreshTenants } = useTenant();
 
   const token = localStorage.getItem("access_token");
   const isSuperadmin = localStorage.getItem("is_superadmin") === "true";
@@ -67,6 +67,27 @@ function RoleRouter() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <p className="text-slate-400 text-sm">Učitavanje...</p>
+      </div>
+    );
+  }
+
+  // 2b. Greska pri ucitavanju (npr. prekid neta) - NE tumaciti kao "korisnik
+  // nema salona", nego ponuditi ponovni pokusaj dok se ne potvrdi stvarno stanje.
+  if (fetchError && tenants.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <p className="text-slate-700 font-medium mb-2">Greška pri učitavanju</p>
+          <p className="text-slate-500 text-sm mb-4">
+            Provjerite internet konekciju. Stranica će se sama osvježiti kad se veza vrati, ili pokušajte ručno.
+          </p>
+          <button
+            onClick={() => refreshTenants()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Pokušaj ponovo
+          </button>
+        </div>
       </div>
     );
   }

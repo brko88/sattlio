@@ -22,6 +22,7 @@ interface TenantContextType {
   plan: string;
   trialEndsAt: string | null;
   isLoading: boolean;
+  fetchError: boolean;
   refreshTenants: () => Promise<void>;
 }
 
@@ -36,6 +37,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   );
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   const setTenantId = (id: number) => {
     localStorage.setItem("tenant_id", id.toString());
@@ -59,6 +61,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     try {
       const response = await api.get("/api/v1/tenants/my");
       setTenants(response.data);
+      setFetchError(false);
 
       if (response.data.length > 0) {
         const storedId = localStorage.getItem("tenant_id");
@@ -78,7 +81,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem("current_role");
       }
     } catch {
-      // korisnik možda nije ulogovan
+      // Ne diramo postojeci `tenants` state - ovo je najcesce prekid neta ili
+      // privremena greska servera, NE dokaz da korisnik stvarno nema salona.
+      // App.tsx razlikuje ovo od "stvarno 0 salona" preko fetchError flaga,
+      // da korisnika ne bi pogresno poslao na "kreiraj salon" ekran.
+      setFetchError(true);
     } finally {
       setIsLoading(false);
     }
@@ -86,11 +93,17 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshTenants();
+
+    // Kad se konekcija vrati nakon prekida, automatski pokusaj ponovo
+    // umjesto da korisnik ostane zaglavljen na pogresnom ekranu.
+    const handleOnline = () => refreshTenants();
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
   }, []);
 
   return (
     <TenantContext.Provider
-      value={{ tenantId, setTenantId, tenants, currentRole, timezone, plan, trialEndsAt, isLoading, refreshTenants }}
+      value={{ tenantId, setTenantId, tenants, currentRole, timezone, plan, trialEndsAt, isLoading, fetchError, refreshTenants }}
     >
       {children}
     </TenantContext.Provider>

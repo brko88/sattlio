@@ -77,22 +77,32 @@ function SalonProfile() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {salon.cover_url && (
-        <div className="w-full h-40 md:h-56 bg-slate-200">
+      {salon.cover_url ? (
+        <div className="w-full bg-slate-800" style={{ aspectRatio: "8 / 3" }}>
           <img src={salon.cover_url} alt="" className="w-full h-full object-cover" />
         </div>
+      ) : (
+        <div className="w-full h-20 md:h-24 bg-gradient-to-r from-slate-700 to-slate-900" />
       )}
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        <div className="flex items-center gap-4 mb-1">
-          <Avatar src={salon.logo_url} firstName={salon.name} size={64} />
-          <h1 className="text-3xl font-bold text-slate-900">{salon.name}</h1>
+
+      <div className="max-w-2xl mx-auto px-4">
+        <div className="-mt-10 md:-mt-12">
+          <Avatar
+            src={salon.logo_url}
+            firstName={salon.name}
+            size={88}
+            className="ring-4 ring-white shadow-md"
+          />
         </div>
-        <p className="text-slate-500 mb-1">
-          {[salon.address, salon.city].filter(Boolean).join(", ") || "—"}
-        </p>
-        {salon.business_category && (
-          <p className="text-sm text-purple-700 font-medium mb-4">{salon.business_category}</p>
-        )}
+
+        <div className="pt-3 pb-10">
+          <h1 className="text-3xl font-bold text-slate-900 mb-1">{salon.name}</h1>
+          <p className="text-slate-500 mb-1">
+            {[salon.address, salon.city].filter(Boolean).join(", ") || "—"}
+          </p>
+          {salon.business_category && (
+            <p className="text-sm text-purple-700 font-medium mb-4">{salon.business_category}</p>
+          )}
         {salon.description && (
           <p className="text-slate-600 mb-6">{salon.description}</p>
         )}
@@ -138,6 +148,7 @@ function SalonProfile() {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

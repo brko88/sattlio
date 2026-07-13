@@ -203,7 +203,7 @@ async def upload_tenant_cover(
 
     new_url = await process_and_save_image(
         file, subdir=f"tenants/{tenant_id}", prefix="cover",
-        max_bytes=MAX_COVER_BYTES, banner_size=(1600, 480),
+        max_bytes=MAX_COVER_BYTES, banner_size=(1600, 600),
     )
     delete_media_file(tenant.cover_url)
     tenant.cover_url = new_url

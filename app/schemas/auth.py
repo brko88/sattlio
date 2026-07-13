@@ -28,11 +28,18 @@ class UserResponse(BaseModel):
     email: str
     first_name: str | None
     last_name: str | None
+    phone: str | None
     email_verified: bool
     is_superadmin: bool
 
     class Config:
         from_attributes = True
+
+
+class UpdateProfileRequest(BaseModel):
+    first_name: str = Field(max_length=30)
+    last_name: str = Field(max_length=30)
+    phone: str | None = Field(default=None, max_length=20)
 
 
 class VerifyEmailRequest(BaseModel):

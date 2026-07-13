@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { useTenant } from "../contexts/TenantContext";
+import api from "../services/api";
 
 function EmployeeLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { tenantId, setTenantId, tenants } = useTenant();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    api.get("/api/v1/auth/me").then((res) => {
+      const name = `${res.data.first_name || ""} ${res.data.last_name || ""}`.trim();
+      setUserName(name);
+    }).catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
@@ -55,7 +64,13 @@ function EmployeeLayout() {
         }`}
       >
         <h2 className="text-xl font-bold mb-1">Sattlio</h2>
-        <p className="text-xs text-slate-400 mb-4">Zaposleni</p>
+        <Link
+          to="/profile"
+          onClick={() => setMobileOpen(false)}
+          className="block mb-4 hover:opacity-80 transition-opacity"
+        >
+          <p className="text-xs text-slate-400">Zaposleni{userName ? ` — ${userName}` : ""}</p>
+        </Link>
 
         {tenants.length > 0 && (
           <select

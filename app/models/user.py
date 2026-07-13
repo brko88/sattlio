@@ -13,6 +13,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
     email_verified = Column(Boolean, default=False)
     verification_token = Column(String, nullable=True)
     password_reset_token = Column(String, nullable=True)

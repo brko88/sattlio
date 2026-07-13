@@ -116,6 +116,7 @@ function RoleRouter() {
           <Route path="/employees" element={<Employees />} />
           <Route path="/working-hours" element={<WorkingHours />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/create-tenant" element={<CreateTenant />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
@@ -133,6 +134,7 @@ function RoleRouter() {
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/working-hours" element={<WorkingHours />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>

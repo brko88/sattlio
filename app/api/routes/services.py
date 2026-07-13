@@ -6,7 +6,7 @@ from app.core.security import get_current_user
 from app.models.service import Service
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
-from app.schemas.service import ServiceCreate, ServiceResponse
+from app.schemas.service import ServiceCreate, ServiceResponse, ServiceUpdate
 
 router = APIRouter(prefix="/api/v1/services", tags=["services"])
 
@@ -81,3 +81,60 @@ def get_services(
         .all()
     )
     return services
+
+
+@router.put("/{service_id}", response_model=ServiceResponse)
+def update_service(
+    service_id: int,
+    data: ServiceUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = (
+        db.query(Service)
+        .filter(Service.id == service_id, Service.is_deleted == False)
+        .first()
+    )
+    if service is None:
+        raise HTTPException(status_code=404, detail="Usluga nije pronađena.")
+
+    require_owner(db, current_user.id, service.tenant_id)
+
+    if data.name is not None:
+        service.name = data.name
+    if data.description is not None:
+        service.description = data.description
+    if data.duration_minutes is not None:
+        service.duration_minutes = data.duration_minutes
+    if data.price is not None:
+        service.price = data.price
+    if data.color is not None:
+        service.color = data.color
+    if data.is_active is not None:
+        service.is_active = data.is_active
+
+    db.commit()
+    db.refresh(service)
+    return service
+
+
+@router.delete("/{service_id}")
+def delete_service(
+    service_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = (
+        db.query(Service)
+        .filter(Service.id == service_id, Service.is_deleted == False)
+        .first()
+    )
+    if service is None:
+        raise HTTPException(status_code=404, detail="Usluga nije pronađena.")
+
+    require_owner(db, current_user.id, service.tenant_id)
+
+    service.is_deleted = True
+    db.commit()
+
+    return {"detail": "Usluga je obrisana."}

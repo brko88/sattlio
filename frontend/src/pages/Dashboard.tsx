@@ -197,7 +197,7 @@ function Dashboard() {
 
       {!loading && (
         <div className="mt-6 max-w-md">
-          <ShareSalonButton />
+          <ShareSalonButton hasEnabledEmployee={employees.some((e) => e.allow_self_booking)} />
         </div>
       )}
     </div>

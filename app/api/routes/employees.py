@@ -100,11 +100,15 @@ def create_employee(
     if linked_user_id is None:
         tenant = db.query(Tenant).filter(Tenant.id == data.tenant_id).first()
         employee_full_name = f"{data.first_name} {data.last_name}".strip()
-        send_employee_invitation_email(
-            data.email,
-            employee_full_name,
-            tenant.name if tenant else "salon",
-        )
+        try:
+            send_employee_invitation_email(
+                data.email,
+                employee_full_name,
+                tenant.name if tenant else "salon",
+            )
+        except Exception as e:
+            import logging
+            logging.error(f"Pozivnica zaposlenom nije poslana: {e}")
 
     db.refresh(new_employee)
 

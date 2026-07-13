@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useTenant } from "../contexts/TenantContext";
 
-function ShareSalonButton() {
+interface ShareSalonButtonProps {
+  hasEnabledEmployee?: boolean;
+}
+
+function ShareSalonButton({ hasEnabledEmployee }: ShareSalonButtonProps) {
   const { tenantId, tenants } = useTenant();
   const [copied, setCopied] = useState(false);
 
@@ -84,6 +88,18 @@ function ShareSalonButton() {
           </button>
         )}
       </div>
+
+      {hasEnabledEmployee !== undefined && (
+        hasEnabledEmployee ? (
+          <p className="text-xs text-green-600 mt-3">
+            🟢 Online rezervacije su uključene. Klijenti mogu odmah rezervisati termin putem ovog linka.
+          </p>
+        ) : (
+          <p className="text-xs text-amber-600 mt-3">
+            ⚠️ Online rezervacije su trenutno isključene. Posjetioci će moći vidjeti vaš javni profil, ali neće moći rezervisati termin dok ponovo ne uključite online rezervacije.
+          </p>
+        )
+      )}
     </div>
   );
 }

@@ -10,6 +10,15 @@ class ServiceCreate(BaseModel):
     color: str | None = None
 
 
+class ServiceUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=60)
+    description: str | None = None
+    duration_minutes: int | None = None
+    price: float | None = None
+    color: str | None = None
+    is_active: bool | None = None
+
+
 class ServiceResponse(BaseModel):
     id: int
     tenant_id: int

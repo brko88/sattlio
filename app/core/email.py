@@ -1,5 +1,7 @@
 ﻿import smtplib
 from datetime import datetime
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
 
@@ -102,6 +104,49 @@ def send_appointment_cancelled_email(
         f"Izvinjavamo se zbog neugodnosti."
     )
     send_email(to_email, subject, body)
+
+
+def send_support_request_email(
+    user_email: str,
+    user_name: str,
+    subject: str,
+    message: str,
+    screenshot_bytes: bytes | None = None,
+    screenshot_filename: str | None = None,
+    screenshot_subtype: str | None = None,
+):
+    email_subject = f"[Prijava problema] {subject}"
+    attachment_line = f"\nPriložen je screenshot ({screenshot_filename}).\n" if screenshot_bytes else ""
+    body = (
+        f"Nova prijava problema sa Sattlio platforme.\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"OD\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Ime:   {user_name or '—'}\n"
+        f"Email: {user_email}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"PORUKA\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{message}\n"
+        f"{attachment_line}"
+    )
+
+    msg = MIMEMultipart()
+    msg["Subject"] = email_subject
+    msg["From"] = settings.smtp_user
+    msg["To"] = ADMIN_EMAIL
+    msg["Reply-To"] = user_email
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+
+    if screenshot_bytes:
+        image = MIMEImage(screenshot_bytes, _subtype=screenshot_subtype or "jpeg")
+        image.add_header("Content-Disposition", "attachment", filename=screenshot_filename or "screenshot.jpg")
+        msg.attach(image)
+
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+        server.starttls()
+        server.login(settings.smtp_user, settings.smtp_password)
+        server.send_message(msg)
 
 
 def send_employee_invitation_email(to_email: str, employee_name: str, tenant_name: str):

@@ -44,9 +44,12 @@ def require_can_modify_appointment(db: Session, current_user, appointment, actio
     """
     role = get_user_role(db, current_user.id, appointment.tenant_id)
     if role is None:
+        # 404 (ne 403) namjerno - korisnik bez ikakve veze sa ovim tenant-om
+        # ne smije razlikovati "ne postoji" od "postoji, ali nije tvoj",
+        # jer bi to otkrilo da neki appointment ID postoji negdje na platformi.
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nemate pristup ovom poslovnom subjektu.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Rezervacija ne postoji.",
         )
 
     if role in ("owner", "employee"):

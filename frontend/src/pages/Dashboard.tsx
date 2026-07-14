@@ -40,9 +40,9 @@ function Dashboard() {
         ]);
         setStats({
           employees: empRes.data.length,
-          services: srvRes.data.length,
-          customers: custRes.data.length,
-          appointments: apptRes.data.length,
+          services: srvRes.data.total,
+          customers: custRes.data.total,
+          appointments: apptRes.data.total,
         });
         setEmployees(empRes.data);
         const currentTenant = tenantsRes.data.find((t: any) => t.id === tenantId);

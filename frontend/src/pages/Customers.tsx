@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import Pagination from "../components/Pagination";
 
 interface Customer {
   id: number;
@@ -29,12 +30,17 @@ function Customers() {
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
 
-  const fetchCustomers = async (searchTerm?: string) => {
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 20;
+
+  const fetchCustomers = async (searchTerm?: string, pageNum: number = page) => {
     try {
       const response = await api.get("/api/v1/customers", {
-        params: { tenant_id: tenantId, search: searchTerm || undefined },
+        params: { tenant_id: tenantId, search: searchTerm || undefined, page: pageNum, page_size: PAGE_SIZE },
       });
-      setCustomers(response.data);
+      setCustomers(response.data.items);
+      setTotal(response.data.total);
     } catch (err: any) {
       setError("Greška prilikom učitavanja klijenata.");
     } finally {
@@ -43,8 +49,8 @@ function Customers() {
   };
 
   useEffect(() => {
-    fetchCustomers();
-  }, [tenantId]);
+    fetchCustomers(search, page);
+  }, [tenantId, page]);
 
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +80,8 @@ function Customers() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchCustomers(search);
+    setPage(1);
+    fetchCustomers(search, 1);
   };
 
   const startEdit = (c: Customer) => {
@@ -385,6 +392,8 @@ function Customers() {
         </div>
         </>
       )}
+
+      <Pagination page={page} totalPages={Math.ceil(total / PAGE_SIZE)} onPageChange={setPage} />
     </div>
   );
 }

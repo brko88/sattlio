@@ -1,12 +1,13 @@
 ﻿import smtplib
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.config import settings
+from app.core.pagination import paginate
 from app.core.security import require_superadmin
 from app.core.email import send_password_reset_email
 from app.models.appointment import Appointment
@@ -18,7 +19,9 @@ from app.models.refresh_token import RefreshToken
 from app.models.admin_action_log import AdminActionLog
 from app.models.working_hours import WorkingHours
 from app.models.service import Service
+from app.schemas.admin import AdminUserResponse
 from app.schemas.tenant import TenantResponse, TenantAdminResponse
+from app.schemas.pagination import PaginatedResponse
 from app.core.analytics_period import resolve_period, generate_buckets
 
 import secrets
@@ -41,9 +44,11 @@ def log_admin_action(db: Session, admin_user_id: int, action: str, target_type: 
 # Postojeće rute
 # ---------------------------------------------------------------------------
 
-@router.get("/tenants", response_model=list[TenantAdminResponse])
+@router.get("/tenants", response_model=PaginatedResponse[TenantAdminResponse])
 def list_all_tenants(
     search: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin),
 ):
@@ -84,7 +89,8 @@ def list_all_tenants(
             )
         )
 
-    tenants = query.order_by(Tenant.created_at.desc()).all()
+    query = query.order_by(Tenant.created_at.desc())
+    tenants, total = paginate(query, page, page_size)
 
     tenant_ids = [t.id for t in tenants]
     owners = (
@@ -106,7 +112,7 @@ def list_all_tenants(
         t.owner_name = info.get("name")
         t.owner_email = info.get("email")
 
-    return tenants
+    return PaginatedResponse(items=tenants, total=total, page=page, page_size=page_size)
 
 
 def compute_is_active(tenant) -> bool:
@@ -286,9 +292,11 @@ def get_tenant_health(
 # Pregled korisnika
 # ---------------------------------------------------------------------------
 
-@router.get("/users")
+@router.get("/users", response_model=PaginatedResponse[AdminUserResponse])
 def list_all_users(
     search: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin),
 ):
@@ -321,7 +329,8 @@ def list_all_users(
             )
         )
 
-    users = query.order_by(User.created_at.desc()).all()
+    query = query.order_by(User.created_at.desc())
+    users, total = paginate(query, page, page_size)
     user_ids = [u.id for u in users]
 
     # Jedan query za SVE role + tenante odjednom (umjesto po jednog za svakog usera)
@@ -354,7 +363,7 @@ def list_all_users(
             "tenants": tenants_by_user.get(user.id, []),
         })
 
-    return result
+    return PaginatedResponse(items=result, total=total, page=page, page_size=page_size)
 
 
 # ---------------------------------------------------------------------------

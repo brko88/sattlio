@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react";
 import api from "../services/api";
+import Pagination from "../components/Pagination";
 
 interface Tenant {
   id: number;
@@ -131,13 +132,18 @@ function AdminPanel() {
   const [healthData, setHealthData] = useState<TenantHealth | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
 
-  const fetchTenants = async (searchTerm: string = "") => {
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 20;
+
+  const fetchTenants = async (searchTerm: string = "", pageNum: number = 1) => {
     setLoading(true);
     try {
       const response = await api.get("/api/v1/admin/tenants", {
-        params: searchTerm ? { search: searchTerm } : {},
+        params: { ...(searchTerm ? { search: searchTerm } : {}), page: pageNum, page_size: PAGE_SIZE },
       });
-      setTenants(response.data);
+      setTenants(response.data.items);
+      setTotal(response.data.total);
     } catch (err: any) {
       setError(
         err.response?.data?.detail || "Greška prilikom učitavanja salona."
@@ -147,15 +153,21 @@ function AdminPanel() {
     }
   };
 
-  // Prvo učitavanje
+  // Ucitavanje pri promjeni stranice (i prvo ucitavanje, jer page pocinje na 1)
   useEffect(() => {
-    fetchTenants();
-  }, []);
+    fetchTenants(search, page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
-  // Debounce pretrage — čeka 400ms nakon zadnjeg tastera prije poziva
+  // Debounce pretrage — čeka 400ms nakon zadnjeg tastera prije poziva, uvijek
+  // resetuje na stranicu 1 (novu pretragu treba gledati od pocetka)
   useEffect(() => {
     const timeout = setTimeout(() => {
-      fetchTenants(search);
+      if (page === 1) {
+        fetchTenants(search, 1);
+      } else {
+        setPage(1);
+      }
     }, 400);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,7 +180,7 @@ function AdminPanel() {
     try {
       const response = await api.post(`/api/v1/admin/tenants/${tenantId}/${action}`);
       setSuccessMessage(response.data.detail);
-      fetchTenants(search);
+      fetchTenants(search, page);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom akcije.");
     }
@@ -302,6 +314,8 @@ function AdminPanel() {
           </tbody>
         </table>
       )}
+
+      <Pagination page={page} totalPages={Math.ceil(total / PAGE_SIZE)} onPageChange={setPage} />
 
       {healthModalOpen && (
         <HealthCheckModal

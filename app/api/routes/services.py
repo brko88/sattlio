@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.pagination import paginate
 from app.core.security import get_current_user
 from app.models.service import Service
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.schemas.service import ServiceCreate, ServiceResponse, ServiceUpdate
+from app.schemas.pagination import PaginatedResponse
 
 router = APIRouter(prefix="/api/v1/services", tags=["services"])
 
@@ -67,20 +69,23 @@ def create_service(
     return new_service
 
 
-@router.get("", response_model=list[ServiceResponse])
+@router.get("", response_model=PaginatedResponse[ServiceResponse])
 def get_services(
     tenant_id: int,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     require_member(db, current_user.id, tenant_id)
 
-    services = (
+    query = (
         db.query(Service)
         .filter(Service.tenant_id == tenant_id, Service.is_deleted == False)
-        .all()
+        .order_by(Service.name)
     )
-    return services
+    items, total = paginate(query, page, page_size)
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.put("/{service_id}", response_model=ServiceResponse)

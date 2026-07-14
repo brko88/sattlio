@@ -1,15 +1,17 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.pagination import paginate
 from app.core.permissions import require_staff
 from app.core.security import get_current_user
 from app.models.customer import Customer
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
+from app.schemas.pagination import PaginatedResponse
 
 router = APIRouter(prefix="/api/v1/customers", tags=["customers"])
 
@@ -54,10 +56,12 @@ def create_customer(
     return new_customer
 
 
-@router.get("", response_model=list[CustomerResponse])
+@router.get("", response_model=PaginatedResponse[CustomerResponse])
 def get_customers(
     tenant_id: int,
     search: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -72,7 +76,9 @@ def get_customers(
             | (Customer.phone.ilike(f"%{search}%"))
         )
 
-    return query.all()
+    query = query.order_by(Customer.first_name, Customer.last_name)
+    items, total = paginate(query, page, page_size)
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.put("/{customer_id}", response_model=CustomerResponse)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import Pagination from "../components/Pagination";
 
 interface Service {
   id: number;
@@ -27,12 +28,17 @@ function Services() {
   const [editPrice, setEditPrice] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
 
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 20;
+
   const fetchServices = async () => {
     try {
       const response = await api.get("/api/v1/services", {
-        params: { tenant_id: tenantId },
+        params: { tenant_id: tenantId, page, page_size: PAGE_SIZE },
       });
-      setServices(response.data);
+      setServices(response.data.items);
+      setTotal(response.data.total);
     } catch (err: any) {
       setError("Greška prilikom učitavanja usluga.");
     } finally {
@@ -42,7 +48,7 @@ function Services() {
 
   useEffect(() => {
     fetchServices();
-  }, [tenantId]);
+  }, [tenantId, page]);
 
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,6 +378,8 @@ function Services() {
         </div>
         </>
       )}
+
+      <Pagination page={page} totalPages={Math.ceil(total / PAGE_SIZE)} onPageChange={setPage} />
     </div>
   );
 }

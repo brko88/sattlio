@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
+import Pagination from "../components/Pagination";
 
 interface TenantRole {
   tenant_id: number;
@@ -26,13 +27,18 @@ function Users() {
   const [successMessage, setSuccessMessage] = useState("");
   const [search, setSearch] = useState("");
 
-  const fetchUsers = async (searchTerm: string = "") => {
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 20;
+
+  const fetchUsers = async (searchTerm: string = "", pageNum: number = 1) => {
     setLoading(true);
     try {
       const response = await api.get("/api/v1/admin/users", {
-        params: searchTerm ? { search: searchTerm } : {},
+        params: { ...(searchTerm ? { search: searchTerm } : {}), page: pageNum, page_size: PAGE_SIZE },
       });
-      setUsers(response.data);
+      setUsers(response.data.items);
+      setTotal(response.data.total);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom učitavanja korisnika.");
     } finally {
@@ -40,13 +46,19 @@ function Users() {
     }
   };
 
+  // Ucitavanje pri promjeni stranice (i prvo ucitavanje, jer page pocinje na 1)
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(search, page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      fetchUsers(search);
+      if (page === 1) {
+        fetchUsers(search, 1);
+      } else {
+        setPage(1);
+      }
     }, 400);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,7 +71,7 @@ function Users() {
     try {
       const response = await api.post(`/api/v1/admin/users/${userId}/${action}`);
       setSuccessMessage(response.data.detail);
-      fetchUsers(search);
+      fetchUsers(search, page);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom akcije.");
     }
@@ -160,6 +172,8 @@ function Users() {
           </tbody>
         </table>
       )}
+
+      <Pagination page={page} totalPages={Math.ceil(total / PAGE_SIZE)} onPageChange={setPage} />
     </div>
   );
 }

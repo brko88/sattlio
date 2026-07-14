@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 import { formatDateTime, formatTime } from "../utils/time";
+import Pagination from "../components/Pagination";
 
 interface Appointment {
   id: number;
@@ -87,18 +88,27 @@ function Appointments() {
 
   const today = new Date().toISOString().split("T")[0];
 
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 20;
+
   const fetchAll = async () => {
     try {
+      // employees/services/customers su ovdje pomocni podaci (za prikaz imena
+      // i pretragu klijenta pri kreiranju termina), ne paginirana lista - zato
+      // page_size:100, ne PAGE_SIZE. Sama lista termina (appointments) jeste
+      // paginirana - koristi page/PAGE_SIZE i cita items/total.
       const [apptRes, empRes, srvRes, custRes] = await Promise.all([
-        api.get("/api/v1/appointments", { params: { tenant_id: tenantId } }),
+        api.get("/api/v1/appointments", { params: { tenant_id: tenantId, page, page_size: PAGE_SIZE } }),
         api.get("/api/v1/employees", { params: { tenant_id: tenantId } }),
-        api.get("/api/v1/services", { params: { tenant_id: tenantId } }),
-        api.get("/api/v1/customers", { params: { tenant_id: tenantId } }),
+        api.get("/api/v1/services", { params: { tenant_id: tenantId, page_size: 100 } }),
+        api.get("/api/v1/customers", { params: { tenant_id: tenantId, page_size: 100 } }),
       ]);
-      setAppointments(apptRes.data);
+      setAppointments(apptRes.data.items);
+      setTotal(apptRes.data.total);
       setEmployees(empRes.data);
-      setServices(srvRes.data);
-      setCustomers(custRes.data);
+      setServices(srvRes.data.items);
+      setCustomers(custRes.data.items);
     } catch {
       setError("Greška prilikom učitavanja.");
     } finally {
@@ -108,7 +118,7 @@ function Appointments() {
 
   useEffect(() => {
     fetchAll();
-  }, [tenantId]);
+  }, [tenantId, page]);
 
   // Pretraga klijenata
   useEffect(() => {
@@ -572,6 +582,8 @@ function Appointments() {
         </div>
         </>
       )}
+
+      <Pagination page={page} totalPages={Math.ceil(total / PAGE_SIZE)} onPageChange={setPage} />
 
       {/* Modal — potvrda otkazivanja */}
       {cancelTarget && (

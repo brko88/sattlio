@@ -1,10 +1,11 @@
-﻿from datetime import datetime, timedelta, timezone
+﻿from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.pagination import paginate
 from app.core.permissions import require_staff
 from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
@@ -17,6 +18,7 @@ from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.core.email import send_appointment_cancelled_email
 from app.schemas.appointment import AppointmentCreate, AppointmentResponse, CancelAppointmentRequest
+from app.schemas.pagination import PaginatedResponse
 
 router = APIRouter(prefix="/api/v1/appointments", tags=["appointments"])
 
@@ -216,21 +218,38 @@ def create_appointment(
     return new_appointment
 
 
-@router.get("", response_model=list[AppointmentResponse])
+@router.get("", response_model=PaginatedResponse[AppointmentResponse])
 def get_appointments(
     tenant_id: int,
+    date: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     require_staff(db, current_user.id, tenant_id)
 
-    appointments = (
-        db.query(Appointment)
-        .filter(Appointment.tenant_id == tenant_id)
-        .order_by(Appointment.start_time)
-        .all()
-    )
-    return appointments
+    query = db.query(Appointment).filter(Appointment.tenant_id == tenant_id)
+
+    if date:
+        # Kalendar (dnevni prikaz) salje ovaj filter da ne mora vuci SVE
+        # termine tenant-a odjednom - samo termini tog dana (u tenant TZ).
+        try:
+            day = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Neispravan format datuma. Očekivano: GGGG-MM-DD.",
+            )
+        day_start_utc = datetime.combine(day, time.min, tzinfo=TZ).astimezone(timezone.utc)
+        day_end_utc = day_start_utc + timedelta(days=1)
+        query = query.filter(Appointment.start_time >= day_start_utc, Appointment.start_time < day_end_utc)
+
+    # Najnoviji/nadolazeci prvo - stranica 1 treba biti relevantna, ne
+    # najstariji termin ikad zakazan.
+    query = query.order_by(Appointment.start_time.desc())
+    items, total = paginate(query, page, page_size)
+    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.post("/{appointment_id}/cancel", response_model=AppointmentResponse)

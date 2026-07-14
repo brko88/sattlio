@@ -95,16 +95,20 @@ function Calendar() {
 
   const fetchAll = async () => {
     try {
+      // appointments - samo za odabrani dan (server-side filter), ne svi
+      // termini ikad zakazani. employees/services/customers ostaju pomocni
+      // podaci (imena za prikaz, izbor usluge) - page_size na maksimumu (100)
+      // jer se ne paginiraju ovdje.
       const [apptRes, empRes, srvRes, custRes] = await Promise.all([
-        api.get("/api/v1/appointments", { params: { tenant_id: tenantId } }),
+        api.get("/api/v1/appointments", { params: { tenant_id: tenantId, date: selectedDate, page_size: 100 } }),
         api.get("/api/v1/employees", { params: { tenant_id: tenantId } }),
-        api.get("/api/v1/services", { params: { tenant_id: tenantId } }),
-        api.get("/api/v1/customers", { params: { tenant_id: tenantId } }),
+        api.get("/api/v1/services", { params: { tenant_id: tenantId, page_size: 100 } }),
+        api.get("/api/v1/customers", { params: { tenant_id: tenantId, page_size: 100 } }),
       ]);
-      setAppointments(apptRes.data);
+      setAppointments(apptRes.data.items);
       setEmployees(empRes.data);
-      setServices(srvRes.data);
-      setCustomers(custRes.data);
+      setServices(srvRes.data.items);
+      setCustomers(custRes.data.items);
     } catch {
       setError("Greška prilikom učitavanja podataka.");
     } finally {
@@ -114,7 +118,7 @@ function Calendar() {
 
   useEffect(() => {
     fetchAll();
-  }, [tenantId]);
+  }, [tenantId, selectedDate]);
 
   useEffect(() => {
     if (mobileEmployeeId === null && employees.length > 0) {
@@ -122,26 +126,25 @@ function Calendar() {
     }
   }, [employees, mobileEmployeeId]);
 
-  // Pretraga klijenata
+  // Pretraga klijenata - direktno na serveru (isto /customers?search= koje
+  // vec postoji), ne filtriranje lokalno preloadovanog niza - taj niz je
+  // ogranicen na 100 najstarijih po abecedi i ne bi pokrio veci broj klijenata.
   useEffect(() => {
     if (customerSearch.length < 2) {
       setSearchResults([]);
       return;
     }
-    const term = customerSearch.toLowerCase();
-    const results = customers.filter(
-      (c) =>
-        c.first_name.toLowerCase().includes(term) ||
-        c.last_name.toLowerCase().includes(term) ||
-        (c.phone && c.phone.includes(term))
-    );
-    setSearchResults(results);
-  }, [customerSearch, customers]);
+    const timeout = setTimeout(() => {
+      api
+        .get("/api/v1/customers", { params: { tenant_id: tenantId, search: customerSearch, page_size: 20 } })
+        .then((res) => setSearchResults(res.data.items))
+        .catch(() => setSearchResults([]));
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [customerSearch, tenantId]);
 
-  const dayAppointments = appointments.filter((a) => {
-    const apptDate = a.start_time.split("T")[0];
-    return apptDate === selectedDate && a.status !== "cancelled";
-  });
+  // Server vec filtrira po odabranom danu - ovdje samo iskljuci otkazane.
+  const dayAppointments = appointments.filter((a) => a.status !== "cancelled");
 
   const getServiceName = (id: number) =>
     services.find((s) => s.id === id)?.name || "—";

@@ -2,10 +2,12 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.email import send_appointment_cancelled_email
+from app.core.permissions import require_staff
 from app.core.security import get_current_user
 from app.models.appointment import Appointment
 from app.models.customer import Customer
@@ -58,18 +60,6 @@ def find_conflicting_appointments(
         elif break_start and break_end and local_start.time() < break_end and local_end.time() > break_start:
             conflicts.append(a)
     return conflicts
-
-
-def require_member(db: Session, user_id: int, tenant_id: int):
-    role = db.query(UserTenantRole).filter(
-        UserTenantRole.user_id == user_id,
-        UserTenantRole.tenant_id == tenant_id,
-    ).first()
-    if role is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nemate pristup ovom poslovnom subjektu.",
-        )
 
 
 def require_can_manage_hours(db: Session, current_user: User, tenant_id: int, employee_id: int):
@@ -210,7 +200,17 @@ def create_special_day(
         a.cancellation_reason = reason
         a.cancelled_at = datetime.now(timezone.utc)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Rijedak race - dva paralelna zahtjeva za isti tenant/employee/datum
+        # oba prosla provjeru "existing" prije nego je ijedan commitovao.
+        # DB unique constraint je posljednja linija odbrane.
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Specijalni dan je upravo sačuvan iz drugog zahtjeva. Osvježite stranicu i pokušajte ponovo.",
+        )
     db.refresh(saved_sd)
 
     notified_info = []
@@ -258,7 +258,7 @@ def get_special_days(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_member(db, current_user.id, tenant_id)
+    require_staff(db, current_user.id, tenant_id)
 
     days = db.query(SpecialDay).filter(
         SpecialDay.tenant_id == tenant_id,

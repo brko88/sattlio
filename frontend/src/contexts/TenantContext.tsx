@@ -41,6 +41,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const setTenantId = (id: number) => {
     localStorage.setItem("tenant_id", id.toString());
+    // Rola zavisi od tenant-a (ista osoba moze biti owner u jednom, employee
+    // u drugom salonu) - bez ovoga current_role ostaje stara sve dok se
+    // stranica rucno ne osvjezi, pa sidebar/routing prikazuju dozvole koje
+    // ne vaze za novoodabrani salon.
+    const newRole = tenants.find((t) => t.id === id)?.role ?? "";
+    localStorage.setItem("current_role", newRole);
     setTenantIdState(id);
   };
 

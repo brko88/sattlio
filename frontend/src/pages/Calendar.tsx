@@ -46,7 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const START_HOUR = 7;
 const END_HOUR = 20;
-const SLOT_HEIGHT = 30;
+const SLOT_HEIGHT = 36;
 const SLOTS = (END_HOUR - START_HOUR) * 2;
 
 function Calendar() {
@@ -348,12 +348,11 @@ function Calendar() {
                   setSelectedAppt(appt);
                 }}
                 style={getAppointmentStyle(appt)}
-                className={`absolute left-1 right-1 ${STATUS_COLORS[appt.status]} border-l-4 rounded p-1.5 text-xs overflow-hidden text-left cursor-pointer hover:brightness-95 transition-all z-10`}
+                className={`absolute left-1 right-1 ${STATUS_COLORS[appt.status]} border-l-4 rounded px-1.5 text-xs overflow-hidden text-left cursor-pointer hover:brightness-95 transition-all z-10 flex items-center`}
               >
-                <p className="font-semibold truncate">
-                  {getCustomerName(appt.customer_id)}
+                <p className="font-semibold truncate w-full">
+                  {getCustomerName(appt.customer_id)} — {getServiceName(appt.service_id)}
                 </p>
-                <p className="truncate">{getServiceName(appt.service_id)}</p>
               </button>
             ))}
           </div>

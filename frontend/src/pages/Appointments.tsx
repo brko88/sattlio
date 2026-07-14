@@ -78,6 +78,7 @@ function Appointments() {
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
 
   // Otkazivanje termina — potvrda + tip + razlog
@@ -167,6 +168,7 @@ function Appointments() {
         first_name: newFirstName,
         last_name: newLastName,
         phone: newPhone || null,
+        email: newEmail || null,
       });
       await fetchAll();
       setSelectedCustomer(res.data);
@@ -174,6 +176,7 @@ function Appointments() {
       setNewFirstName("");
       setNewLastName("");
       setNewPhone("");
+      setNewEmail("");
       setCustomerSearch("");
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom kreiranja klijenta.");
@@ -409,6 +412,13 @@ function Appointments() {
                 onChange={(e) => setNewPhone(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
               />
+              <input
+                type="email"
+                placeholder="Email (opciono)"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
+              />
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
@@ -425,6 +435,7 @@ function Appointments() {
                     setNewFirstName("");
                     setNewLastName("");
                     setNewPhone("");
+                    setNewEmail("");
                   }}
                   className="px-3 py-2 border border-slate-200 text-slate-600 rounded-md text-sm hover:bg-slate-50"
                 >

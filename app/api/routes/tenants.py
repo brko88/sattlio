@@ -136,10 +136,10 @@ def update_tenant(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
 
     if data.slot_duration_minutes is not None:
-        if data.slot_duration_minutes not in [15, 20, 30, 60]:
+        if data.slot_duration_minutes < 5 or data.slot_duration_minutes > 240:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Interval mora biti 15, 20, 30 ili 60 minuta.",
+                detail="Interval mora biti između 5 i 240 minuta.",
             )
         tenant.slot_duration_minutes = data.slot_duration_minutes
 

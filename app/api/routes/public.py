@@ -1,5 +1,4 @@
 ﻿from datetime import datetime, timedelta, timezone, date, time
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -9,6 +8,7 @@ from app.core.database import get_db
 from app.core.limiter import limiter
 from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
+from app.core.timezone_utils import get_tenant_timezone, zoneinfo_for_tenant
 from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.employee import Employee
@@ -18,8 +18,6 @@ from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 
 router = APIRouter(prefix="/api/v1/public", tags=["public"])
-
-TZ = ZoneInfo("Europe/Sarajevo")
 
 # Anti-abuse limiti za self-booking (vidi memory: project_critical_security_todos #12)
 MAX_ACTIVE_APPOINTMENTS_PER_TENANT = 5
@@ -46,6 +44,7 @@ class PublicEmployeeResponse(BaseModel):
     last_name: str
     allow_self_booking: bool
     avatar_url: str | None
+    tenant_timezone: str | None = None
 
     class Config:
         from_attributes = True
@@ -123,6 +122,9 @@ def get_public_employee(employee_id: int, db: Session = Depends(get_db)):
     if employee is None:
         raise HTTPException(status_code=404, detail="Zaposleni nije dostupan za online rezervaciju.")
 
+    tenant = db.query(Tenant).filter(Tenant.id == employee.tenant_id).first()
+    employee.tenant_timezone = tenant.timezone if tenant else "Europe/Sarajevo"
+
     return employee
 
 
@@ -181,20 +183,21 @@ def get_available_slots(
     if not hours.is_working_day:
         return {"slots": []}
 
-    # Dohvati slot interval iz tenanta
+    # Dohvati slot interval i vremensku zonu iz tenanta
     from app.models.tenant import Tenant as TenantModel
     tenant_obj = db.query(TenantModel).filter(TenantModel.id == employee.tenant_id).first()
     slot_interval = tenant_obj.slot_duration_minutes if tenant_obj else 30
+    tz = zoneinfo_for_tenant(tenant_obj)
 
-    # Generišemo slotove u lokalnom vremenu (Europe/Sarajevo)
-    slot_start = datetime.combine(booking_date, hours.start_time).replace(tzinfo=TZ)
-    work_end = datetime.combine(booking_date, hours.end_time).replace(tzinfo=TZ)
+    # Generišemo slotove u lokalnom vremenu tenant-a
+    slot_start = datetime.combine(booking_date, hours.start_time).replace(tzinfo=tz)
+    work_end = datetime.combine(booking_date, hours.end_time).replace(tzinfo=tz)
     duration = timedelta(minutes=service.duration_minutes)
-    now = datetime.now(TZ)
+    now = datetime.now(tz)
 
     # Zauzeti termini iz baze (UTC) konvertujemo u lokalno
-    day_start = datetime.combine(booking_date, time.min).replace(tzinfo=TZ)
-    day_end = datetime.combine(booking_date, time.max).replace(tzinfo=TZ)
+    day_start = datetime.combine(booking_date, time.min).replace(tzinfo=tz)
+    day_end = datetime.combine(booking_date, time.max).replace(tzinfo=tz)
 
     existing = db.query(Appointment).filter(
         Appointment.employee_id == employee_id,
@@ -207,14 +210,14 @@ def get_available_slots(
     for a in existing:
         s = a.start_time if a.start_time.tzinfo else a.start_time.replace(tzinfo=timezone.utc)
         e = a.end_time if a.end_time.tzinfo else a.end_time.replace(tzinfo=timezone.utc)
-        booked_slots.append((s.astimezone(TZ), e.astimezone(TZ)))
+        booked_slots.append((s.astimezone(tz), e.astimezone(tz)))
 
     # Pauza
     break_start_local = None
     break_end_local = None
     if hours.break_start and hours.break_end:
-        break_start_local = datetime.combine(booking_date, hours.break_start).replace(tzinfo=TZ)
-        break_end_local = datetime.combine(booking_date, hours.break_end).replace(tzinfo=TZ)
+        break_start_local = datetime.combine(booking_date, hours.break_start).replace(tzinfo=tz)
+        break_end_local = datetime.combine(booking_date, hours.break_end).replace(tzinfo=tz)
 
     slots = []
     while slot_start + duration <= work_end:
@@ -269,9 +272,11 @@ def self_book_appointment(
     if service is None:
         raise HTTPException(status_code=404, detail="Usluga nije pronađena.")
 
+    tz = get_tenant_timezone(db, employee.tenant_id)
+
     start_time = data.start_time
     if start_time.tzinfo is None:
-        start_time = start_time.replace(tzinfo=TZ).astimezone(timezone.utc)
+        start_time = start_time.replace(tzinfo=tz).astimezone(timezone.utc)
     else:
         start_time = start_time.astimezone(timezone.utc)
 
@@ -306,8 +311,8 @@ def self_book_appointment(
 
     end_time = start_time + timedelta(minutes=service.duration_minutes)
 
-    local_start = start_time.astimezone(TZ)
-    local_end = end_time.astimezone(TZ)
+    local_start = start_time.astimezone(tz)
+    local_end = end_time.astimezone(tz)
     hours = get_effective_hours(db, employee.tenant_id, data.employee_id, local_start.date())
 
     if not hours.is_working_day:

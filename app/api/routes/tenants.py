@@ -1,8 +1,9 @@
 ﻿import re
+from zoneinfo import available_timezones
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.core.database import get_db
 from app.core.media import delete_media_file, process_and_save_image
@@ -24,6 +25,13 @@ router = APIRouter(prefix="/api/v1/tenants", tags=["tenants"])
 class TenantUpdate(BaseModel):
     slot_duration_minutes: int | None = None
     timezone: str | None = None
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str | None) -> str | None:
+        if value is not None and value not in available_timezones():
+            raise ValueError("Nepoznata vremenska zona.")
+        return value
 
 
 def slugify(name: str) -> str:
@@ -143,6 +151,9 @@ def update_tenant(
             )
         tenant.slot_duration_minutes = data.slot_duration_minutes
 
+    if data.timezone is not None:
+        tenant.timezone = data.timezone
+
     db.commit()
     db.refresh(tenant)
 
@@ -254,7 +265,7 @@ def get_my_tenants(
                 verification_status=tenant.verification_status,
                 role=role.role,
                 slot_duration_minutes=tenant.slot_duration_minutes,
-                timezone=tenant.timezone or "Europe/Sarajevo",
+                timezone=tenant.timezone,
                 plan=tenant.plan or "trial",
                 trial_ends_at=tenant.trial_ends_at,
                 logo_url=tenant.logo_url,

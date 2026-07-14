@@ -43,7 +43,9 @@ class MyAppointmentResponse(BaseModel):
     end_time: datetime
     status: str
     service_name: str
+    tenant_name: str
     employee_name: str
+    tenant_timezone: str
 
     class Config:
         from_attributes = True

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -9,6 +8,7 @@ from app.core.database import get_db
 from app.core.email import send_appointment_cancelled_email
 from app.core.permissions import require_staff
 from app.core.security import get_current_user
+from app.core.timezone_utils import get_tenant_timezone
 from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.employee import Employee
@@ -26,8 +26,6 @@ from app.schemas.special_day import (
 
 router = APIRouter(prefix="/api/v1/special-days", tags=["special-days"])
 
-TZ = ZoneInfo("Europe/Sarajevo")
-
 
 def find_conflicting_appointments(
     db: Session, tenant_id: int, employee_id: int, target_date, is_working_day: bool, start_time, end_time,
@@ -38,7 +36,8 @@ def find_conflicting_appointments(
     u novo (predloženo) radno vrijeme - bilo zato što je dan sad slobodan,
     prozor uži nego prije, ili termin upada u novu pauzu.
     """
-    day_start_utc = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=TZ).astimezone(timezone.utc)
+    tz = get_tenant_timezone(db, tenant_id)
+    day_start_utc = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=tz).astimezone(timezone.utc)
     day_end_utc = day_start_utc + timedelta(days=1)
 
     appointments = db.query(Appointment).filter(
@@ -51,8 +50,8 @@ def find_conflicting_appointments(
 
     conflicts = []
     for a in appointments:
-        local_start = a.start_time.replace(tzinfo=timezone.utc).astimezone(TZ)
-        local_end = a.end_time.replace(tzinfo=timezone.utc).astimezone(TZ)
+        local_start = a.start_time.replace(tzinfo=timezone.utc).astimezone(tz)
+        local_end = a.end_time.replace(tzinfo=timezone.utc).astimezone(tz)
         if not is_working_day:
             conflicts.append(a)
         elif local_start.time() < start_time or local_end.time() > end_time:
@@ -234,6 +233,7 @@ def create_special_day(
                         tenant_name=tenant.name if tenant else "-",
                         start_time=a.start_time,
                         reason=reason,
+                        tenant_timezone=tenant.timezone if tenant else "Europe/Sarajevo",
                     )
                 except Exception as e:
                     import logging

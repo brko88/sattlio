@@ -12,6 +12,7 @@ interface Appointment {
   service_name: string;
   employee_name: string;
   tenant_name: string;
+  tenant_timezone: string;
 }
 
 function MyAppointments() {
@@ -84,7 +85,7 @@ function MyAppointments() {
           </div>
           <p className="text-sm text-purple-700 font-medium">{a.tenant_name}</p>
           <p className="text-sm text-slate-500">{a.employee_name}</p>
-          <p className="text-sm text-slate-500">{formatDateTime(a.start_time)}</p>
+          <p className="text-sm text-slate-500">{formatDateTime(a.start_time, a.tenant_timezone)}</p>
         </div>
         {showCancel && (
           <button

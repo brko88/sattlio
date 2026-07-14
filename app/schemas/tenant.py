@@ -36,6 +36,7 @@ class TenantResponse(BaseModel):
     jib: str | None
     verification_status: str
     slot_duration_minutes: int
+    timezone: str
     plan: str
     trial_ends_at: datetime | None
     logo_url: str | None

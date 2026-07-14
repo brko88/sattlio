@@ -182,6 +182,7 @@ def create_or_update_working_hours(
                         tenant_name=tenant.name if tenant else "-",
                         start_time=a.start_time,
                         reason=reason,
+                        tenant_timezone=tenant.timezone if tenant else "Europe/Sarajevo",
                     )
                 except Exception as e:
                     import logging

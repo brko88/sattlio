@@ -8,7 +8,6 @@ from zoneinfo import ZoneInfo
 from app.core.config import settings
 
 ADMIN_EMAIL = "podrska@sattlio.com"
-TZ = ZoneInfo("Europe/Sarajevo")
 
 
 def send_email(to_email: str, subject: str, body: str):
@@ -90,8 +89,9 @@ def send_appointment_cancelled_email(
     tenant_name: str,
     start_time: datetime,
     reason: str | None,
+    tenant_timezone: str = "Europe/Sarajevo",
 ):
-    local_time = start_time.replace(tzinfo=ZoneInfo("UTC")).astimezone(TZ)
+    local_time = start_time.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo(tenant_timezone))
     formatted_time = local_time.strftime("%d.%m.%Y. u %H:%M")
     subject = f"Vaš termin je otkazan — {tenant_name}"
     reason_line = f"\nRazlog otkazivanja: {reason}\n" if reason else ""

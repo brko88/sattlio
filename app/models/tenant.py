@@ -20,7 +20,7 @@ class Tenant(Base):
     email = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
     cover_url = Column(String, nullable=True)
-    timezone = Column(String, default="Europe/Sarajevo")
+    timezone = Column(String, default="Europe/Sarajevo", nullable=False, server_default="Europe/Sarajevo")
     currency = Column(String, default="BAM")
     jib = Column(String, unique=True, nullable=True, index=True)
     verification_status = Column(String, default="pending", nullable=False)

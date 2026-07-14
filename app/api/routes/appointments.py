@@ -1,5 +1,4 @@
 ﻿from datetime import datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -9,6 +8,7 @@ from app.core.pagination import paginate
 from app.core.permissions import require_staff
 from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
+from app.core.timezone_utils import get_tenant_timezone
 from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.employee import Employee
@@ -17,12 +17,10 @@ from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.core.email import send_appointment_cancelled_email
-from app.schemas.appointment import AppointmentCreate, AppointmentResponse, CancelAppointmentRequest
+from app.schemas.appointment import AppointmentCreate, AppointmentResponse, CancelAppointmentRequest, MyAppointmentResponse
 from app.schemas.pagination import PaginatedResponse
 
 router = APIRouter(prefix="/api/v1/appointments", tags=["appointments"])
-
-TZ = ZoneInfo("Europe/Sarajevo")
 
 
 def get_user_role(db: Session, user_id: int, tenant_id: int) -> str | None:
@@ -69,8 +67,9 @@ def require_can_modify_appointment(db: Session, current_user, appointment, actio
 
 def check_working_hours(db: Session, tenant_id: int, employee_id: int, start_time: datetime, end_time: datetime):
     # Konvertuj u lokalno vrijeme za provjeru radnog vremena
-    local_start = start_time.astimezone(TZ)
-    local_end = end_time.astimezone(TZ)
+    tz = get_tenant_timezone(db, tenant_id)
+    local_start = start_time.astimezone(tz)
+    local_end = end_time.astimezone(tz)
 
     hours = get_effective_hours(db, tenant_id, employee_id, local_start.date())
 
@@ -115,7 +114,7 @@ def check_overlap(db: Session, employee_id: int, start_time: datetime, end_time:
         )
 
 
-@router.get("/my")
+@router.get("/my", response_model=list[MyAppointmentResponse])
 def get_my_appointments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -136,11 +135,14 @@ def get_my_appointments(
         .all()
     )
 
+    tenants_by_id: dict[int, Tenant] = {}
     result = []
     for a in appointments:
         service = db.query(Service).filter(Service.id == a.service_id).first()
         employee = db.query(Employee).filter(Employee.id == a.employee_id).first()
-        tenant = db.query(Tenant).filter(Tenant.id == a.tenant_id).first()
+        if a.tenant_id not in tenants_by_id:
+            tenants_by_id[a.tenant_id] = db.query(Tenant).filter(Tenant.id == a.tenant_id).first()
+        tenant = tenants_by_id[a.tenant_id]
         result.append({
             "id": a.id,
             "employee_id": a.employee_id,
@@ -151,6 +153,7 @@ def get_my_appointments(
             "service_name": service.name if service else "—",
             "tenant_name": tenant.name if tenant else "-",
             "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "—",
+            "tenant_timezone": tenant.timezone if tenant else "Europe/Sarajevo",
         })
 
     return result
@@ -166,7 +169,8 @@ def create_appointment(
 
     # Konvertuj u UTC sa timezone info
     if data.start_time.tzinfo is None:
-        start_time = data.start_time.replace(tzinfo=TZ).astimezone(timezone.utc)
+        tz = get_tenant_timezone(db, data.tenant_id)
+        start_time = data.start_time.replace(tzinfo=tz).astimezone(timezone.utc)
     else:
         start_time = data.start_time.astimezone(timezone.utc)
 
@@ -244,7 +248,8 @@ def get_appointments(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Neispravan format datuma. Očekivano: GGGG-MM-DD.",
             )
-        day_start_utc = datetime.combine(day, time.min, tzinfo=TZ).astimezone(timezone.utc)
+        tz = get_tenant_timezone(db, tenant_id)
+        day_start_utc = datetime.combine(day, time.min, tzinfo=tz).astimezone(timezone.utc)
         day_end_utc = day_start_utc + timedelta(days=1)
         query = query.filter(Appointment.start_time >= day_start_utc, Appointment.start_time < day_end_utc)
 
@@ -313,6 +318,7 @@ def cancel_appointment(
                 tenant_name=tenant.name if tenant else "-",
                 start_time=appointment.start_time,
                 reason=reason,
+                tenant_timezone=tenant.timezone if tenant else "Europe/Sarajevo",
             )
         except Exception as e:
             import logging

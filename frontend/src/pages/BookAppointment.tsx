@@ -16,6 +16,7 @@ interface Employee {
   first_name: string;
   last_name: string;
   avatar_url: string | null;
+  tenant_timezone: string | null;
 }
 
 function BookAppointment() {
@@ -96,7 +97,7 @@ function BookAppointment() {
     }
   };
 
-  const formatSlot = (iso: string) => formatTime(iso);
+  const formatSlot = (iso: string) => formatTime(iso, employee?.tenant_timezone || undefined);
 
   const today = new Date().toISOString().split("T")[0];
 

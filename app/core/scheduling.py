@@ -1,13 +1,11 @@
 from datetime import date, datetime, time, timezone
-from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
+from app.core.timezone_utils import get_tenant_timezone
 from app.models.appointment import Appointment
 from app.models.special_day import SpecialDay
 from app.models.working_hours import WorkingHours
-
-TZ = ZoneInfo("Europe/Sarajevo")
 
 
 class EffectiveHours:
@@ -78,6 +76,7 @@ def find_weekly_conflicting_appointments(
     (isti princip kao get_effective_hours: SpecialDay > WorkingHours).
     """
     now_utc = datetime.now(timezone.utc)
+    tz = get_tenant_timezone(db, tenant_id)
 
     appointments = db.query(Appointment).filter(
         Appointment.tenant_id == tenant_id,
@@ -88,8 +87,8 @@ def find_weekly_conflicting_appointments(
 
     conflicts = []
     for a in appointments:
-        local_start = a.start_time.replace(tzinfo=timezone.utc).astimezone(TZ)
-        local_end = a.end_time.replace(tzinfo=timezone.utc).astimezone(TZ)
+        local_start = a.start_time.replace(tzinfo=timezone.utc).astimezone(tz)
+        local_end = a.end_time.replace(tzinfo=timezone.utc).astimezone(tz)
 
         if local_start.weekday() != day_of_week:
             continue

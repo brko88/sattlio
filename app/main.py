@@ -10,11 +10,22 @@ from slowapi.errors import RateLimitExceeded
 from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.media import MEDIA_ROOT
-from app.api.routes import auth, tenants, employees, services, working_hours as working_hours_routes, customers, appointments, admin, public, special_days
+from app.core.scheduler import start_scheduler, stop_scheduler
+from app.api.routes import auth, tenants, employees, services, working_hours as working_hours_routes, customers, appointments, admin, public, special_days, support
 
 app = FastAPI(title="Sattlio API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.on_event("startup")
+def on_startup():
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    stop_scheduler()
 
 mimetypes.add_type("image/webp", ".webp")
 Path(MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
@@ -38,6 +49,7 @@ app.include_router(appointments.router)
 app.include_router(admin.router)
 app.include_router(public.router)
 app.include_router(special_days.router)
+app.include_router(support.router)
 
 @app.get("/")
 def root():

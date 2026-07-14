@@ -36,12 +36,22 @@ interface Customer {
   email: string | null;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  created: "Zakazano",
+  confirmed: "Potvrđeno",
+  completed: "Završeno",
+  cancelled: "Otkazano",
+  no_show: "Nije se pojavio",
+  expired: "Isteklo",
+};
+
 const STATUS_COLORS: Record<string, string> = {
   created: "bg-blue-100 border-blue-500 text-blue-900",
   confirmed: "bg-green-100 border-green-500 text-green-900",
   completed: "bg-slate-200 border-slate-500 text-slate-700",
   cancelled: "bg-red-100 border-red-400 text-red-700 opacity-60",
-  no_show: "bg-slate-100 border-slate-400 text-slate-500",
+  no_show: "bg-amber-100 border-amber-400 text-amber-800",
+  expired: "bg-slate-100 border-slate-400 text-slate-500",
 };
 
 const START_HOUR = 7;
@@ -205,6 +215,16 @@ function Calendar() {
   const handleComplete = async (id: number) => {
     try {
       await api.post(`/api/v1/appointments/${id}/complete`);
+      setSelectedAppt(null);
+      fetchAll();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška.");
+    }
+  };
+
+  const handleNoShow = async (id: number) => {
+    try {
+      await api.post(`/api/v1/appointments/${id}/no-show`);
       setSelectedAppt(null);
       fetchAll();
     } catch (err: any) {
@@ -395,8 +415,12 @@ function Calendar() {
           <span className="text-xs text-slate-500">Otkazano</span>
         </div>
         <div className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-amber-100 border-l-2 border-amber-400 inline-block" />
+          <span className="text-xs text-slate-500">Nije se pojavio</span>
+        </div>
+        <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-slate-100 border-l-2 border-slate-400 inline-block" />
-          <span className="text-xs text-slate-500">Nije došao</span>
+          <span className="text-xs text-slate-500">Isteklo</span>
         </div>
       </div>
 
@@ -465,7 +489,7 @@ function Calendar() {
                   </p>
                   <p>
                     <span className="text-slate-500">Status:</span>{" "}
-                    <span className="font-medium">{selectedAppt.status}</span>
+                    <span className="font-medium">{STATUS_LABELS[selectedAppt.status] ?? selectedAppt.status}</span>
                   </p>
                   {selectedAppt.status === "cancelled" && selectedAppt.cancelled_by_name && (
                     <>
@@ -485,9 +509,9 @@ function Calendar() {
                     </>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  {(selectedAppt.status === "created" || selectedAppt.status === "confirmed") && (
-                    <>
+                <div className="flex flex-col gap-2">
+                  {(selectedAppt.status === "created" || selectedAppt.status === "confirmed" || selectedAppt.status === "expired") && (
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => handleComplete(selectedAppt.id)}
                         className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
@@ -500,7 +524,13 @@ function Calendar() {
                       >
                         Otkaži
                       </button>
-                    </>
+                      <button
+                        onClick={() => handleNoShow(selectedAppt.id)}
+                        className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-md text-sm font-medium hover:bg-amber-600 transition-colors"
+                      >
+                        Nije se pojavio
+                      </button>
+                    </div>
                   )}
                   <button
                     onClick={closeApptModal}

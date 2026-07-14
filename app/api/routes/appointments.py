@@ -54,10 +54,10 @@ def require_can_modify_appointment(db: Session, current_user, appointment, actio
         return  # osoblje smije sve
 
     # role == "customer" (ili slicno)
-    if action == "complete":
+    if action in ("complete", "no_show"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Klijent ne moze oznaciti termin kao zavrsen.",
+            detail="Samo osoblje salona moze oznaciti termin kao zavrsen ili kao izostanak.",
         )
     if appointment.created_by_user_id != current_user.id:
         raise HTTPException(
@@ -346,6 +346,31 @@ def complete_appointment(
         )
 
     appointment.status = "completed"
+    db.commit()
+    db.refresh(appointment)
+
+    return appointment
+
+
+@router.post("/{appointment_id}/no-show", response_model=AppointmentResponse)
+def mark_appointment_no_show(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    if appointment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rezervacija ne postoji.")
+
+    require_can_modify_appointment(db, current_user, appointment, "no_show")
+
+    if appointment.status in ("completed", "cancelled", "no_show"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Rezervacija sa statusom '{appointment.status}' ne može biti označena kao izostanak.",
+        )
+
+    appointment.status = "no_show"
     db.commit()
     db.refresh(appointment)
 

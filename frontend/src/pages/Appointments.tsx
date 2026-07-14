@@ -43,7 +43,8 @@ const STATUS_LABELS: Record<string, string> = {
   confirmed: "Potvrđeno",
   completed: "Završeno",
   cancelled: "Otkazano",
-  no_show: "Nije došao",
+  no_show: "Nije se pojavio",
+  expired: "Isteklo",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -51,7 +52,8 @@ const STATUS_COLORS: Record<string, string> = {
   confirmed: "bg-green-100 text-green-800",
   completed: "bg-slate-100 text-slate-600",
   cancelled: "bg-red-100 text-red-700",
-  no_show: "bg-slate-100 text-slate-500",
+  no_show: "bg-amber-100 text-amber-800",
+  expired: "bg-slate-100 text-slate-500",
 };
 
 function Appointments() {
@@ -248,6 +250,15 @@ function Appointments() {
   const handleComplete = async (id: number) => {
     try {
       await api.post(`/api/v1/appointments/${id}/complete`);
+      fetchAll();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška.");
+    }
+  };
+
+  const handleNoShow = async (id: number) => {
+    try {
+      await api.post(`/api/v1/appointments/${id}/no-show`);
       fetchAll();
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška.");
@@ -521,8 +532,8 @@ function Appointments() {
               </div>
               <p className="text-sm text-slate-500">{getServiceName(appt.service_id)} — {getEmployeeName(appt.employee_id)}</p>
               <p className="text-sm text-slate-500 mb-3">{formatDateTime(appt.start_time, timezone)}</p>
-              {(appt.status === "created" || appt.status === "confirmed") && (
-                <div className="flex gap-2">
+              {(appt.status === "created" || appt.status === "confirmed" || appt.status === "expired") && (
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => handleComplete(appt.id)}
                     className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
@@ -534,6 +545,12 @@ function Appointments() {
                     className="flex-1 px-3 py-1.5 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700"
                   >
                     Otkaži
+                  </button>
+                  <button
+                    onClick={() => handleNoShow(appt.id)}
+                    className="flex-1 px-3 py-1.5 bg-amber-500 text-white rounded-md text-sm font-medium hover:bg-amber-600"
+                  >
+                    Nije se pojavio
                   </button>
                 </div>
               )}
@@ -567,8 +584,8 @@ function Appointments() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    {(appt.status === "created" || appt.status === "confirmed") && (
+                  <div className="flex flex-wrap gap-2">
+                    {(appt.status === "created" || appt.status === "confirmed" || appt.status === "expired") && (
                       <>
                         <button
                           onClick={() => handleComplete(appt.id)}
@@ -581,6 +598,12 @@ function Appointments() {
                           className="px-3 py-1 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700"
                         >
                           Otkaži
+                        </button>
+                        <button
+                          onClick={() => handleNoShow(appt.id)}
+                          className="px-3 py-1 bg-amber-500 text-white rounded-md text-xs font-medium hover:bg-amber-600"
+                        >
+                          Nije se pojavio
                         </button>
                       </>
                     )}

@@ -235,7 +235,8 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 
 
 @router.post("/verify-email", response_model=UserResponse)
-def verify_email(data: VerifyEmailRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def verify_email(request: Request, data: VerifyEmailRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.verification_token == hash_refresh_token(data.token)).first()
 
     if user is None:
@@ -293,7 +294,8 @@ def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session =
 
 
 @router.post("/reset-password")
-def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def reset_password(request: Request, data: ResetPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.password_reset_token == hash_refresh_token(data.token)).first()
 
     if user is None:

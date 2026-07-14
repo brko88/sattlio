@@ -138,8 +138,8 @@ function PrivacyPolicy() {
               <h2 className="text-base font-semibold text-slate-900 mb-2">11. Kontakt</h2>
               <p>
                 Za sva pitanja u vezi sa obradom vaših podataka, kontaktirajte nas na{" "}
-                <a href="mailto:sattlio.app@gmail.com" className="text-blue-600 hover:underline">
-                  sattlio.app@gmail.com
+                <a href="mailto:podrska@sattlio.com" className="text-blue-600 hover:underline">
+                  podrska@sattlio.com
                 </a>
                 .
               </p>

@@ -479,6 +479,14 @@ function ContactSection() {
           {CONTACT.supportEmail}
         </a>
 
+        {/* Opšti kontakt (partnerstva, mediji i sl.) - odvojeno od tehničke podrške */}
+        <p className="text-sm text-slate-400 mt-4">
+          Za opšte upite (partnerstva, mediji):{" "}
+          <a href={`mailto:${CONTACT.generalEmail}`} className="text-slate-500 hover:text-blue-600 underline underline-offset-2">
+            {CONTACT.generalEmail}
+          </a>
+        </p>
+
         {/* Finalni CTA ka registraciji */}
         <div className="mt-10">
           <Link

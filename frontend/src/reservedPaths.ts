@@ -26,6 +26,7 @@ export const RESERVED_PATHS = new Set<string>([
     "my-appointments",
     "book",
     "profile",
+    "report-issue",
     // Admin
     "admin",
   ]);

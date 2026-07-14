@@ -45,7 +45,7 @@ async def report_issue(
         logging.error(f"Prijava problema nije poslana: {e}")
         raise HTTPException(
             status_code=503,
-            detail="Slanje prijave trenutno nije moguće. Pokušajte ponovo kasnije ili nam pišite direktno na sattlio.app@gmail.com.",
+            detail="Slanje prijave trenutno nije moguće. Pokušajte ponovo kasnije ili nam pišite direktno na podrska@sattlio.com.",
         )
 
     return {"detail": "Prijava je poslana. Javićemo se uskoro."}

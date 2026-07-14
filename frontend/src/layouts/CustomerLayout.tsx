@@ -74,12 +74,13 @@ function CustomerLayout() {
         </nav>
 
         <div className="flex flex-col gap-1 mb-2 border-t border-slate-700 pt-3">
-          <a
-            href="mailto:podrska@sattlio.com?subject=Prijava problema"
+          <Link
+            to="/report-issue"
+            onClick={() => setMobileOpen(false)}
             className="px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
           >
-            Prijavi problem (Email)
-          </a>
+            Prijavi problem
+          </Link>
         </div>
 
         <button

@@ -339,6 +339,7 @@ export const SOCIAL_LINKS = {
 // ---------------------------------------------------------------------------
 export const CONTACT = {
   supportEmail: "podrska@sattlio.com",
+  generalEmail: "info@sattlio.com",
   supportChannels: ["Email"] as const,
 } as const;
 

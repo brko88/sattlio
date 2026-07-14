@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 
-ADMIN_EMAIL = "sattlio.app@gmail.com"
+ADMIN_EMAIL = "podrska@sattlio.com"
 TZ = ZoneInfo("Europe/Sarajevo")
 
 

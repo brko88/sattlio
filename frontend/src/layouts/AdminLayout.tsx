@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
+import api from "../services/api";
 
 function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await api.post("/api/v1/auth/logout").catch(() => {});
     localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
     navigate("/login");
   };
 

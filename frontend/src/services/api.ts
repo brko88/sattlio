@@ -2,6 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -66,25 +67,18 @@ api.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    const refreshToken = localStorage.getItem("refresh_token");
-
-    if (!refreshToken) {
-      // Nema refresh tokena — odjavi korisnika
-      localStorage.clear();
-      window.location.href = "/login";
-      return Promise.reject(error);
-    }
-
     try {
-      const response = await axios.post("/api/v1/auth/refresh", {
-        refresh_token: refreshToken,
-      });
+      // Refresh token je httpOnly cookie - salje se automatski, ne cita se
+      // iz localStorage-a.
+      const response = await axios.post(
+        "/api/v1/auth/refresh",
+        {},
+        { withCredentials: true }
+      );
 
       const newAccessToken = response.data.access_token;
-      const newRefreshToken = response.data.refresh_token;
 
       localStorage.setItem("access_token", newAccessToken);
-      localStorage.setItem("refresh_token", newRefreshToken);
 
       api.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;

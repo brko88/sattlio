@@ -1,7 +1,7 @@
 ﻿import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -23,10 +23,9 @@ from app.models.user_tenant_role import UserTenantRole
 from app.schemas.auth import (
     RegisterRequest,
     LoginRequest,
-    TokenResponse,
+    AccessTokenResponse,
     UserResponse,
     VerifyEmailRequest,
-    RefreshRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     ChangePasswordRequest,
@@ -35,14 +34,35 @@ from app.schemas.auth import (
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
+REFRESH_COOKIE_NAME = "refresh_token"
+REFRESH_COOKIE_PATH = "/api/v1/auth"
 
-def issue_tokens(db: Session, user_id: int, family_id: str | None = None) -> TokenResponse:
+
+def _set_refresh_cookie(response: Response, raw_token: str) -> None:
+    # httpOnly - JS (pa ni XSS) ne moze procitati ovaj token, za razliku od
+    # access tokena koji ostaje u localStorage. Path skopiran samo na auth
+    # rute - cookie se ne salje uz ostale API pozive.
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=raw_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        path=REFRESH_COOKIE_PATH,
+        max_age=settings.refresh_token_expire_days * 86400,
+    )
+
+
+def issue_tokens(db: Session, user_id: int, family_id: str | None = None) -> tuple[str, str]:
     """
     family_id povezuje sve refresh tokene nastale rotacijom iz istog
     originalnog login-a ("porodica" sesije). Ako se ne proslijedi, ovo je
     novi login pa se pravi nova porodica; ako se prosljeđuje (rotacija u
     /refresh), novi token nasljeđuje porodicu prethodnika - to omogućava
     da se pri replay napadu poništi CIJELI lanac, ne samo jedan token.
+
+    Vraca (access_token, raw_refresh_token) - pozivalac je odgovoran da
+    raw_refresh_token postavi kao httpOnly cookie, ne u JSON tijelo.
     """
     access_token = create_access_token(user_id=user_id)
 
@@ -60,7 +80,7 @@ def issue_tokens(db: Session, user_id: int, family_id: str | None = None) -> Tok
     db.add(refresh_entry)
     db.commit()
 
-    return TokenResponse(access_token=access_token, refresh_token=raw_refresh_token)
+    return access_token, raw_refresh_token
 
 
 @router.post("/register", response_model=UserResponse)
@@ -108,9 +128,9 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
     return new_user
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=AccessTokenResponse)
 @limiter.limit("10/minute")
-def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
+def login(request: Request, response: Response, data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
 
     if not user or not verify_password(data.password, user.password_hash):
@@ -125,12 +145,20 @@ def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
             detail="Nalog je deaktiviran.",
         )
 
-    return issue_tokens(db, user.id)
+    access_token, raw_refresh_token = issue_tokens(db, user.id)
+    _set_refresh_cookie(response, raw_refresh_token)
+    return AccessTokenResponse(access_token=access_token)
 
 
-@router.post("/refresh", response_model=TokenResponse)
-def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
-    token_hash = hash_refresh_token(data.refresh_token)
+@router.post("/refresh", response_model=AccessTokenResponse)
+def refresh(request: Request, response: Response, db: Session = Depends(get_db)):
+    raw_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if raw_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token nije valjan.",
+        )
+    token_hash = hash_refresh_token(raw_token)
 
     # with_for_update() zaključava red do commit-a - drugi paralelni zahtjev
     # sa ISTIM refresh tokenom mora čekati da prvi završi, pa onda vidi
@@ -182,23 +210,27 @@ def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
     family_id = stored_token.family_id or secrets.token_hex(16)
     db.commit()
 
-    return issue_tokens(db, stored_token.user_id, family_id=family_id)
+    new_access_token, new_raw_refresh_token = issue_tokens(db, stored_token.user_id, family_id=family_id)
+    _set_refresh_cookie(response, new_raw_refresh_token)
+    return AccessTokenResponse(access_token=new_access_token)
 
 
 @router.post("/logout")
-def logout(data: RefreshRequest, db: Session = Depends(get_db)):
-    token_hash = hash_refresh_token(data.refresh_token)
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    raw_token = request.cookies.get(REFRESH_COOKIE_NAME)
 
-    stored_token = (
-        db.query(RefreshToken)
-        .filter(RefreshToken.token_hash == token_hash)
-        .first()
-    )
+    if raw_token is not None:
+        token_hash = hash_refresh_token(raw_token)
+        stored_token = (
+            db.query(RefreshToken)
+            .filter(RefreshToken.token_hash == token_hash)
+            .first()
+        )
+        if stored_token is not None:
+            stored_token.is_revoked = True
+            db.commit()
 
-    if stored_token is not None:
-        stored_token.is_revoked = True
-        db.commit()
-
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH)
     return {"detail": "Odjavljeni ste."}
 
 

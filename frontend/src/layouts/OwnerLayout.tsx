@@ -17,9 +17,9 @@ function OwnerLayout() {
     }).catch(() => {});
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await api.post("/api/v1/auth/logout").catch(() => {});
     localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
     navigate("/login");
   };
 

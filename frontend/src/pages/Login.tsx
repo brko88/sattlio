@@ -16,7 +16,6 @@ function Login() {
         password,
       });
       localStorage.setItem("access_token", response.data.access_token);
-      localStorage.setItem("refresh_token", response.data.refresh_token);
 
       // Učitaj podatke o korisniku
       const meResponse = await api.get("/api/v1/auth/me");

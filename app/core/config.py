@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     smtp_user: str
     smtp_password: str
     frontend_url: str = "http://localhost:5173"
+    cookie_secure: bool = False
 
     class Config:
         env_file = ".env"

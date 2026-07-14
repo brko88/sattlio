@@ -1,5 +1,7 @@
 ﻿from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.core.validators import normalize_email
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -7,6 +9,11 @@ class RegisterRequest(BaseModel):
     first_name: str = Field(max_length=30)
     last_name: str = Field(max_length=30)
     terms_accepted: bool
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
 
     @field_validator("terms_accepted")
     @classmethod
@@ -19,6 +26,11 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
 
 
 class AccessTokenResponse(BaseModel):
@@ -51,6 +63,11 @@ class VerifyEmailRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value)
 
 
 class ResetPasswordRequest(BaseModel):

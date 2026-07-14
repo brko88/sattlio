@@ -68,9 +68,14 @@ def create_employee(
             detail="Ova email adresa je vec dodijeljena drugom zaposlenom.",
         )
 
-    # Ako User sa ovim emailom vec postoji, povezi ga odmah
+    # Ako User sa ovim emailom vec postoji I ima potvrdjen email, povezi ga odmah.
+    # Ako nalog postoji ali email nije potvrdjen, ne linkujemo ga ovdje - inace bi
+    # napadac mogao registrovati (neverifikovan) nalog sa tudjim/predvidljivim
+    # emailom unaprijed i automatski dobiti employee pristup cim ga vlasnik doda.
+    # Linkovanje ce se desiti kasnije, u verify_email, isto kao i za register().
     existing_user = db.query(User).filter(User.email == data.email).first()
-    linked_user_id = existing_user.id if existing_user else None
+    verified_existing_user = existing_user if existing_user and existing_user.email_verified else None
+    linked_user_id = verified_existing_user.id if verified_existing_user else None
 
     new_employee = Employee(
         tenant_id=data.tenant_id,
@@ -83,20 +88,20 @@ def create_employee(
     db.add(new_employee)
 
     # Ako je User povezan, dodijeli mu employee rolu za ovaj tenant (ako je vec nema)
-    if existing_user is not None:
+    if verified_existing_user is not None:
         existing_role = db.query(UserTenantRole).filter(
-            UserTenantRole.user_id == existing_user.id,
+            UserTenantRole.user_id == verified_existing_user.id,
             UserTenantRole.tenant_id == data.tenant_id,
         ).first()
         if existing_role is None:
             db.add(UserTenantRole(
-                user_id=existing_user.id,
+                user_id=verified_existing_user.id,
                 tenant_id=data.tenant_id,
                 role="employee",
             ))
 
     db.commit()
-    # Ako zaposleni jos nema nalog, posalji mu email da se registruje
+    # Ako zaposleni jos nema povezan (verifikovan) nalog, posalji mu email da se registruje
     if linked_user_id is None:
         tenant = db.query(Tenant).filter(Tenant.id == data.tenant_id).first()
         employee_full_name = f"{data.first_name} {data.last_name}".strip()

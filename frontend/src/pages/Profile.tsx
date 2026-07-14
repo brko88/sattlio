@@ -116,6 +116,10 @@ function Profile() {
                 {me.email_verified ? "Da" : "Ne"}
               </span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Telefon</span>
+              <span className="font-medium text-slate-900">{me.phone || "—"}</span>
+            </div>
           </div>
 
           <form onSubmit={handleSaveProfile}>
@@ -143,13 +147,26 @@ function Profile() {
             </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-slate-500 mb-2">Telefon (opciono)</label>
-              <input
-                type="text"
-                value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
-                maxLength={20}
-                className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  maxLength={20}
+                  className="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  type="button"
+                  disabled
+                  title="Verifikacija broja telefona uskoro dolazi"
+                  className="px-3 py-2 border border-slate-200 text-slate-400 rounded-md text-sm cursor-not-allowed shrink-0"
+                >
+                  Verifikuj
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Verifikacija broja telefona nije još implementirana — uskoro.
+              </p>
             </div>
 
             {profileError && <p className="text-red-600 text-sm mb-3">{profileError}</p>}

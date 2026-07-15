@@ -67,6 +67,7 @@ function StatusDot({ status }: { status: string }) {
 function Dashboard() {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [health, setHealth] = useState<PlatformHealth | null>(null);
+  const [workingHoursRange, setWorkingHoursRange] = useState<WorkingHoursRangeDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -74,12 +75,14 @@ function Dashboard() {
     setLoading(true);
     setError("");
     try {
-      const [statsRes, healthRes] = await Promise.all([
+      const [statsRes, healthRes, workingHoursRes] = await Promise.all([
         api.get("/api/v1/admin/stats"),
         api.get("/api/v1/admin/health"),
+        api.get("/api/v1/admin/working-hours-range"),
       ]);
       setStats(statsRes.data);
       setHealth(healthRes.data);
+      setWorkingHoursRange(workingHoursRes.data);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom učitavanja podataka.");
     } finally {
@@ -131,33 +134,44 @@ function Dashboard() {
                 </div>
               </div>
             )}
-
-            {stats && (stats.earliest_start_time || stats.latest_end_time) && (
-              <div className="bg-white rounded-lg shadow-sm p-5 max-w-md flex-1 min-w-[280px]">
-                <h2 className="text-sm font-semibold text-slate-700 uppercase mb-3">
-                  Radno vrijeme salona (svi saloni, svi dani)
-                </h2>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-700">Najraniji početak igdje</span>
-                    <span className="font-semibold text-slate-900">{stats.earliest_start_time ?? "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-700">Najkasniji kraj igdje</span>
-                    <span className="font-semibold text-slate-900">{stats.latest_end_time ?? "—"}</span>
-                  </div>
-                  {stats.earliest_start_time && stats.latest_end_time && (
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                      <span className="text-slate-700">Bezbjedno za održavanje</span>
-                      <span className="font-semibold text-green-700">
-                        {stats.latest_end_time}–{stats.earliest_start_time}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
+
+          {workingHoursRange.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm p-5">
+              <h2 className="text-sm font-semibold text-slate-700 uppercase mb-1">
+                Radno vrijeme salona po danu
+              </h2>
+              <p className="text-xs text-slate-500 mb-3">
+                Najraniji početak i najkasniji kraj preko svih salona, po danu u sedmici — za planiranje bezbjednog prozora za održavanje.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left bg-slate-50">
+                      <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Dan</th>
+                      <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Najraniji početak</th>
+                      <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Najkasniji kraj</th>
+                      <th className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase">Bezbjedno za održavanje</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workingHoursRange.map((d) => (
+                      <tr key={d.day_of_week} className="border-t border-slate-100">
+                        <td className="px-4 py-2 font-medium">{d.day_label}</td>
+                        <td className="px-4 py-2">{d.earliest_start ?? "—"}</td>
+                        <td className="px-4 py-2">{d.latest_end ?? "—"}</td>
+                        <td className="px-4 py-2 font-semibold text-green-700">
+                          {d.earliest_start && d.latest_end
+                            ? `${d.latest_end}–${d.earliest_start}`
+                            : "Nijedan salon ne radi ovaj dan — cijeli dan slobodan"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

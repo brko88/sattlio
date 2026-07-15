@@ -2,6 +2,7 @@
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 import Avatar from "../components/Avatar";
+import { SkeletonListPage } from "../components/Skeleton";
 
 interface Employee {
   id: number;
@@ -210,7 +211,7 @@ function Employees() {
       <h3 className="text-lg font-semibold mb-3">Lista zaposlenih</h3>
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonListPage rows={4} columns={5} />
       ) : employees.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
           Nema zaposlenih.

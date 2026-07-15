@@ -2,6 +2,7 @@
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 import ShareSalonButton from "../components/ShareSalonButton";
+import { SkeletonStatCards } from "../components/Skeleton";
 
 interface Employee {
   id: number;
@@ -183,7 +184,7 @@ function Dashboard() {
       )}
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonStatCards count={4} />
       ) : (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
           {cards.map((card) => (

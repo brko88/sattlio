@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
+import { SkeletonStatCards } from "../components/Skeleton";
 
 interface PlatformStats {
   total_tenants: number;
@@ -102,7 +103,7 @@ function Dashboard() {
       {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonStatCards count={9} />
       ) : (
         <>
           {stats && (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
+import { SkeletonCards } from "../components/Skeleton";
 
 interface Announcement {
   id: number;
@@ -95,7 +96,7 @@ function AdminAnnouncements() {
       {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonCards count={2} />
       ) : (
         <div className="space-y-6">
           {/* Beta baner */}

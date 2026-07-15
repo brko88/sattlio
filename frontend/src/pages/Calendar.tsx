@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 import { formatTime, getLocalHoursMinutes } from "../utils/time";
+import Bar from "../components/Skeleton";
 
 interface Appointment {
   id: number;
@@ -427,7 +428,11 @@ function Calendar() {
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <div className="bg-white rounded-lg shadow-sm p-4 space-y-2">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <Bar key={i} className="h-9 w-full" />
+          ))}
+        </div>
       ) : employees.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
           Nema zaposlenih za prikaz.

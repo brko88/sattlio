@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import api from "../services/api";
+import { SkeletonStatCards } from "../components/Skeleton";
 
 type Period = "today" | "7d" | "30d" | "12mo" | "all";
 
@@ -134,7 +135,7 @@ function Analytics() {
       {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonStatCards count={5} />
       ) : data ? (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">

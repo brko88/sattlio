@@ -3,6 +3,7 @@ import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 import { formatDateTime, formatTime } from "../utils/time";
 import Pagination from "../components/Pagination";
+import { SkeletonListPage } from "../components/Skeleton";
 
 interface Appointment {
   id: number;
@@ -513,7 +514,7 @@ function Appointments() {
       <h3 className="text-lg font-semibold mb-3">Lista rezervacija</h3>
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonListPage rows={6} columns={6} />
       ) : appointments.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
           Nema rezervacija.

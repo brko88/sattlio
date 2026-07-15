@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { formatTime } from "../utils/time";
 import Avatar from "../components/Avatar";
+import { SkeletonCards } from "../components/Skeleton";
 
 interface Service {
   id: number;
@@ -102,8 +103,8 @@ function BookAppointment() {
   const today = new Date().toISOString().split("T")[0];
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      Učitavanje...
+    <div className="min-h-screen bg-slate-50 p-4 max-w-lg mx-auto">
+      <SkeletonCards count={3} />
     </div>
   );
 

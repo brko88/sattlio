@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import api from "../services/api";
 import Pagination from "../components/Pagination";
+import Bar, { SkeletonListPage } from "../components/Skeleton";
 
 interface Tenant {
   id: number;
@@ -64,7 +65,15 @@ function HealthCheckModal({
         onClick={(e) => e.stopPropagation()}
       >
         {loading ? (
-          <p className="text-slate-500">Učitavanje...</p>
+          <div className="space-y-3">
+            <Bar className="h-5 w-1/2" />
+            <Bar className="h-3 w-1/3" />
+            <div className="space-y-2 pt-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Bar key={i} className="h-4 w-full" />
+              ))}
+            </div>
+          </div>
         ) : !health ? (
           <p className="text-red-600">Greška prilikom učitavanja podataka.</p>
         ) : (
@@ -132,19 +141,22 @@ interface AdminPanelProps {
   title?: string;
   description?: string;
   initialStatusFilter?: string;
+  /** Kad je postavljeno, filter je fiksan (nema tabova, korisnik ga ne mijenja) - npr. "pending,suspended" za Verifikacije. */
+  fixedStatusFilter?: string;
 }
 
 function AdminPanel({
   title = "Admin Panel",
   description = "Pregled i verifikacija svih poslovnih subjekata na platformi",
   initialStatusFilter = "",
+  fixedStatusFilter,
 }: AdminPanelProps) {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [statusFilter, setStatusFilter] = useState(fixedStatusFilter ?? initialStatusFilter);
 
   const [healthModalOpen, setHealthModalOpen] = useState(false);
   const [healthData, setHealthData] = useState<TenantHealth | null>(null);
@@ -237,21 +249,23 @@ function AdminPanel({
       <h1 className="text-2xl font-bold mb-2 text-slate-900">{title}</h1>
       <p className="text-slate-500 mb-6">{description}</p>
 
-      <div className="flex gap-2 flex-wrap mb-4">
-        {STATUS_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => handleStatusTabChange(tab.value)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              statusFilter === tab.value
-                ? "bg-blue-600 text-white"
-                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {!fixedStatusFilter && (
+        <div className="flex gap-2 flex-wrap mb-4">
+          {STATUS_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => handleStatusTabChange(tab.value)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                statusFilter === tab.value
+                  ? "bg-blue-600 text-white"
+                  : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mb-4">
         <input
@@ -269,7 +283,7 @@ function AdminPanel({
       {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonListPage rows={6} columns={8} />
       ) : tenants.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
           {search || statusFilter

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import api from "../services/api";
 import { formatDateTime } from "../utils/time";
+import { SkeletonCards } from "../components/Skeleton";
 
 interface Appointment {
   id: number;
@@ -108,7 +109,7 @@ function MyAppointments() {
       {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonCards count={3} />
       ) : appointments.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
           Nemate nijednu rezervaciju.

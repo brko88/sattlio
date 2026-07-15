@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../services/api";
 import Avatar from "../components/Avatar";
+import { SkeletonCards } from "../components/Skeleton";
 
 interface PublicEmployee {
   id: number;
@@ -56,8 +57,8 @@ function SalonProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-400 text-sm">Učitavanje...</p>
+      <div className="min-h-screen bg-slate-50 p-4 max-w-2xl mx-auto">
+        <SkeletonCards count={4} />
       </div>
     );
   }

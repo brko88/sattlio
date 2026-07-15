@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 import Avatar from "../components/Avatar";
+import { SkeletonCards } from "../components/Skeleton";
 
 const SLOT_OPTIONS = [
   { value: 15, label: "15 minuta" },
@@ -178,7 +179,7 @@ function Settings() {
       <p className="text-slate-500 mb-8">Upravljajte postavkama vašeg salona</p>
 
       {loading ? (
-        <p>Učitavanje...</p>
+        <SkeletonCards count={2} />
       ) : (
         <>
         <div className="bg-white rounded-lg p-6 shadow-sm max-w-md space-y-6 mb-6">

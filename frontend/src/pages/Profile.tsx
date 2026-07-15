@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
+import { SkeletonCards } from "../components/Skeleton";
 
 interface Me {
   id: number;
@@ -92,7 +93,7 @@ function Profile() {
   };
 
   if (loading) {
-    return <p className="text-slate-400">Učitavanje...</p>;
+    return <SkeletonCards count={2} />;
   }
 
   return (

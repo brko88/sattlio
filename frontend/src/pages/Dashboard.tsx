@@ -27,16 +27,18 @@ function Dashboard() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [betaActive, setBetaActive] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [empRes, srvRes, custRes, apptRes, tenantsRes] = await Promise.all([
+        const [empRes, srvRes, custRes, apptRes, tenantsRes, announcementsRes] = await Promise.all([
           api.get("/api/v1/employees", { params: { tenant_id: tenantId } }),
           api.get("/api/v1/services", { params: { tenant_id: tenantId } }),
           api.get("/api/v1/customers", { params: { tenant_id: tenantId } }),
           api.get("/api/v1/appointments", { params: { tenant_id: tenantId } }),
           api.get("/api/v1/tenants/my"),
+          api.get("/api/v1/public/announcements"),
         ]);
         setStats({
           employees: empRes.data.length,
@@ -47,6 +49,7 @@ function Dashboard() {
         setEmployees(empRes.data);
         const currentTenant = tenantsRes.data.find((t: any) => t.id === tenantId);
         if (currentTenant) setTenant(currentTenant);
+        setBetaActive(announcementsRes.data.some((a: any) => a.kind === "beta"));
       } finally {
         setLoading(false);
       }
@@ -113,8 +116,8 @@ function Dashboard() {
       {!loading && (
         <div className="mb-6 space-y-3">
 
-          {/* Trial banner */}
-          {trialDaysLeft !== null && (
+          {/* Trial banner - sakriven dok je beta baner aktivan (kontradiktorne poruke) */}
+          {trialDaysLeft !== null && !betaActive && (
             <div className={`flex items-start gap-3 rounded-lg px-4 py-3 border ${getTrialBgClass()}`}>
               <span className="text-lg mt-0.5">{getTrialIcon()}</span>
               <div>

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.limiter import limiter
+from app.core.plans import PLANS
 from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
 from app.core.timezone_utils import get_tenant_timezone, zoneinfo_for_tenant
@@ -60,6 +61,24 @@ class PublicServiceResponse(BaseModel):
         from_attributes = True
 
 
+class PlanResponse(BaseModel):
+    key: str
+    name: str
+    price_bam: float | None
+    price_label: str
+    employee_limit: int | None
+    employee_limit_label: str
+    location_limit_label: str
+    description: str
+    features: list[str]
+    excluded: list[str]
+    highlighted: bool
+    cta_label: str
+
+    class Config:
+        from_attributes = True
+
+
 class SelfBookingCreate(BaseModel):
     employee_id: int
     service_id: int
@@ -78,6 +97,11 @@ class SelfBookingResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+@router.get("/plans", response_model=list[PlanResponse])
+def get_public_plans():
+    return [plan for key, plan in PLANS.items() if key != "trial"]
 
 
 @router.get("/tenants", response_model=list[PublicTenantResponse])

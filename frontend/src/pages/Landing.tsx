@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../services/api";
 import {
   ANIMATION,
   APPOINTMENT_STATUS_COLORS,
@@ -16,7 +17,6 @@ import {
   FEATURES_ROADMAP,
   FEATURES_TODAY,
   LANDING_SECTIONS,
-  PRICING_PLANS,
   ROUTES,
   SEO,
   SOCIAL_LINKS,
@@ -25,6 +25,21 @@ import {
   TYPOGRAPHY,
   annualPriceKM,
 } from "../config/landingConfig";
+
+interface PricingPlan {
+  key: string;
+  name: string;
+  price_bam: number | null;
+  price_label: string;
+  employee_limit: number | null;
+  employee_limit_label: string;
+  location_limit_label: string;
+  description: string;
+  features: string[];
+  excluded: string[];
+  highlighted: boolean;
+  cta_label: string;
+}
 
 // ---------------------------------------------------------------------------
 // Landing — glavna komponenta stranice
@@ -275,6 +290,17 @@ function FeaturesSection() {
 // PricingSection — cjenovnik iz Dok. 13
 // ---------------------------------------------------------------------------
 function PricingSection() {
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get("/api/v1/public/plans")
+      .then((res) => setPlans(res.data))
+      .catch(() => setPlans([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <section id={LANDING_SECTIONS.pricing} className="py-16 md:py-20 bg-white border-y border-slate-200">
       <div className="max-w-6xl mx-auto px-4">
@@ -290,11 +316,15 @@ function PricingSection() {
         </p>
 
         {/* Grid cjenovnih paketa */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {PRICING_PLANS.map((plan) => (
-            <PricingCard key={plan.id} plan={plan} />
-          ))}
-        </div>
+        {loading ? (
+          <p className="text-center text-slate-400">Učitavanje paketa...</p>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {plans.map((plan) => (
+              <PricingCard key={plan.key} plan={plan} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -303,10 +333,10 @@ function PricingSection() {
 // ---------------------------------------------------------------------------
 // PricingCard — pojedinačna kartica paketa
 // ---------------------------------------------------------------------------
-function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
+function PricingCard({ plan }: { plan: PricingPlan }) {
   // Izračun godišnje cijene ako postoji mjesečna cijena
   const annual =
-    plan.priceMonthlyKM !== null ? annualPriceKM(plan.priceMonthlyKM) : null;
+    plan.price_bam !== null ? annualPriceKM(plan.price_bam) : null;
 
   return (
     <article
@@ -319,7 +349,7 @@ function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
       {/* Naziv paketa */}
       <h3 className="font-bold text-lg text-slate-900 mb-1">{plan.name}</h3>
       {/* Cijena */}
-      <p className="text-2xl font-bold text-blue-600 mb-1">{plan.priceLabel}</p>
+      <p className="text-2xl font-bold text-blue-600 mb-1">{plan.price_label}</p>
       {/* Godišnja cijena sa popustom — prikaz samo za fiksne pakete */}
       {annual !== null && (
         <p className="text-xs text-slate-500 mb-3">
@@ -327,8 +357,8 @@ function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
         </p>
       )}
       {/* Limiti zaposlenih i lokacija */}
-      <p className="text-sm text-slate-600 mb-1">{plan.employeeLimit}</p>
-      <p className="text-sm text-slate-600 mb-4">{plan.locationLimit}</p>
+      <p className="text-sm text-slate-600 mb-1">{plan.employee_limit_label}</p>
+      <p className="text-sm text-slate-600 mb-4">{plan.location_limit_label}</p>
       <p className="text-sm text-slate-500 mb-4 flex-1">{plan.description}</p>
 
       {/* Lista uključenih funkcionalnosti */}
@@ -351,19 +381,19 @@ function PricingCard({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
       </ul>
 
       {/* CTA — Business vodi na kontakt, ostali na registraciju */}
-      {plan.id === "business" ? (
+      {plan.key === "business" ? (
         <a
           href={`#${LANDING_SECTIONS.contact}`}
           className={`block text-center px-4 py-2.5 border ${COLORS.borderClass} rounded-lg font-medium text-slate-700 ${ANIMATION.transitionClass} hover:bg-slate-50`}
         >
-          {plan.ctaLabel}
+          {plan.cta_label}
         </a>
       ) : (
         <Link
-          to={`${ROUTES.register}?plan=${plan.id}`}
+          to={`${ROUTES.register}?plan=${plan.key}`}
           className={`block text-center px-4 py-2.5 ${COLORS.primaryClass} text-white rounded-lg font-medium ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
         >
-          {plan.ctaLabel}
+          {plan.cta_label}
         </Link>
       )}
     </article>

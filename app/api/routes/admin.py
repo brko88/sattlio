@@ -60,7 +60,8 @@ def list_all_tenants(
     query = db.query(Tenant)
 
     if verification_status:
-        query = query.filter(Tenant.verification_status == verification_status)
+        statuses = [s.strip() for s in verification_status.split(",") if s.strip()]
+        query = query.filter(Tenant.verification_status.in_(statuses))
 
     if search:
         search_term = f"%{search}%"
@@ -206,6 +207,45 @@ def get_platform_stats(
         "verified_tenants": verified_tenants,
         "pending_tenants": pending_tenants,
     }
+
+
+# ---------------------------------------------------------------------------
+# Radno vrijeme svih salona po danu (za bezbjedan prozor za odrzavanje)
+# ---------------------------------------------------------------------------
+
+DAY_LABELS = ["Ponedjeljak", "Utorak", "Srijeda", "Četvrtak", "Petak", "Subota", "Nedjelja"]
+
+
+@router.get("/working-hours-range")
+def get_working_hours_range(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    """Najraniji pocetak i najkasniji kraj radnog vremena preko svih salona, po danu u sedmici."""
+    from sqlalchemy import func
+
+    rows = (
+        db.query(
+            WorkingHours.day_of_week,
+            func.min(WorkingHours.start_time),
+            func.max(WorkingHours.end_time),
+        )
+        .filter(WorkingHours.is_working_day == True)
+        .group_by(WorkingHours.day_of_week)
+        .all()
+    )
+    by_day = {day: (start, end) for day, start, end in rows}
+
+    result = []
+    for day in range(7):
+        entry = by_day.get(day)
+        result.append({
+            "day_of_week": day,
+            "day_label": DAY_LABELS[day],
+            "earliest_start": entry[0].strftime("%H:%M") if entry else None,
+            "latest_end": entry[1].strftime("%H:%M") if entry else None,
+        })
+    return result
 
 
 # ---------------------------------------------------------------------------

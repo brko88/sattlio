@@ -20,6 +20,13 @@ interface PlatformHealth {
   paddle: { status: string };
 }
 
+interface WorkingHoursRangeDay {
+  day_of_week: number;
+  day_label: string;
+  earliest_start: string | null;
+  latest_end: string | null;
+}
+
 const STAT_CARDS: { key: keyof PlatformStats; label: string }[] = [
   { key: "total_tenants", label: "Ukupno salona" },
   { key: "total_users", label: "Ukupno korisnika" },
@@ -108,21 +115,49 @@ function Dashboard() {
             </div>
           )}
 
-          {health && (
-            <div className="bg-white rounded-lg shadow-sm p-5 max-w-md">
-              <h2 className="text-sm font-semibold text-slate-700 uppercase mb-3">
-                Platform Health
-              </h2>
-              <div className="space-y-2">
-                {HEALTH_ITEMS.map((item) => (
-                  <div key={item.key} className="flex items-center justify-between">
-                    <span className="text-sm text-slate-700">{item.label}</span>
-                    <StatusDot status={health[item.key].status} />
-                  </div>
-                ))}
+          <div className="flex flex-wrap gap-4 mb-8">
+            {health && (
+              <div className="bg-white rounded-lg shadow-sm p-5 max-w-md flex-1 min-w-[280px]">
+                <h2 className="text-sm font-semibold text-slate-700 uppercase mb-3">
+                  Platform Health
+                </h2>
+                <div className="space-y-2">
+                  {HEALTH_ITEMS.map((item) => (
+                    <div key={item.key} className="flex items-center justify-between">
+                      <span className="text-sm text-slate-700">{item.label}</span>
+                      <StatusDot status={health[item.key].status} />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {stats && (stats.earliest_start_time || stats.latest_end_time) && (
+              <div className="bg-white rounded-lg shadow-sm p-5 max-w-md flex-1 min-w-[280px]">
+                <h2 className="text-sm font-semibold text-slate-700 uppercase mb-3">
+                  Radno vrijeme salona (svi saloni, svi dani)
+                </h2>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-700">Najraniji početak igdje</span>
+                    <span className="font-semibold text-slate-900">{stats.earliest_start_time ?? "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-700">Najkasniji kraj igdje</span>
+                    <span className="font-semibold text-slate-900">{stats.latest_end_time ?? "—"}</span>
+                  </div>
+                  {stats.earliest_start_time && stats.latest_end_time && (
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                      <span className="text-slate-700">Bezbjedno za održavanje</span>
+                      <span className="font-semibold text-green-700">
+                        {stats.latest_end_time}–{stats.earliest_start_time}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

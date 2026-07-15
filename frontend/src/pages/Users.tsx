@@ -113,7 +113,59 @@ function Users() {
           {search ? "Nema rezultata za zadatu pretragu." : "Nema registrovanih korisnika."}
         </div>
       ) : (
-        <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
+        <>
+        {/* Mobilni prikaz - kartice (ispod md) */}
+        <div className="md:hidden space-y-3">
+          {users.map((u) => (
+            <div key={u.id} className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <p className="font-semibold text-slate-900">
+                  {u.first_name || u.last_name
+                    ? `${u.first_name || ""} ${u.last_name || ""}`.trim()
+                    : "-"}
+                </p>
+                {u.is_superadmin && (
+                  <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+                    superadmin
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-slate-500 break-all">{u.email}</p>
+              <p className="text-sm text-slate-500">
+                {u.tenants.length === 0
+                  ? "-"
+                  : u.tenants.map((t) => `${t.tenant_name} (${t.role})`).join(", ")}
+              </p>
+              <p className="text-sm text-slate-500 mb-3">
+                Email potvrđen: {u.email_verified ? "Da" : "Ne"} · Aktivan: {u.is_active ? "Da" : "Ne"}
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {!u.is_superadmin && (
+                  <button
+                    onClick={() => handleBlock(u.id, u.is_active)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium text-white transition-colors ${
+                      u.is_active
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                  >
+                    {u.is_active ? "Blokiraj" : "Deblokiraj"}
+                  </button>
+                )}
+                <button
+                  onClick={() => handleResetPassword(u.id)}
+                  className="px-3 py-1.5 bg-slate-600 text-white rounded-md text-xs font-medium hover:bg-slate-700 transition-colors"
+                >
+                  Reset lozinke
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop/tablet prikaz - tabela (md i vece) */}
+        <div className="hidden md:block overflow-x-auto bg-white rounded-lg shadow-sm">
+        <table className="w-full">
           <thead>
             <tr className="text-left bg-slate-50">
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Ime i prezime</th>
@@ -171,6 +223,8 @@ function Users() {
             ))}
           </tbody>
         </table>
+        </div>
+        </>
       )}
 
       <Pagination page={page} totalPages={Math.ceil(total / PAGE_SIZE)} onPageChange={setPage} />

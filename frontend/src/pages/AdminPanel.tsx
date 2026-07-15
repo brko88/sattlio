@@ -231,7 +231,63 @@ function AdminPanel() {
             : "Nema registrovanih poslovnih subjekata."}
         </div>
       ) : (
-        <table className="w-full bg-white rounded-lg shadow-sm overflow-hidden">
+        <>
+        {/* Mobilni prikaz - kartice (ispod md) */}
+        <div className="md:hidden space-y-3">
+          {tenants.map((t) => (
+            <div key={t.id} className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="font-semibold text-slate-900">{t.name}</p>
+                <span
+                  className={`${STATUS_STYLES[t.verification_status] || "bg-slate-100 text-slate-600"} px-2 py-1 rounded-full text-xs font-semibold shrink-0`}
+                >
+                  {t.verification_status}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500">{t.owner_name || "-"}</p>
+              <p className="text-sm text-slate-500 break-all">{t.owner_email || "-"}</p>
+              <p className="text-sm text-slate-500">
+                {t.city || "—"}{t.jib ? ` · JIB: ${t.jib}` : ""}
+              </p>
+              <p className="text-sm text-slate-500 mb-3">Aktivan: {t.is_active ? "Da" : "Ne"}</p>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => handleShowHealth(t.id)}
+                  className="px-3 py-1.5 bg-slate-600 text-white rounded-md text-xs font-medium hover:bg-slate-700 transition-colors"
+                >
+                  Detalji
+                </button>
+                {t.verification_status !== "verified" && (
+                  <button
+                    onClick={() => handleAction(t.id, "verify")}
+                    className="px-3 py-1.5 bg-green-600 text-white rounded-md text-xs font-medium hover:bg-green-700 transition-colors"
+                  >
+                    Verifikuj
+                  </button>
+                )}
+                {t.verification_status !== "suspended" ? (
+                  <button
+                    onClick={() => handleAction(t.id, "suspend")}
+                    className="px-3 py-1.5 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors"
+                  >
+                    Suspenduj
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleAction(t.id, "reactivate")}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Reaktiviraj
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop/tablet prikaz - tabela (md i vece) */}
+        <div className="hidden md:block overflow-x-auto bg-white rounded-lg shadow-sm">
+        <table className="w-full">
           <thead>
             <tr className="text-left bg-slate-50">
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
@@ -313,6 +369,8 @@ function AdminPanel() {
             ))}
           </tbody>
         </table>
+        </div>
+        </>
       )}
 
       <Pagination page={page} totalPages={Math.ceil(total / PAGE_SIZE)} onPageChange={setPage} />

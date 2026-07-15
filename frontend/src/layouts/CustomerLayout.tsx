@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import api from "../services/api";
+import VersionBadge from "../components/VersionBadge";
 
 function CustomerLayout() {
   const navigate = useNavigate();
@@ -90,6 +91,8 @@ function CustomerLayout() {
         >
           Odjavi se
         </button>
+
+        <VersionBadge />
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-slate-50 min-w-0">

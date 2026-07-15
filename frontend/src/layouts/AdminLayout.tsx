@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import api from "../services/api";
+import VersionBadge from "../components/VersionBadge";
 
 function AdminLayout() {
   const navigate = useNavigate();
@@ -91,6 +92,8 @@ function AdminLayout() {
         >
           Odjavi se
         </button>
+
+        <VersionBadge className="text-purple-400" />
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-slate-50 min-w-0">

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { useTenant } from "../contexts/TenantContext";
 import api from "../services/api";
+import VersionBadge from "../components/VersionBadge";
 
 function OwnerLayout() {
   const navigate = useNavigate();
@@ -133,6 +134,8 @@ function OwnerLayout() {
         >
           Odjavi se
         </button>
+
+        <VersionBadge />
       </aside>
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-slate-50 min-w-0">

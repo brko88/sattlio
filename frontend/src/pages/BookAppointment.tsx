@@ -92,6 +92,7 @@ function BookAppointment() {
         start_time: selectedSlot,
         note: note || null,
       });
+      sessionStorage.setItem("toast_message", "Rezervacija kreirana ✔️");
       window.location.href = "/my-appointments";
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom rezervacije.");

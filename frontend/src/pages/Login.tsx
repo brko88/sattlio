@@ -44,6 +44,7 @@ function Login() {
         try {
           const pendingBooking = JSON.parse(pendingBookingRaw);
           await api.post("/api/v1/public/appointments", pendingBooking);
+          sessionStorage.setItem("toast_message", "Rezervacija kreirana ✔️");
           window.location.href = "/my-appointments";
           return;
         } catch (err: any) {

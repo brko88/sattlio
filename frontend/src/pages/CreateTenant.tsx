@@ -1,6 +1,7 @@
 import { useState } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
+import { useToast } from "../contexts/ToastContext";
 
 const BUSINESS_CATEGORIES = [
   "Frizerski salon",
@@ -34,6 +35,7 @@ function CreateTenant() {
   const [submitting, setSubmitting] = useState(false);
   const [emailNotVerified, setEmailNotVerified] = useState(false);
   const { setTenantId } = useTenant();
+  const showToast = useToast();
 
   const extractErrorMessage = (err: any): string => {
     const detail = err.response?.data?.detail;
@@ -136,9 +138,9 @@ function CreateTenant() {
                 e.preventDefault();
                 try {
                   await api.post("/api/v1/auth/resend-verification");
-                  alert("Verifikacijski email je ponovo poslan.");
+                  showToast("Verifikacijski email je ponovo poslan. ✔️");
                 } catch {
-                  alert("Greška. Pokušajte se odjaviti i ponovo prijaviti.");
+                  showToast("Greška. Pokušajte se odjaviti i ponovo prijaviti.", "error");
                 }
               }}
             >

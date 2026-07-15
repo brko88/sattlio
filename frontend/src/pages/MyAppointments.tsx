@@ -2,6 +2,7 @@
 import api from "../services/api";
 import { formatDateTime } from "../utils/time";
 import { SkeletonCards } from "../components/Skeleton";
+import { useToast } from "../contexts/ToastContext";
 
 interface Appointment {
   id: number;
@@ -21,6 +22,7 @@ function MyAppointments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const showToast = useToast();
 
   const fetchAppointments = async () => {
     try {
@@ -34,7 +36,13 @@ function MyAppointments() {
   };
 
   useEffect(() => {
+    const toastMessage = sessionStorage.getItem("toast_message");
+    if (toastMessage) {
+      showToast(toastMessage);
+      sessionStorage.removeItem("toast_message");
+    }
     fetchAppointments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCancel = async (appointmentId: number) => {

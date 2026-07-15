@@ -40,16 +40,24 @@ function Login() {
       // zavrsi tu rezervaciju sad kad je token dostupan, pa ga vrati na Moje termine.
       const pendingBookingRaw = localStorage.getItem("pending_booking");
       if (pendingBookingRaw) {
+        localStorage.removeItem("pending_booking");
         try {
           const pendingBooking = JSON.parse(pendingBookingRaw);
           await api.post("/api/v1/public/appointments", pendingBooking);
-        } catch (err) {
-          // Rezervacija nije uspjela (npr. termin je u meduvremenu zauzet) -
-          // korisnik moze pokusati ponovo sa stranice salona.
+          window.location.href = "/my-appointments";
+          return;
+        } catch (err: any) {
+          // Rezervacija nije uspjela (npr. termin je u meduvremenu zauzet,
+          // ili email nije potvrdjen). Korisnik JE prijavljen, ali ga ne
+          // redirektujemo - ciljna stranica ovisi o ulozi/tenant-u (npr. bez
+          // salona ide na onboarding, ne na Moje termine) pa poruka moze
+          // ostati neprikazana. Ostajemo na Login-u gdje je prikaz zagarantovan.
+          setError(
+            err.response?.data?.detail ||
+              "Rezervacija nije uspjela. Prijavljeni ste, ali ćete morati ponovo pokušati sa stranice salona."
+          );
+          return;
         }
-        localStorage.removeItem("pending_booking");
-        window.location.href = "/my-appointments";
-        return;
       }
 
       // Hard redirect — osigurava da TenantContext počne svježe

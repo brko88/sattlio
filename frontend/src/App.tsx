@@ -38,6 +38,7 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import ReportIssue from "./pages/ReportIssue";
 import GlobalAnnouncementBanner from "./components/GlobalAnnouncementBanner";
+import NetworkStatusBanner from "./components/NetworkStatusBanner";
 import AdminAnnouncements from "./pages/AdminAnnouncements";
 
 
@@ -109,9 +110,9 @@ function RoleRouter() {
             path="/admin/verifications"
             element={
               <AdminPanel
-                initialStatusFilter="pending"
+                fixedStatusFilter="pending,suspended"
                 title="Verifikacije"
-                description="Saloni koji čekaju verifikaciju."
+                description="Saloni koji čekaju verifikaciju ili su suspendovani."
               />
             }
           />
@@ -202,6 +203,7 @@ function RoleRouter() {
 function App() {
   return (
     <BrowserRouter>
+      <NetworkStatusBanner />
       <GlobalAnnouncementBanner />
       <Routes>
         <Route path="/" element={<Landing />} />

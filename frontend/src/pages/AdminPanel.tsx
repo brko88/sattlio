@@ -121,12 +121,30 @@ function HealthCheckModal({
   );
 }
 
-function AdminPanel() {
+const STATUS_TABS: { value: string; label: string }[] = [
+  { value: "", label: "Sve" },
+  { value: "pending", label: "Na čekanju" },
+  { value: "verified", label: "Verifikovano" },
+  { value: "suspended", label: "Suspendovano" },
+];
+
+interface AdminPanelProps {
+  title?: string;
+  description?: string;
+  initialStatusFilter?: string;
+}
+
+function AdminPanel({
+  title = "Admin Panel",
+  description = "Pregled i verifikacija svih poslovnih subjekata na platformi",
+  initialStatusFilter = "",
+}: AdminPanelProps) {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
 
   const [healthModalOpen, setHealthModalOpen] = useState(false);
   const [healthData, setHealthData] = useState<TenantHealth | null>(null);
@@ -136,11 +154,16 @@ function AdminPanel() {
   const [total, setTotal] = useState(0);
   const PAGE_SIZE = 20;
 
-  const fetchTenants = async (searchTerm: string = "", pageNum: number = 1) => {
+  const fetchTenants = async (searchTerm: string = "", pageNum: number = 1, status: string = statusFilter) => {
     setLoading(true);
     try {
       const response = await api.get("/api/v1/admin/tenants", {
-        params: { ...(searchTerm ? { search: searchTerm } : {}), page: pageNum, page_size: PAGE_SIZE },
+        params: {
+          ...(searchTerm ? { search: searchTerm } : {}),
+          ...(status ? { verification_status: status } : {}),
+          page: pageNum,
+          page_size: PAGE_SIZE,
+        },
       });
       setTenants(response.data.items);
       setTotal(response.data.total);
@@ -155,7 +178,7 @@ function AdminPanel() {
 
   // Ucitavanje pri promjeni stranice (i prvo ucitavanje, jer page pocinje na 1)
   useEffect(() => {
-    fetchTenants(search, page);
+    fetchTenants(search, page, statusFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
@@ -164,7 +187,7 @@ function AdminPanel() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (page === 1) {
-        fetchTenants(search, 1);
+        fetchTenants(search, 1, statusFilter);
       } else {
         setPage(1);
       }
@@ -172,6 +195,15 @@ function AdminPanel() {
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
+
+  const handleStatusTabChange = (value: string) => {
+    setStatusFilter(value);
+    if (page === 1) {
+      fetchTenants(search, 1, value);
+    } else {
+      setPage(1);
+    }
+  };
 
   const handleAction = async (tenantId: number, action: "verify" | "suspend" | "reactivate") => {
     setError("");
@@ -202,10 +234,24 @@ function AdminPanel() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-2 text-slate-900">Admin Panel</h1>
-      <p className="text-slate-500 mb-6">
-        Pregled i verifikacija svih poslovnih subjekata na platformi
-      </p>
+      <h1 className="text-2xl font-bold mb-2 text-slate-900">{title}</h1>
+      <p className="text-slate-500 mb-6">{description}</p>
+
+      <div className="flex gap-2 flex-wrap mb-4">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => handleStatusTabChange(tab.value)}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              statusFilter === tab.value
+                ? "bg-blue-600 text-white"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       <div className="mb-4">
         <input
@@ -226,8 +272,8 @@ function AdminPanel() {
         <p>Učitavanje...</p>
       ) : tenants.length === 0 ? (
         <div className="bg-white rounded-lg p-10 text-center text-slate-500">
-          {search
-            ? "Nema rezultata za zadatu pretragu."
+          {search || statusFilter
+            ? "Nema rezultata za zadate filtere."
             : "Nema registrovanih poslovnih subjekata."}
         </div>
       ) : (

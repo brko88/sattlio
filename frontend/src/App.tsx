@@ -103,7 +103,16 @@ function RoleRouter() {
           <Route path="/admin/dashboard" element={<DashboardAdmin />} />
           <Route path="/admin/tenants" element={<AdminPanel />} />
           <Route path="/admin/users" element={<Users />} />
-          <Route path="/admin/verifications" element={<ComingSoon title="Verifikacije" />} />
+          <Route
+            path="/admin/verifications"
+            element={
+              <AdminPanel
+                initialStatusFilter="pending"
+                title="Verifikacije"
+                description="Saloni koji čekaju verifikaciju."
+              />
+            }
+          />
           <Route path="/admin/subscriptions" element={<ComingSoon title="Pretplate" />} />
           <Route path="/admin/statistics" element={<Analytics />} />
           <Route path="/admin/audit-log" element={<ComingSoon title="Audit log" />} />

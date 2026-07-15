@@ -47,6 +47,7 @@ def log_admin_action(db: Session, admin_user_id: int, action: str, target_type: 
 @router.get("/tenants", response_model=PaginatedResponse[TenantAdminResponse])
 def list_all_tenants(
     search: str | None = None,
+    verification_status: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -55,6 +56,9 @@ def list_all_tenants(
     from sqlalchemy import or_, func
 
     query = db.query(Tenant)
+
+    if verification_status:
+        query = query.filter(Tenant.verification_status == verification_status)
 
     if search:
         search_term = f"%{search}%"

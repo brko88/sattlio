@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import { vibrateSuccess } from "../utils/haptics";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -44,6 +45,7 @@ function Login() {
         try {
           const pendingBooking = JSON.parse(pendingBookingRaw);
           await api.post("/api/v1/public/appointments", pendingBooking);
+          vibrateSuccess();
           sessionStorage.setItem("toast_message", "Rezervacija kreirana ✔️");
           window.location.href = "/my-appointments";
           return;

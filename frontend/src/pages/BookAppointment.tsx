@@ -4,6 +4,7 @@ import api from "../services/api";
 import { formatTime } from "../utils/time";
 import Avatar from "../components/Avatar";
 import { SkeletonCards } from "../components/Skeleton";
+import { vibrateSuccess } from "../utils/haptics";
 
 interface Service {
   id: number;
@@ -92,6 +93,7 @@ function BookAppointment() {
         start_time: selectedSlot,
         note: note || null,
       });
+      vibrateSuccess();
       sessionStorage.setItem("toast_message", "Rezervacija kreirana ✔️");
       window.location.href = "/my-appointments";
     } catch (err: any) {

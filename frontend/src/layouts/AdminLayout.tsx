@@ -20,6 +20,7 @@ function AdminLayout() {
     { to: "/admin/verifications", label: "Verifikacije" },
     { to: "/admin/subscriptions", label: "Pretplate" },
     { to: "/admin/statistics", label: "Statistika" },
+    { to: "/admin/announcements", label: "Baneri" },
     { to: "/admin/audit-log", label: "Audit log" },
   ];
 
@@ -51,7 +52,7 @@ function AdminLayout() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-60 bg-purple-950 text-white p-6 flex flex-col transform transition-transform duration-200 lg:translate-x-0 lg:static ${
+        className={`fixed inset-y-0 left-0 z-40 w-60 bg-purple-950 text-white p-6 flex flex-col overflow-y-auto transform transition-transform duration-200 lg:translate-x-0 lg:static ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

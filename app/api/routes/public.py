@@ -13,6 +13,7 @@ from app.core.timezone_utils import get_tenant_timezone, zoneinfo_for_tenant
 from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.employee import Employee
+from app.models.platform_announcement import PlatformAnnouncement
 from app.models.service import Service
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -79,6 +80,14 @@ class PlanResponse(BaseModel):
         from_attributes = True
 
 
+class PublicAnnouncementResponse(BaseModel):
+    kind: str
+    message: str
+
+    class Config:
+        from_attributes = True
+
+
 class SelfBookingCreate(BaseModel):
     employee_id: int
     service_id: int
@@ -102,6 +111,11 @@ class SelfBookingResponse(BaseModel):
 @router.get("/plans", response_model=list[PlanResponse])
 def get_public_plans():
     return [plan for key, plan in PLANS.items() if key != "trial"]
+
+
+@router.get("/announcements", response_model=list[PublicAnnouncementResponse])
+def get_active_announcements(db: Session = Depends(get_db)):
+    return db.query(PlatformAnnouncement).filter(PlatformAnnouncement.is_active == True).order_by(PlatformAnnouncement.id).all()
 
 
 @router.get("/tenants", response_model=list[PublicTenantResponse])

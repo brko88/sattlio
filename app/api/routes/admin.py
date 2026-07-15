@@ -19,9 +19,11 @@ from app.models.refresh_token import RefreshToken
 from app.models.admin_action_log import AdminActionLog
 from app.models.working_hours import WorkingHours
 from app.models.service import Service
+from app.models.platform_announcement import PlatformAnnouncement
 from app.schemas.admin import AdminUserResponse
 from app.schemas.tenant import TenantResponse, TenantAdminResponse
 from app.schemas.pagination import PaginatedResponse
+from app.schemas.announcement import AnnouncementResponse, AnnouncementCreate, AnnouncementUpdate
 from app.core.analytics_period import resolve_period, generate_buckets
 
 import secrets
@@ -543,5 +545,72 @@ def get_health_analytics(
         "suspended_tenants": suspended_tenants,
         "pending_tenants": pending_tenants,
     }
+
+
+# ---------------------------------------------------------------------------
+# Platform baneri (beta traka + najave odrzavanja) - Postavke ekran
+# ---------------------------------------------------------------------------
+
+@router.get("/announcements", response_model=list[AnnouncementResponse])
+def list_announcements(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    return db.query(PlatformAnnouncement).order_by(PlatformAnnouncement.id).all()
+
+
+@router.post("/announcements", response_model=AnnouncementResponse)
+def create_announcement(
+    data: AnnouncementCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    announcement = PlatformAnnouncement(kind="custom", message=data.message, is_active=data.is_active)
+    db.add(announcement)
+    db.flush()
+    log_admin_action(db, current_user.id, "create_announcement", "announcement", announcement.id, data.message)
+    db.commit()
+    db.refresh(announcement)
+    return announcement
+
+
+@router.patch("/announcements/{announcement_id}", response_model=AnnouncementResponse)
+def update_announcement(
+    announcement_id: int,
+    data: AnnouncementUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    announcement = db.query(PlatformAnnouncement).filter(PlatformAnnouncement.id == announcement_id).first()
+    if announcement is None:
+        raise HTTPException(status_code=404, detail="Baner ne postoji.")
+
+    if data.message is not None:
+        announcement.message = data.message
+    if data.is_active is not None:
+        announcement.is_active = data.is_active
+
+    log_admin_action(db, current_user.id, "update_announcement", "announcement", announcement.id, announcement.message)
+    db.commit()
+    db.refresh(announcement)
+    return announcement
+
+
+@router.delete("/announcements/{announcement_id}")
+def delete_announcement(
+    announcement_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    announcement = db.query(PlatformAnnouncement).filter(PlatformAnnouncement.id == announcement_id).first()
+    if announcement is None:
+        raise HTTPException(status_code=404, detail="Baner ne postoji.")
+    if announcement.kind == "beta":
+        raise HTTPException(status_code=400, detail="Beta baner se ne moze obrisati, samo ukljuciti/iskljuciti.")
+
+    log_admin_action(db, current_user.id, "delete_announcement", "announcement", announcement.id, announcement.message)
+    db.delete(announcement)
+    db.commit()
+    return {"detail": "Baner je obrisan."}
 
 

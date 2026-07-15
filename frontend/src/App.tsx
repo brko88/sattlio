@@ -37,6 +37,8 @@ import Onboarding from "./pages/Onboarding";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import ReportIssue from "./pages/ReportIssue";
+import GlobalAnnouncementBanner from "./components/GlobalAnnouncementBanner";
+import AdminAnnouncements from "./pages/AdminAnnouncements";
 
 
 function PublicOrApp() {
@@ -115,6 +117,7 @@ function RoleRouter() {
           />
           <Route path="/admin/subscriptions" element={<ComingSoon title="Pretplate" />} />
           <Route path="/admin/statistics" element={<Analytics />} />
+          <Route path="/admin/announcements" element={<AdminAnnouncements />} />
           <Route path="/admin/audit-log" element={<ComingSoon title="Audit log" />} />
           <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="*" element={<Navigate to="/admin/tenants" replace />} />
@@ -199,6 +202,7 @@ function RoleRouter() {
 function App() {
   return (
     <BrowserRouter>
+      <GlobalAnnouncementBanner />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />

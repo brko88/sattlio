@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sattlio-v2';
+const CACHE_NAME = 'sattlio-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -6,14 +6,22 @@ const STATIC_ASSETS = [
   '/manifest.json',
 ];
 
-// Install — cache statičnih resursa
+// Install — cache statičnih resursa. NAPOMENA: self.skipWaiting() se namjerno
+// NE poziva ovdje - nova verzija ceka (waiting) dok korisnik ne potvrdi
+// osvjezavanje (vidi UpdateBanner.tsx), umjesto da tiho preuzme kontrolu.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting();
+});
+
+// Poruka od UpdateBanner.tsx kad korisnik klikne "Osvježi"
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Activate — ukloni stari cache

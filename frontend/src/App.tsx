@@ -39,6 +39,7 @@ import Settings from "./pages/Settings";
 import ReportIssue from "./pages/ReportIssue";
 import GlobalAnnouncementBanner from "./components/GlobalAnnouncementBanner";
 import NetworkStatusBanner from "./components/NetworkStatusBanner";
+import UpdateBanner from "./components/UpdateBanner";
 import AdminAnnouncements from "./pages/AdminAnnouncements";
 
 
@@ -203,6 +204,7 @@ function RoleRouter() {
 function App() {
   return (
     <BrowserRouter>
+      <UpdateBanner />
       <NetworkStatusBanner />
       <GlobalAnnouncementBanner />
       <Routes>

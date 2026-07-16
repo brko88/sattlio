@@ -3,6 +3,7 @@ import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 import ShareSalonButton from "../components/ShareSalonButton";
 import { SkeletonStatCards } from "../components/Skeleton";
+import PullToRefresh from "../components/PullToRefresh";
 
 interface Employee {
   id: number;
@@ -30,32 +31,34 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [betaActive, setBetaActive] = useState(false);
 
+  const fetchStats = async () => {
+    try {
+      const [empRes, srvRes, custRes, apptRes, tenantsRes, announcementsRes] = await Promise.all([
+        api.get("/api/v1/employees", { params: { tenant_id: tenantId } }),
+        api.get("/api/v1/services", { params: { tenant_id: tenantId } }),
+        api.get("/api/v1/customers", { params: { tenant_id: tenantId } }),
+        api.get("/api/v1/appointments", { params: { tenant_id: tenantId } }),
+        api.get("/api/v1/tenants/my"),
+        api.get("/api/v1/public/announcements"),
+      ]);
+      setStats({
+        employees: empRes.data.length,
+        services: srvRes.data.total,
+        customers: custRes.data.total,
+        appointments: apptRes.data.total,
+      });
+      setEmployees(empRes.data);
+      const currentTenant = tenantsRes.data.find((t: any) => t.id === tenantId);
+      if (currentTenant) setTenant(currentTenant);
+      setBetaActive(announcementsRes.data.some((a: any) => a.kind === "beta"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [empRes, srvRes, custRes, apptRes, tenantsRes, announcementsRes] = await Promise.all([
-          api.get("/api/v1/employees", { params: { tenant_id: tenantId } }),
-          api.get("/api/v1/services", { params: { tenant_id: tenantId } }),
-          api.get("/api/v1/customers", { params: { tenant_id: tenantId } }),
-          api.get("/api/v1/appointments", { params: { tenant_id: tenantId } }),
-          api.get("/api/v1/tenants/my"),
-          api.get("/api/v1/public/announcements"),
-        ]);
-        setStats({
-          employees: empRes.data.length,
-          services: srvRes.data.total,
-          customers: custRes.data.total,
-          appointments: apptRes.data.total,
-        });
-        setEmployees(empRes.data);
-        const currentTenant = tenantsRes.data.find((t: any) => t.id === tenantId);
-        if (currentTenant) setTenant(currentTenant);
-        setBetaActive(announcementsRes.data.some((a: any) => a.kind === "beta"));
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId]);
 
   const cards = [
@@ -110,6 +113,7 @@ function Dashboard() {
   };
 
   return (
+    <PullToRefresh onRefresh={fetchStats}>
     <div>
       <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
       <p className="text-slate-500 mb-6">Pregled vašeg poslovnog subjekta</p>
@@ -205,6 +209,7 @@ function Dashboard() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }
 

@@ -3,6 +3,7 @@ import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { useTenant } from "../contexts/TenantContext";
 import api from "../services/api";
 import VersionBadge from "../components/VersionBadge";
+import FabMenu from "../components/FabMenu";
 
 function OwnerLayout() {
   const navigate = useNavigate();
@@ -25,14 +26,14 @@ function OwnerLayout() {
   };
 
   const links = [
-    { to: "/dashboard", label: "Dashboard" },
-    { to: "/calendar", label: "Kalendar" },
-    { to: "/appointments", label: "Rezervacije" },
-    { to: "/customers", label: "Klijenti" },
-    { to: "/services", label: "Usluge" },
-    { to: "/employees", label: "Zaposleni" },
-    { to: "/working-hours", label: "Radno vrijeme" },
-    { to: "/settings", label: "Podešavanja" },
+    { to: "/dashboard", label: "Dashboard", icon: "📊" },
+    { to: "/calendar", label: "Kalendar", icon: "📅" },
+    { to: "/appointments", label: "Rezervacije", icon: "📋" },
+    { to: "/customers", label: "Klijenti", icon: "👥" },
+    { to: "/services", label: "Usluge", icon: "💇" },
+    { to: "/employees", label: "Zaposleni", icon: "👨‍💼" },
+    { to: "/working-hours", label: "Radno vrijeme", icon: "🕒" },
+    { to: "/settings", label: "Podešavanja", icon: "⚙️" },
   ];
 
   return (
@@ -67,28 +68,36 @@ function OwnerLayout() {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <h2 className="text-xl font-bold mb-1">Sattlio</h2>
+        <h2 className="text-xl font-bold mb-3">Sattlio</h2>
+
+        {/* Header menija: korisnik + salon (Dok. checklist - hamburger unapredjenje) */}
         <Link
           to="/profile"
           onClick={() => setMobileOpen(false)}
-          className="block mb-4 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 mb-2 hover:opacity-80 transition-opacity"
         >
-          <p className="text-xs text-slate-400">Vlasnik{userName ? ` — ${userName}` : ""}</p>
+          <span aria-hidden="true">👤</span>
+          <span className="text-sm text-slate-200 truncate">{userName || "Vlasnik"}</span>
         </Link>
 
         {tenants.length > 0 && (
-          <select
-            value={tenantId}
-            onChange={(e) => setTenantId(parseInt(e.target.value))}
-            className="mb-6 w-full px-2 py-2 rounded-md bg-slate-700 text-white text-sm border border-slate-600 focus:outline-none"
-          >
-            {tenants.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2 mb-4">
+            <span aria-hidden="true">🏢</span>
+            <select
+              value={tenantId}
+              onChange={(e) => setTenantId(parseInt(e.target.value))}
+              className="flex-1 min-w-0 px-2 py-2 rounded-md bg-slate-700 text-white text-sm border border-slate-600 focus:outline-none"
+            >
+              {tenants.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
+
+        <div className="border-t border-slate-700 mb-3" />
 
         <nav className="flex flex-col gap-1 flex-1">
           {links.map((link) => {
@@ -104,6 +113,7 @@ function OwnerLayout() {
                     : "text-slate-300 hover:bg-slate-700"
                 }`}
               >
+                <span aria-hidden="true">{link.icon}</span>
                 {link.label}
               </Link>
             );
@@ -130,9 +140,9 @@ function OwnerLayout() {
 
         <button
           onClick={handleLogout}
-          className="px-3 py-2.5 border border-slate-600 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition-colors"
+          className="px-3 py-2.5 border border-slate-600 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
         >
-          Odjavi se
+          <span aria-hidden="true">🚪</span> Odjavi se
         </button>
 
         <VersionBadge />
@@ -141,6 +151,8 @@ function OwnerLayout() {
       <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-slate-50 min-w-0">
         <Outlet />
       </main>
+
+      <FabMenu />
     </div>
   );
 }

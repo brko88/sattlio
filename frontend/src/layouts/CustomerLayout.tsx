@@ -15,9 +15,9 @@ function CustomerLayout() {
   };
 
   const links = [
-    { to: "/my-appointments", label: "Moji termini" },
-    { to: "/book", label: "Nova rezervacija" },
-    { to: "/profile", label: "Moj profil" },
+    { to: "/my-appointments", label: "Moji termini", icon: "📅" },
+    { to: "/book", label: "Nova rezervacija", icon: "➕" },
+    { to: "/profile", label: "Moj profil", icon: "👤" },
   ];
 
   return (
@@ -53,7 +53,9 @@ function CustomerLayout() {
         }`}
       >
         <h2 className="text-xl font-bold mb-1">Sattlio</h2>
-        <p className="text-xs text-slate-400 mb-6">Moj nalog</p>
+        <p className="text-xs text-slate-400 mb-4">Moj nalog</p>
+
+        <div className="border-t border-slate-700 mb-3" />
 
         <nav className="flex flex-col gap-1 flex-1">
           {links.map((link) => {
@@ -69,6 +71,7 @@ function CustomerLayout() {
                     : "text-slate-300 hover:bg-slate-700"
                 }`}
               >
+                <span aria-hidden="true">{link.icon}</span>
                 {link.label}
               </Link>
             );
@@ -87,9 +90,9 @@ function CustomerLayout() {
 
         <button
           onClick={handleLogout}
-          className="px-3 py-2.5 border border-slate-600 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition-colors"
+          className="px-3 py-2.5 border border-slate-600 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
         >
-          Odjavi se
+          <span aria-hidden="true">🚪</span> Odjavi se
         </button>
 
         <VersionBadge />

@@ -15,14 +15,14 @@ function AdminLayout() {
   };
 
   const links = [
-    { to: "/admin/dashboard", label: "Dashboard" },
-    { to: "/admin/tenants", label: "Saloni" },
-    { to: "/admin/users", label: "Korisnici" },
-    { to: "/admin/verifications", label: "Verifikacije" },
-    { to: "/admin/subscriptions", label: "Pretplate" },
-    { to: "/admin/statistics", label: "Statistika" },
-    { to: "/admin/announcements", label: "Baneri" },
-    { to: "/admin/audit-log", label: "Audit log" },
+    { to: "/admin/dashboard", label: "Dashboard", icon: "📊" },
+    { to: "/admin/tenants", label: "Saloni", icon: "🏢" },
+    { to: "/admin/users", label: "Korisnici", icon: "👥" },
+    { to: "/admin/verifications", label: "Verifikacije", icon: "✅" },
+    { to: "/admin/subscriptions", label: "Pretplate", icon: "💳" },
+    { to: "/admin/statistics", label: "Statistika", icon: "📈" },
+    { to: "/admin/announcements", label: "Baneri", icon: "📢" },
+    { to: "/admin/audit-log", label: "Audit log", icon: "📜" },
   ];
 
   return (
@@ -58,7 +58,9 @@ function AdminLayout() {
         }`}
       >
         <h2 className="text-xl font-bold mb-1">Sattlio</h2>
-        <p className="text-xs text-purple-300 mb-6">Super Admin</p>
+        <p className="text-xs text-purple-300 mb-4">Super Admin</p>
+
+        <div className="border-t border-purple-800 mb-3" />
 
         <nav className="flex flex-col gap-1 flex-1">
           {links.map((link) => {
@@ -74,6 +76,7 @@ function AdminLayout() {
                     : "text-purple-200 hover:bg-purple-900"
                 }`}
               >
+                <span aria-hidden="true">{link.icon}</span>
                 {link.label}
               </Link>
             );
@@ -88,9 +91,9 @@ function AdminLayout() {
 
         <button
           onClick={handleLogout}
-          className="px-3 py-2.5 border border-purple-700 text-purple-300 rounded-md text-sm hover:bg-purple-900 transition-colors"
+          className="px-3 py-2.5 border border-purple-700 text-purple-300 rounded-md text-sm hover:bg-purple-900 transition-colors flex items-center justify-center gap-2"
         >
-          Odjavi se
+          <span aria-hidden="true">🚪</span> Odjavi se
         </button>
 
         <VersionBadge className="text-purple-400" />

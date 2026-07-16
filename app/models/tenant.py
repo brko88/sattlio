@@ -29,6 +29,8 @@ class Tenant(Base):
     plan = Column(String, default="trial", nullable=False)
     billing_status = Column(String, default="trial", nullable=False)  # trial | active | past_due | canceled
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
+    # Beta tester izuzet od trial+naplata pravila dok je ovo True (vidi app/core/billing.py)
+    is_beta_tester = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

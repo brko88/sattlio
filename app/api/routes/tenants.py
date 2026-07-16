@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, field_validator
 
+from app.core.billing import assert_tenant_writable, is_tenant_read_only
 from app.core.database import get_db
 from app.core.media import delete_media_file, process_and_save_image
 from app.core.security import get_current_user
@@ -138,6 +139,7 @@ def update_tenant(
     current_user: User = Depends(get_current_user),
 ):
     require_owner(db, current_user.id, tenant_id)
+    assert_tenant_writable(db, tenant_id)
 
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
@@ -168,6 +170,7 @@ async def upload_tenant_logo(
     current_user: User = Depends(get_current_user),
 ):
     require_owner(db, current_user.id, tenant_id)
+    assert_tenant_writable(db, tenant_id)
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
@@ -190,6 +193,7 @@ def delete_tenant_logo(
     current_user: User = Depends(get_current_user),
 ):
     require_owner(db, current_user.id, tenant_id)
+    assert_tenant_writable(db, tenant_id)
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
@@ -208,6 +212,7 @@ async def upload_tenant_cover(
     current_user: User = Depends(get_current_user),
 ):
     require_owner(db, current_user.id, tenant_id)
+    assert_tenant_writable(db, tenant_id)
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
@@ -230,6 +235,7 @@ def delete_tenant_cover(
     current_user: User = Depends(get_current_user),
 ):
     require_owner(db, current_user.id, tenant_id)
+    assert_tenant_writable(db, tenant_id)
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Salon nije pronađen.")
@@ -270,6 +276,7 @@ def get_my_tenants(
                 trial_ends_at=tenant.trial_ends_at,
                 logo_url=tenant.logo_url,
                 cover_url=tenant.cover_url,
+                read_only=is_tenant_read_only(db, tenant),
             )
         )
 

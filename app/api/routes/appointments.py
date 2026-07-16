@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.billing import assert_tenant_writable
 from app.core.database import get_db
 from app.core.pagination import paginate
 from app.core.permissions import require_staff
@@ -166,6 +167,7 @@ def create_appointment(
     current_user: User = Depends(get_current_user),
 ):
     require_staff(db, current_user.id, data.tenant_id)
+    assert_tenant_writable(db, data.tenant_id)
 
     # Konvertuj u UTC sa timezone info
     if data.start_time.tzinfo is None:
@@ -338,6 +340,7 @@ def complete_appointment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rezervacija ne postoji.")
 
     require_can_modify_appointment(db, current_user, appointment, "complete")
+    assert_tenant_writable(db, appointment.tenant_id)
 
     if appointment.status in ("completed", "cancelled", "no_show"):
         raise HTTPException(
@@ -363,6 +366,7 @@ def mark_appointment_no_show(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rezervacija ne postoji.")
 
     require_can_modify_appointment(db, current_user, appointment, "no_show")
+    assert_tenant_writable(db, appointment.tenant_id)
 
     if appointment.status in ("completed", "cancelled", "no_show"):
         raise HTTPException(

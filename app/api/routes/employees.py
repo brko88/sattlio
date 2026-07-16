@@ -1,6 +1,7 @@
 ﻿from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.billing import assert_tenant_writable
 from app.core.database import get_db
 from app.core.media import delete_media_file, process_and_save_image
 from app.core.permissions import require_staff
@@ -41,6 +42,7 @@ def create_employee(
     current_user: User = Depends(get_current_user),
 ):
     require_owner(db, current_user.id, data.tenant_id)
+    assert_tenant_writable(db, data.tenant_id)
 
     # Provjeri limit broja radnika za trenutni plan salona
     tenant_for_limit = db.query(Tenant).filter(Tenant.id == data.tenant_id).first()
@@ -152,6 +154,7 @@ def update_employee(
         raise HTTPException(status_code=404, detail="Zaposleni nije pronadjen.")
 
     require_owner(db, current_user.id, employee.tenant_id)
+    assert_tenant_writable(db, employee.tenant_id)
 
     if data.first_name is not None:
         employee.first_name = data.first_name
@@ -187,6 +190,7 @@ async def upload_employee_avatar(
         raise HTTPException(status_code=404, detail="Zaposleni nije pronadjen.")
 
     require_owner(db, current_user.id, employee.tenant_id)
+    assert_tenant_writable(db, employee.tenant_id)
 
     new_url = await process_and_save_image(
         file, subdir=f"employees/{employee_id}", prefix="avatar",
@@ -214,6 +218,7 @@ def delete_employee_avatar(
         raise HTTPException(status_code=404, detail="Zaposleni nije pronadjen.")
 
     require_owner(db, current_user.id, employee.tenant_id)
+    assert_tenant_writable(db, employee.tenant_id)
     delete_media_file(employee.avatar_url)
     employee.avatar_url = None
     db.commit()
@@ -236,6 +241,7 @@ def delete_employee(
         raise HTTPException(status_code=404, detail="Zaposleni nije pronadjen.")
 
     require_owner(db, current_user.id, employee.tenant_id)
+    assert_tenant_writable(db, employee.tenant_id)
 
     employee.is_deleted = True
     db.commit()

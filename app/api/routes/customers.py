@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.billing import assert_tenant_writable
 from app.core.database import get_db
 from app.core.pagination import paginate
 from app.core.permissions import require_staff
@@ -39,6 +40,7 @@ def create_customer(
     current_user: User = Depends(get_current_user),
 ):
     require_member(db, current_user.id, data.tenant_id)
+    assert_tenant_writable(db, data.tenant_id)
 
     new_customer = Customer(
         tenant_id=data.tenant_id,
@@ -97,6 +99,7 @@ def update_customer(
         raise HTTPException(status_code=404, detail="Klijent nije pronađen.")
 
     require_staff(db, current_user.id, customer.tenant_id)
+    assert_tenant_writable(db, customer.tenant_id)
 
     if data.first_name is not None:
         customer.first_name = data.first_name
@@ -129,6 +132,7 @@ def delete_customer(
         raise HTTPException(status_code=404, detail="Klijent nije pronađen.")
 
     require_staff(db, current_user.id, customer.tenant_id)
+    assert_tenant_writable(db, customer.tenant_id)
 
     customer.is_deleted = True
     customer.deleted_at = datetime.now(timezone.utc)

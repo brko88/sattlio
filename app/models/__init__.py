@@ -10,3 +10,4 @@ from app.models.refresh_token import RefreshToken
 from app.models.special_day import SpecialDay
 from app.models.admin_action_log import AdminActionLog
 from app.models.platform_announcement import PlatformAnnouncement
+from app.models.system_setting import SystemSetting

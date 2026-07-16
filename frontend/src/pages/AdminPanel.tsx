@@ -13,6 +13,8 @@ interface Tenant {
   verification_status: string;
   owner_name: string | null;
   owner_email: string | null;
+  is_beta_tester: boolean;
+  read_only: boolean;
 }
 
 interface TenantHealth {
@@ -230,6 +232,20 @@ function AdminPanel({
     }
   };
 
+  const handleBetaToggle = async (tenantId: number, currentValue: boolean) => {
+    setError("");
+    setSuccessMessage("");
+    try {
+      const response = await api.post(`/api/v1/admin/tenants/${tenantId}/beta-tester`, {
+        value: !currentValue,
+      });
+      setSuccessMessage(response.data.detail);
+      fetchTenants(search, page);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom akcije.");
+    }
+  };
+
   const handleShowHealth = async (tenantId: number) => {
     setHealthModalOpen(true);
     setHealthLoading(true);
@@ -298,11 +314,19 @@ function AdminPanel({
             <div key={t.id} className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <p className="font-semibold text-slate-900">{t.name}</p>
-                <span
-                  className={`${STATUS_STYLES[t.verification_status] || "bg-slate-100 text-slate-600"} px-2 py-1 rounded-full text-xs font-semibold shrink-0`}
-                >
-                  {t.verification_status}
-                </span>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span
+                    className={`${STATUS_STYLES[t.verification_status] || "bg-slate-100 text-slate-600"} px-2 py-1 rounded-full text-xs font-semibold`}
+                  >
+                    {t.verification_status}
+                  </span>
+                  {t.is_beta_tester && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">Beta tester</span>
+                  )}
+                  {t.read_only && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Read-only</span>
+                  )}
+                </div>
               </div>
               <p className="text-sm text-slate-500">{t.owner_name || "-"}</p>
               <p className="text-sm text-slate-500 break-all">{t.owner_email || "-"}</p>
@@ -340,6 +364,16 @@ function AdminPanel({
                     Reaktiviraj
                   </button>
                 )}
+                <button
+                  onClick={() => handleBetaToggle(t.id, t.is_beta_tester)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    t.is_beta_tester
+                      ? "bg-purple-600 text-white hover:bg-purple-700"
+                      : "bg-white border border-purple-300 text-purple-700 hover:bg-purple-50"
+                  }`}
+                >
+                  {t.is_beta_tester ? "Ukloni beta" : "Beta tester"}
+                </button>
               </div>
             </div>
           ))}
@@ -368,10 +402,7 @@ function AdminPanel({
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
                 Status
               </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
-                Aktivan
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase sticky right-0 bg-slate-50 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.12)]">
                 Akcije
               </th>
             </tr>
@@ -385,15 +416,20 @@ function AdminPanel({
                 <td className="px-4 py-3">{t.city || "—"}</td>
                 <td className="px-4 py-3 font-mono text-sm">{t.jib || "—"}</td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`${STATUS_STYLES[t.verification_status] || "bg-slate-100 text-slate-600"} px-3 py-1 rounded-full text-xs font-semibold`}
-                  >
-                    {t.verification_status}
-                  </span>
+                  <div className="flex flex-col gap-1 items-start">
+                    <span
+                      className={`${STATUS_STYLES[t.verification_status] || "bg-slate-100 text-slate-600"} px-3 py-1 rounded-full text-xs font-semibold`}
+                    >
+                      {t.verification_status}
+                    </span>
+                    {t.read_only && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Read-only</span>
+                    )}
+                    <span className="text-xs text-slate-400">Aktivan: {t.is_active ? "Da" : "Ne"}</span>
+                  </div>
                 </td>
-                <td className="px-4 py-3">{t.is_active ? "Da" : "Ne"}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2 flex-wrap">
+                <td className="px-4 py-3 sticky right-0 bg-white shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.12)]">
+                  <div className="flex gap-2 flex-wrap w-40">
                     <button
                       onClick={() => handleShowHealth(t.id)}
                       className="px-3 py-1.5 bg-slate-600 text-white rounded-md text-xs font-medium hover:bg-slate-700 transition-colors"
@@ -423,6 +459,16 @@ function AdminPanel({
                         Reaktiviraj
                       </button>
                     )}
+                    <button
+                      onClick={() => handleBetaToggle(t.id, t.is_beta_tester)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        t.is_beta_tester
+                          ? "bg-purple-600 text-white hover:bg-purple-700"
+                          : "bg-white border border-purple-300 text-purple-700 hover:bg-purple-50"
+                      }`}
+                    >
+                      {t.is_beta_tester ? "Ukloni beta" : "Beta tester"}
+                    </button>
                   </div>
                 </td>
               </tr>

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.billing import assert_tenant_writable
 from app.core.database import get_db
 from app.core.pagination import paginate
 from app.core.security import get_current_user
@@ -53,6 +54,7 @@ def create_service(
     current_user: User = Depends(get_current_user),
 ):
     require_owner(db, current_user.id, data.tenant_id)
+    assert_tenant_writable(db, data.tenant_id)
 
     new_service = Service(
         tenant_id=data.tenant_id,
@@ -104,6 +106,7 @@ def update_service(
         raise HTTPException(status_code=404, detail="Usluga nije pronađena.")
 
     require_owner(db, current_user.id, service.tenant_id)
+    assert_tenant_writable(db, service.tenant_id)
 
     if data.name is not None:
         service.name = data.name
@@ -138,6 +141,7 @@ def delete_service(
         raise HTTPException(status_code=404, detail="Usluga nije pronađena.")
 
     require_owner(db, current_user.id, service.tenant_id)
+    assert_tenant_writable(db, service.tenant_id)
 
     service.is_deleted = True
     db.commit()

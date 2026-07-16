@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
+from app.core.billing import is_tenant_read_only
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.core.plans import PLANS
@@ -124,7 +125,9 @@ def get_public_tenants(db: Session = Depends(get_db)):
         Tenant.is_active == True,
         Tenant.verification_status == "verified",
     ).all()
-    return tenants
+    # "Pauziraj i javno": read-only saloni (neplacena pretplata) se ne
+    # prikazuju u javnom pretrazivanju. Dok je naplata ugasena - bez efekta.
+    return [t for t in tenants if not is_tenant_read_only(db, t)]
 
 
 @router.get("/tenants/{tenant_id}/employees", response_model=list[PublicEmployeeResponse])
@@ -224,6 +227,9 @@ def get_available_slots(
     # Dohvati slot interval i vremensku zonu iz tenanta
     from app.models.tenant import Tenant as TenantModel
     tenant_obj = db.query(TenantModel).filter(TenantModel.id == employee.tenant_id).first()
+    # Read-only salon (neplacena pretplata) ne prima nove online rezervacije.
+    if is_tenant_read_only(db, tenant_obj):
+        return {"slots": []}
     slot_interval = tenant_obj.slot_duration_minutes if tenant_obj else 30
     tz = zoneinfo_for_tenant(tenant_obj)
 
@@ -300,6 +306,11 @@ def self_book_appointment(
 
     if employee is None:
         raise HTTPException(status_code=404, detail="Zaposleni nije dostupan za online rezervaciju.")
+
+    # Read-only salon (neplacena pretplata) ne prima nove online rezervacije.
+    booking_tenant = db.query(Tenant).filter(Tenant.id == employee.tenant_id).first()
+    if is_tenant_read_only(db, booking_tenant):
+        raise HTTPException(status_code=403, detail="Ovaj salon trenutno ne prima online rezervacije.")
 
     service = db.query(Service).filter(
         Service.id == data.service_id,
@@ -441,7 +452,7 @@ def get_tenant_by_slug(slug: str, db: Session = Depends(get_db)):
         Tenant.verification_status == "verified",
     ).first()
 
-    if tenant is None:
+    if tenant is None or is_tenant_read_only(db, tenant):
         raise HTTPException(status_code=404, detail="Salon nije pronadjen.")
 
     employees = db.query(Employee).filter(

@@ -48,6 +48,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Settings = lazy(() => import("./pages/Settings"));
 const ReportIssue = lazy(() => import("./pages/ReportIssue"));
 const AdminAnnouncements = lazy(() => import("./pages/AdminAnnouncements"));
+const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 
 
 function RouteLoadingFallback() {
@@ -132,7 +133,7 @@ function RoleRouter() {
               />
             }
           />
-          <Route path="/admin/subscriptions" element={<ComingSoon title="Pretplate" />} />
+          <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
           <Route path="/admin/statistics" element={<Analytics />} />
           <Route path="/admin/announcements" element={<AdminAnnouncements />} />
           <Route path="/admin/audit-log" element={<ComingSoon title="Audit log" />} />

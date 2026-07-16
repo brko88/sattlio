@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.billing import assert_tenant_writable
 from app.core.database import get_db
 from app.core.email import send_appointment_cancelled_email
 from app.core.permissions import require_staff
@@ -104,6 +105,7 @@ def create_special_day(
     current_user: User = Depends(get_current_user),
 ):
     require_can_manage_hours(db, current_user, data.tenant_id, data.employee_id)
+    assert_tenant_writable(db, data.tenant_id)
 
     if data.is_working_day:
         if not data.start_time or not data.end_time:
@@ -279,6 +281,7 @@ def delete_special_day(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nije pronađeno.")
 
     require_can_manage_hours(db, current_user, sd.tenant_id, sd.employee_id)
+    assert_tenant_writable(db, sd.tenant_id)
 
     db.delete(sd)
     db.commit()

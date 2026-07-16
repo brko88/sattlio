@@ -7,6 +7,13 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.config import settings
+from app.core.billing import (
+    billing_enforcement_enabled,
+    enforcement_since,
+    get_setting,
+    is_tenant_read_only,
+    set_setting,
+)
 from app.core.pagination import paginate
 from app.core.security import require_superadmin
 from app.core.email import send_password_reset_email
@@ -118,6 +125,7 @@ def list_all_tenants(
         info = owner_by_tenant.get(t.id, {})
         t.owner_name = info.get("name")
         t.owner_email = info.get("email")
+        t.read_only = is_tenant_read_only(db, t)
 
     return PaginatedResponse(items=tenants, total=total, page=page, page_size=page_size)
 
@@ -175,6 +183,76 @@ def reactivate_tenant(
     log_admin_action(db, current_user.id, "reactivate_tenant", "tenant", tenant.id, tenant.name)
     db.commit()
     return {"detail": "Tenant je reaktiviran.", "verification_status": tenant.verification_status}
+
+
+# ---------------------------------------------------------------------------
+# Naplata: globalni prekidac + beta tester (read-only mode, vidi app/core/billing.py)
+# ---------------------------------------------------------------------------
+
+class BillingSettingsResponse(BaseModel):
+    enforcement_enabled: bool
+    enforcement_since: str | None
+
+
+class BillingSettingsUpdate(BaseModel):
+    enabled: bool
+
+
+class BetaTesterUpdate(BaseModel):
+    value: bool
+
+
+@router.get("/billing-settings", response_model=BillingSettingsResponse)
+def get_billing_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    since = enforcement_since(db)
+    return BillingSettingsResponse(
+        enforcement_enabled=billing_enforcement_enabled(db),
+        enforcement_since=since.isoformat() if since else None,
+    )
+
+
+@router.patch("/billing-settings", response_model=BillingSettingsResponse)
+def update_billing_settings(
+    data: BillingSettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    set_setting(db, "billing_enforcement_enabled", "true" if data.enabled else "false")
+    # Prvi put kad se upali, zapamti datum - svi registrovani PRIJE su izuzeti (grandfathering).
+    if data.enabled and not get_setting(db, "billing_enforcement_since"):
+        set_setting(db, "billing_enforcement_since", datetime.now(timezone.utc).isoformat())
+    log_admin_action(
+        db, current_user.id, "billing_enforcement", "system", 0,
+        "enabled" if data.enabled else "disabled",
+    )
+    db.commit()
+    since = enforcement_since(db)
+    return BillingSettingsResponse(
+        enforcement_enabled=billing_enforcement_enabled(db),
+        enforcement_since=since.isoformat() if since else None,
+    )
+
+
+@router.post("/tenants/{tenant_id}/beta-tester")
+def set_tenant_beta_tester(
+    tenant_id: int,
+    data: BetaTesterUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
+    tenant.is_beta_tester = data.value
+    log_admin_action(
+        db, current_user.id, "set_beta_tester", "tenant", tenant.id,
+        f"{tenant.name} = {data.value}",
+    )
+    db.commit()
+    return {"detail": "Ažurirano.", "is_beta_tester": tenant.is_beta_tester}
 
 
 # ---------------------------------------------------------------------------

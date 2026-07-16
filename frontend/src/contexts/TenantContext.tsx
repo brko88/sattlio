@@ -11,6 +11,7 @@ interface Tenant {
   timezone?: string;
   plan?: string;
   trial_ends_at?: string | null;
+  read_only?: boolean;
 }
 
 interface TenantContextType {
@@ -21,6 +22,7 @@ interface TenantContextType {
   timezone: string;
   plan: string;
   trialEndsAt: string | null;
+  readOnly: boolean;
   isLoading: boolean;
   fetchError: boolean;
   refreshTenants: () => Promise<void>;
@@ -56,6 +58,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const timezone = activeTenant?.timezone ?? DEFAULT_TZ;
   const plan = activeTenant?.plan ?? "trial";
   const trialEndsAt = activeTenant?.trial_ends_at ?? null;
+  const readOnly = activeTenant?.read_only ?? false;
 
   const refreshTenants = async () => {
     const token = localStorage.getItem("access_token");
@@ -109,7 +112,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   return (
     <TenantContext.Provider
-      value={{ tenantId, setTenantId, tenants, currentRole, timezone, plan, trialEndsAt, isLoading, fetchError, refreshTenants }}
+      value={{ tenantId, setTenantId, tenants, currentRole, timezone, plan, trialEndsAt, readOnly, isLoading, fetchError, refreshTenants }}
     >
       {children}
     </TenantContext.Provider>

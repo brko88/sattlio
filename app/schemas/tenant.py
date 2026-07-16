@@ -61,6 +61,7 @@ class TenantWithRoleResponse(BaseModel):
     trial_ends_at: datetime | None
     logo_url: str | None
     cover_url: str | None
+    read_only: bool = False
 
     class Config:
         from_attributes = True
@@ -68,3 +69,5 @@ class TenantWithRoleResponse(BaseModel):
 class TenantAdminResponse(TenantResponse):
     owner_name: str | None = None
     owner_email: str | None = None
+    is_beta_tester: bool = False
+    read_only: bool = False

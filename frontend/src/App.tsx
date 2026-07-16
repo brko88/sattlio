@@ -1,18 +1,7 @@
-﻿import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useTenant } from "./contexts/TenantContext";
 
-import MyAppointments from "./pages/MyAppointments";
-import BookingLanding from "./pages/BookingLanding";
-import Landing from "./pages/Landing";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import VerifyEmail from "./pages/VerifyEmail";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import BookAppointment from "./pages/BookAppointment";
-import SalonProfile from "./pages/SalonProfile";
 import { isReservedPath } from "./reservedPaths";
 
 import OwnerLayout from "./layouts/OwnerLayout";
@@ -20,28 +9,53 @@ import EmployeeLayout from "./layouts/EmployeeLayout";
 import CustomerLayout from "./layouts/CustomerLayout";
 import AdminLayout from "./layouts/AdminLayout";
 
-import Dashboard from "./pages/Dashboard";
-import Employees from "./pages/Employees";
-import Services from "./pages/Services";
-import Customers from "./pages/Customers";
-import Appointments from "./pages/Appointments";
-import WorkingHours from "./pages/WorkingHours";
-import Calendar from "./pages/Calendar";
-import CreateTenant from "./pages/CreateTenant";
-import AdminPanel from "./pages/AdminPanel";
-import Users from "./pages/Users";
 import ComingSoon from "./pages/ComingSoon";
-import DashboardAdmin from "./pages/DashboardAdmin";
-import Analytics from "./pages/Analytics";
-import Onboarding from "./pages/Onboarding";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import ReportIssue from "./pages/ReportIssue";
 import GlobalAnnouncementBanner from "./components/GlobalAnnouncementBanner";
 import NetworkStatusBanner from "./components/NetworkStatusBanner";
 import UpdateBanner from "./components/UpdateBanner";
-import AdminAnnouncements from "./pages/AdminAnnouncements";
 
+// Lazy-loaded stranice - svaka postaje svoj JS chunk, ucitava se tek kad
+// korisnik stvarno ode na tu rutu (Dok. checklist: "Lazy loading - ne
+// ucitavati sve stranice odjednom").
+const MyAppointments = lazy(() => import("./pages/MyAppointments"));
+const BookingLanding = lazy(() => import("./pages/BookingLanding"));
+const Landing = lazy(() => import("./pages/Landing"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const BookAppointment = lazy(() => import("./pages/BookAppointment"));
+const SalonProfile = lazy(() => import("./pages/SalonProfile"));
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Employees = lazy(() => import("./pages/Employees"));
+const Services = lazy(() => import("./pages/Services"));
+const Customers = lazy(() => import("./pages/Customers"));
+const Appointments = lazy(() => import("./pages/Appointments"));
+const WorkingHours = lazy(() => import("./pages/WorkingHours"));
+const Calendar = lazy(() => import("./pages/Calendar"));
+const CreateTenant = lazy(() => import("./pages/CreateTenant"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const Users = lazy(() => import("./pages/Users"));
+const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Settings = lazy(() => import("./pages/Settings"));
+const ReportIssue = lazy(() => import("./pages/ReportIssue"));
+const AdminAnnouncements = lazy(() => import("./pages/AdminAnnouncements"));
+
+
+function RouteLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <p className="text-slate-400 text-sm">Učitavanje...</p>
+    </div>
+  );
+}
 
 function PublicOrApp() {
   const location = useLocation();
@@ -207,30 +221,23 @@ function App() {
       <UpdateBanner />
       <NetworkStatusBanner />
       <GlobalAnnouncementBanner />
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/uslovi-koristenja" element={<TermsOfService />} />
-        <Route path="/politika-privatnosti" element={<PrivacyPolicy />} />
-        <Route path="/book/:employeeId" element={<BookAppointment />} />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/uslovi-koristenja" element={<TermsOfService />} />
+          <Route path="/politika-privatnosti" element={<PrivacyPolicy />} />
+          <Route path="/book/:employeeId" element={<BookAppointment />} />
 
-        <Route path="/*" element={<PublicOrApp />} />
-      </Routes>
+          <Route path="/*" element={<PublicOrApp />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
 
 export default App;
-
-
-
-
-
-
-
-
-

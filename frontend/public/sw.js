@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sattlio-v3';
+const CACHE_NAME = 'sattlio-v4';
 
 const STATIC_ASSETS = [
   '/',
@@ -38,18 +38,48 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — network first, fallback na cache
+function cacheFirst(request) {
+  return caches.match(request).then((cached) => {
+    if (cached) return cached;
+    return fetch(request).then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+      }
+      return response;
+    });
+  });
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // API pozivi — uvijek network, nikad cache
+  // Upload-ovane slike (avatari, logo, cover) - fajl na datom URL-u se NIKAD
+  // ne mijenja (novi upload = nova nasumicna putanja), pa je cache-first
+  // bezbjedno i mnogo brze, radi i offline nakon prve posjete.
+  if (url.pathname.startsWith('/api/media/')) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  // Ostali API pozivi — uvijek network, nikad cache (svjezi podaci)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Statični resursi — network first, fallback cache
+  // Vite build izlaz (/assets/*.js, *.css) — ime fajla sadrzi hash sadrzaja
+  // koji se NIKAD ne mijenja za dati URL, pa je cache-first ispravna i
+  // najbrza strategija (instant ucitavanje pri ponovnoj posjeti/offline).
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  // index.html, manifest.json, ikonice — network first, fallback cache.
+  // Mora ostati svjeze da update-banner mehanizam ispravno detektuje novu
+  // verziju (vidi UpdateBanner.tsx).
   event.respondWith(
     fetch(request)
       .then((response) => {

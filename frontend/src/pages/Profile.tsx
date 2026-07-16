@@ -150,7 +150,7 @@ function Profile() {
               <label className="block text-sm font-medium text-slate-500 mb-2">Telefon (opciono)</label>
               <div className="flex gap-2">
                 <input
-                  type="text"
+                  type="tel"
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
                   maxLength={20}

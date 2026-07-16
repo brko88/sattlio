@@ -92,7 +92,7 @@ function LandingHeader() {
 
   return (
     // Sticky header — ostaje vidljiv pri scroll-u (Dok. 09, mobile sticky akcije)
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-slate-200">
+    <header className="sticky top-[env(safe-area-inset-top)] z-50 bg-white/95 backdrop-blur border-b border-slate-200">
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo / naziv brenda — Link na početnu (ROUTES.home) */}
         <Link to={ROUTES.home} className="flex items-center gap-2">
@@ -136,7 +136,7 @@ function LandingHeader() {
             onClick={() => setMobileNavOpen((v) => !v)}
             aria-label="Otvori meni"
             aria-expanded={mobileNavOpen}
-            className="md:hidden p-2 -mr-2 text-slate-700"
+            className="md:hidden p-2 -mr-2 text-slate-700 min-w-11 flex items-center justify-center"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {mobileNavOpen ? (

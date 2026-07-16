@@ -23,11 +23,11 @@ function CustomerLayout() {
   return (
     <div className="lg:flex min-h-screen">
       {/* Mobilna gornja traka */}
-      <div className="lg:hidden sticky top-0 z-20 flex items-center justify-between bg-slate-800 text-white px-4 py-3">
+      <div className="lg:hidden sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-slate-800 text-white px-4 py-3">
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Otvori meni"
-          className="p-2 -ml-2"
+          className="p-2 -ml-2 min-w-11 flex items-center justify-center"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="3" y1="6" x2="21" y2="6" />
@@ -48,7 +48,7 @@ function CustomerLayout() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-60 bg-slate-800 text-white p-6 flex flex-col transform transition-transform duration-200 lg:translate-x-0 lg:static ${
+        className={`fixed inset-y-0 left-0 z-40 w-60 bg-slate-800 text-white p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] flex flex-col transform transition-transform duration-200 lg:translate-x-0 lg:static ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

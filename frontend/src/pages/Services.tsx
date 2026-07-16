@@ -147,6 +147,7 @@ function Services() {
           <input
             type="number"
             step="0.01"
+            inputMode="decimal"
             placeholder="Cijena (KM)"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -205,6 +206,7 @@ function Services() {
                       <input
                         type="number"
                         step="0.01"
+                        inputMode="decimal"
                         value={editPrice}
                         onChange={(e) => setEditPrice(e.target.value)}
                         className="w-full px-2 py-1.5 border border-slate-200 rounded-md text-sm"
@@ -313,6 +315,7 @@ function Services() {
                       <input
                         type="number"
                         step="0.01"
+                        inputMode="decimal"
                         value={editPrice}
                         onChange={(e) => setEditPrice(e.target.value)}
                         className="w-24 px-2 py-1 border border-slate-200 rounded-md text-sm"

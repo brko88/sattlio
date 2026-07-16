@@ -216,7 +216,7 @@ function CreateTenant() {
 
           <div className="mb-4">
             <input
-              type="text"
+              type="tel"
               placeholder="Telefon"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}

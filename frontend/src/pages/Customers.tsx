@@ -156,7 +156,7 @@ function Customers() {
 
         <div className="mb-4">
           <input
-            type="text"
+            type="tel"
             placeholder="Telefon (opciono)"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -241,6 +241,7 @@ function Customers() {
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">Telefon</label>
                     <input
+                      type="tel"
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
                       maxLength={20}
@@ -331,6 +332,7 @@ function Customers() {
                     </td>
                     <td className="px-4 py-2">
                       <input
+                        type="tel"
                         value={editPhone}
                         onChange={(e) => setEditPhone(e.target.value)}
                         maxLength={20}

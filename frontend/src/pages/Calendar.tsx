@@ -746,7 +746,7 @@ function Calendar() {
                     className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500"
                   />
                   <input
-                    type="text"
+                    type="tel"
                     placeholder="Telefon (opciono)"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}

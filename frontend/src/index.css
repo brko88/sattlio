@@ -2,6 +2,8 @@
 
 body {
   font-family: Inter, Arial, sans-serif;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 @keyframes toast-in {
@@ -17,4 +19,10 @@ body {
 
 .toast-enter {
   animation: toast-in 0.2s ease-out;
+}
+
+/* Minimalna dodirna zona 44px za sva dugmad (mobilni checklist) - samo visina,
+   ne diramo sirinu jer bi to poremetilo redove sa vise dugmadi jedno pored drugog. */
+button {
+  min-height: 44px;
 }

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { formatTime } from "../utils/time";
@@ -37,6 +37,43 @@ function BookAppointment() {
   const [error, setError] = useState("");
 
   const token = localStorage.getItem("access_token");
+
+  // Android Back usred rezervacije: umjesto izlaska sa stranice, back vraca
+  // jedan korak unazad kroz formu (termin -> datum -> usluga). Tek kad je
+  // forma prazna, back izlazi normalno. Radi preko "guard" history unosa:
+  // cim korisnik odabere uslugu ubacimo jedan pushState, pa popstate (back)
+  // trosi njega umjesto stvarne navigacije.
+  const stepStateRef = useRef({ selectedService, selectedDate, selectedSlot });
+  stepStateRef.current = { selectedService, selectedDate, selectedSlot };
+  const guardActiveRef = useRef(false);
+
+  useEffect(() => {
+    if (selectedService !== null && !guardActiveRef.current) {
+      window.history.pushState({ bookingStep: true }, "");
+      guardActiveRef.current = true;
+    }
+  }, [selectedService]);
+
+  useEffect(() => {
+    const handlePop = () => {
+      if (!guardActiveRef.current) return;
+      const state = stepStateRef.current;
+      if (state.selectedSlot) {
+        setSelectedSlot(null);
+        window.history.pushState({ bookingStep: true }, "");
+      } else if (state.selectedDate) {
+        setSelectedDate("");
+        window.history.pushState({ bookingStep: true }, "");
+      } else {
+        // Zadnji korak ponisten - guard unos je vec potrosen ovim back-om,
+        // sljedeci back napusta stranicu normalno.
+        setSelectedService(null);
+        guardActiveRef.current = false;
+      }
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {

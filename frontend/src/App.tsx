@@ -13,6 +13,7 @@ import ComingSoon from "./pages/ComingSoon";
 import GlobalAnnouncementBanner from "./components/GlobalAnnouncementBanner";
 import NetworkStatusBanner from "./components/NetworkStatusBanner";
 import UpdateBanner from "./components/UpdateBanner";
+import InstallPrompt from "./components/InstallPrompt";
 
 // Lazy-loaded stranice - svaka postaje svoj JS chunk, ucitava se tek kad
 // korisnik stvarno ode na tu rutu (Dok. checklist: "Lazy loading - ne
@@ -221,6 +222,7 @@ function App() {
       <UpdateBanner />
       <NetworkStatusBanner />
       <GlobalAnnouncementBanner />
+      <InstallPrompt />
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route path="/" element={<Landing />} />

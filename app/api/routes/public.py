@@ -420,6 +420,8 @@ class PublicTenantDetailResponse(BaseModel):
     slug: str
     city: str | None
     address: str | None
+    phone: str | None
+    email: str | None
     business_category: str | None
     description: str | None
     logo_url: str | None

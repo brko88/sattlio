@@ -22,6 +22,9 @@ class User(Base):
     terms_accepted_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True)
     is_superadmin = Column(Boolean, default=False, nullable=False)
+    # Interni tester: jedini koji vide/rezervisu salone oznacene kao is_internal
+    # (skriveni test saloni na produkciji). Vidi app/api/routes/public.py.
+    is_internal_tester = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

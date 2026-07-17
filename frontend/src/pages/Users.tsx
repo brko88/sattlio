@@ -17,6 +17,7 @@ interface AppUser {
   email_verified: boolean;
   is_active: boolean;
   is_superadmin: boolean;
+  is_internal_tester: boolean;
   created_at: string;
   tenants: TenantRole[];
 }
@@ -78,6 +79,20 @@ function Users() {
     }
   };
 
+  const handleTesterToggle = async (userId: number, currentValue: boolean) => {
+    setError("");
+    setSuccessMessage("");
+    try {
+      const response = await api.post(`/api/v1/admin/users/${userId}/internal-tester`, {
+        value: !currentValue,
+      });
+      setSuccessMessage(response.data.detail);
+      fetchUsers(search, page);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom akcije.");
+    }
+  };
+
   const handleResetPassword = async (userId: number) => {
     setError("");
     setSuccessMessage("");
@@ -130,6 +145,11 @@ function Users() {
                     superadmin
                   </span>
                 )}
+                {u.is_internal_tester && (
+                  <span className="px-2 py-0.5 bg-slate-800 text-white rounded-full text-xs font-semibold">
+                    tester
+                  </span>
+                )}
               </div>
               <p className="text-sm text-slate-500 break-all">{u.email}</p>
               <p className="text-sm text-slate-500">
@@ -158,6 +178,16 @@ function Users() {
                   className="px-3 py-1.5 bg-slate-600 text-white rounded-md text-xs font-medium hover:bg-slate-700 transition-colors"
                 >
                   Reset lozinke
+                </button>
+                <button
+                  onClick={() => handleTesterToggle(u.id, u.is_internal_tester)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    u.is_internal_tester
+                      ? "bg-slate-800 text-white hover:bg-slate-900"
+                      : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {u.is_internal_tester ? "Ukloni tester" : "Interni tester"}
                 </button>
               </div>
             </div>
@@ -189,6 +219,11 @@ function Users() {
                       superadmin
                     </span>
                   )}
+                  {u.is_internal_tester && (
+                    <span className="ml-2 px-2 py-0.5 bg-slate-800 text-white rounded-full text-xs font-semibold">
+                      tester
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-sm">{u.email}</td>
                 <td className="px-4 py-3 text-sm">
@@ -217,6 +252,17 @@ function Users() {
                       className="px-3 py-1.5 bg-slate-600 text-white rounded-md text-xs font-medium hover:bg-slate-700 transition-colors"
                     >
                       Reset lozinke
+                    </button>
+                    <button
+                      onClick={() => handleTesterToggle(u.id, u.is_internal_tester)}
+                      title="Interni tester - vidi salone označene kao interni (skriveni od javnosti)"
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+                        u.is_internal_tester
+                          ? "bg-slate-800 text-white hover:bg-slate-900"
+                          : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {u.is_internal_tester ? "Ukloni tester" : "Interni tester"}
                     </button>
                   </div>
                 </td>

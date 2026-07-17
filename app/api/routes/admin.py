@@ -204,6 +204,10 @@ class BetaTesterUpdate(BaseModel):
     value: bool
 
 
+class InternalFlagUpdate(BaseModel):
+    value: bool
+
+
 @router.get("/billing-settings", response_model=BillingSettingsResponse)
 def get_billing_settings(
     db: Session = Depends(get_db),
@@ -285,6 +289,55 @@ def set_tenant_beta_tester(
     if trial_reset:
         detail = f"Beta oznaka skinuta. Salon je dobio novih {TRIAL_DAYS} dana probnog perioda."
     return {"detail": detail, "is_beta_tester": tenant.is_beta_tester, "trial_reset": trial_reset}
+
+
+# ---------------------------------------------------------------------------
+# Interni (skriveni) test saloni + interni testeri
+# ---------------------------------------------------------------------------
+
+@router.post("/tenants/{tenant_id}/internal")
+def set_tenant_internal(
+    tenant_id: int,
+    data: InternalFlagUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    """Skriva salon sa javnih stranica - vide ga samo nalozi oznaceni kao interni testeri."""
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
+
+    tenant.is_internal = data.value
+    log_admin_action(
+        db, current_user.id, "set_internal_tenant", "tenant", tenant.id,
+        f"{tenant.name} = {data.value}",
+    )
+    db.commit()
+    return {
+        "detail": "Salon je skriven (interni test salon)." if data.value else "Salon je ponovo javno vidljiv.",
+        "is_internal": tenant.is_internal,
+    }
+
+
+@router.post("/users/{user_id}/internal-tester")
+def set_user_internal_tester(
+    user_id: int,
+    data: InternalFlagUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    """Oznacava nalog kao internog testera - jedini koji vide interne test salone."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Korisnik ne postoji.")
+
+    user.is_internal_tester = data.value
+    log_admin_action(
+        db, current_user.id, "set_internal_tester", "user", user.id,
+        f"{user.email} = {data.value}",
+    )
+    db.commit()
+    return {"detail": "Ažurirano.", "is_internal_tester": user.is_internal_tester}
 
 
 # ---------------------------------------------------------------------------
@@ -515,6 +568,7 @@ def list_all_users(
             "email_verified": user.email_verified,
             "is_active": user.is_active,
             "is_superadmin": user.is_superadmin,
+            "is_internal_tester": user.is_internal_tester,
             "created_at": user.created_at,
             "tenants": tenants_by_user.get(user.id, []),
         })

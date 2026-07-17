@@ -17,5 +17,6 @@ class AdminUserResponse(BaseModel):
     email_verified: bool
     is_active: bool
     is_superadmin: bool
+    is_internal_tester: bool = False
     created_at: datetime
     tenants: list[AdminUserTenantInfo]

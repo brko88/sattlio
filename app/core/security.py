@@ -15,6 +15,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+# Isti scheme, ali BEZ 401 kad token nedostaje - za javne rute koje treba da rade
+# i za neulogovane, a ponasaju se drugacije ako je posjetilac ulogovan
+# (npr. interni test saloni vidljivi samo internim testerima).
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -72,6 +77,31 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nalog je deaktiviran.",
         )
+
+    return user
+
+
+def get_current_user_optional(
+    token: str | None = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
+):
+    """
+    Vraca User ako je poslan validan token, inace None - NIKAD ne baca 401.
+    Koristi se na javnim rutama da se prepozna ulogovani posjetilac (npr. interni
+    tester), a da neulogovani i dalje normalno prolaze.
+    """
+    from app.models.user import User
+
+    if not token:
+        return None
+
+    payload = decode_access_token(token)
+    if payload is None:
+        return None
+
+    user = db.query(User).filter(User.id == payload.get("user_id")).first()
+    if user is None or not user.is_active:
+        return None
 
     return user
 

@@ -31,6 +31,9 @@ class Tenant(Base):
     trial_ends_at = Column(DateTime(timezone=True), nullable=True)
     # Beta tester izuzet od trial+naplata pravila dok je ovo True (vidi app/core/billing.py)
     is_beta_tester = Column(Boolean, default=False, nullable=False, server_default="false")
+    # Interni/skriveni test salon: nevidljiv javnosti, vide ga i mogu rezervisati
+    # SAMO korisnici sa users.is_internal_tester (vidi app/api/routes/public.py).
+    is_internal = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

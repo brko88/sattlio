@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.limiter import limiter
 from app.core.plans import PLANS
 from app.core.scheduling import get_effective_hours
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_user_optional
 from app.core.timezone_utils import get_tenant_timezone, zoneinfo_for_tenant
 from app.models.appointment import Appointment
 from app.models.customer import Customer
@@ -25,6 +25,24 @@ router = APIRouter(prefix="/api/v1/public", tags=["public"])
 # Anti-abuse limiti za self-booking (vidi memory: project_critical_security_todos #12)
 MAX_ACTIVE_APPOINTMENTS_PER_TENANT = 5
 MAX_BOOKING_DAYS_AHEAD = 90
+
+
+def can_see_internal(viewer) -> bool:
+    """Interne (skrivene) test salone vide samo nalozi oznaceni kao interni testeri."""
+    return bool(viewer is not None and getattr(viewer, "is_internal_tester", False))
+
+
+def is_hidden_from(db: Session, tenant, viewer) -> bool:
+    """
+    True ako se salon NE smije prikazati ovom posjetiocu na javnim stranicama.
+    Dva razloga: interni test salon (a posjetilac nije tester), ili read-only
+    salon (neplacena pretplata - "pauziraj i javno").
+    """
+    if tenant is None:
+        return True
+    if getattr(tenant, "is_internal", False) and not can_see_internal(viewer):
+        return True
+    return is_tenant_read_only(db, tenant)
 
 
 class PublicTenantResponse(BaseModel):
@@ -120,18 +138,28 @@ def get_active_announcements(db: Session = Depends(get_db)):
 
 
 @router.get("/tenants", response_model=list[PublicTenantResponse])
-def get_public_tenants(db: Session = Depends(get_db)):
+def get_public_tenants(
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+):
     tenants = db.query(Tenant).filter(
         Tenant.is_active == True,
         Tenant.verification_status == "verified",
     ).all()
-    # "Pauziraj i javno": read-only saloni (neplacena pretplata) se ne
-    # prikazuju u javnom pretrazivanju. Dok je naplata ugasena - bez efekta.
-    return [t for t in tenants if not is_tenant_read_only(db, t)]
+    # Sakrij interne test salone (osim internim testerima) i read-only salone.
+    return [t for t in tenants if not is_hidden_from(db, t, viewer)]
 
 
 @router.get("/tenants/{tenant_id}/employees", response_model=list[PublicEmployeeResponse])
-def get_tenant_public_employees(tenant_id: int, db: Session = Depends(get_db)):
+def get_tenant_public_employees(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+):
+    tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if is_hidden_from(db, tenant, viewer):
+        return []
+
     employees = db.query(Employee).filter(
         Employee.tenant_id == tenant_id,
         Employee.is_deleted == False,
@@ -142,17 +170,33 @@ def get_tenant_public_employees(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/employees", response_model=list[PublicEmployeeResponse])
-def get_all_public_employees(db: Session = Depends(get_db)):
+def get_all_public_employees(
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+):
     employees = db.query(Employee).filter(
         Employee.is_deleted == False,
         Employee.is_active == True,
         Employee.allow_self_booking == True,
     ).all()
-    return employees
+
+    # Ne prikazuj zaposlene iz skrivenih (internih/read-only) salona.
+    tenant_cache: dict[int, object] = {}
+    visible = []
+    for e in employees:
+        if e.tenant_id not in tenant_cache:
+            tenant_cache[e.tenant_id] = db.query(Tenant).filter(Tenant.id == e.tenant_id).first()
+        if not is_hidden_from(db, tenant_cache[e.tenant_id], viewer):
+            visible.append(e)
+    return visible
 
 
 @router.get("/employees/{employee_id}", response_model=PublicEmployeeResponse)
-def get_public_employee(employee_id: int, db: Session = Depends(get_db)):
+def get_public_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+):
     employee = db.query(Employee).filter(
         Employee.id == employee_id,
         Employee.is_deleted == False,
@@ -164,13 +208,20 @@ def get_public_employee(employee_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Zaposleni nije dostupan za online rezervaciju.")
 
     tenant = db.query(Tenant).filter(Tenant.id == employee.tenant_id).first()
+    if is_hidden_from(db, tenant, viewer):
+        raise HTTPException(status_code=404, detail="Zaposleni nije dostupan za online rezervaciju.")
+
     employee.tenant_timezone = tenant.timezone if tenant else "Europe/Sarajevo"
 
     return employee
 
 
 @router.get("/employees/{employee_id}/services", response_model=list[PublicServiceResponse])
-def get_public_services(employee_id: int, db: Session = Depends(get_db)):
+def get_public_services(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+):
     employee = db.query(Employee).filter(
         Employee.id == employee_id,
         Employee.is_deleted == False,
@@ -179,6 +230,10 @@ def get_public_services(employee_id: int, db: Session = Depends(get_db)):
     ).first()
 
     if employee is None:
+        raise HTTPException(status_code=404, detail="Zaposleni nije dostupan za online rezervaciju.")
+
+    emp_tenant = db.query(Tenant).filter(Tenant.id == employee.tenant_id).first()
+    if is_hidden_from(db, emp_tenant, viewer):
         raise HTTPException(status_code=404, detail="Zaposleni nije dostupan za online rezervaciju.")
 
     services = db.query(Service).filter(
@@ -195,6 +250,7 @@ def get_available_slots(
     date_str: str,
     service_id: int,
     db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
 ):
     employee = db.query(Employee).filter(
         Employee.id == employee_id,
@@ -227,8 +283,9 @@ def get_available_slots(
     # Dohvati slot interval i vremensku zonu iz tenanta
     from app.models.tenant import Tenant as TenantModel
     tenant_obj = db.query(TenantModel).filter(TenantModel.id == employee.tenant_id).first()
-    # Read-only salon (neplacena pretplata) ne prima nove online rezervacije.
-    if is_tenant_read_only(db, tenant_obj):
+    # Skriven salon (interni test salon tudjem posjetiocu, ili read-only zbog
+    # neplacene pretplate) ne nudi termine.
+    if is_hidden_from(db, tenant_obj, viewer):
         return {"slots": []}
     slot_interval = tenant_obj.slot_duration_minutes if tenant_obj else 30
     tz = zoneinfo_for_tenant(tenant_obj)
@@ -307,9 +364,10 @@ def self_book_appointment(
     if employee is None:
         raise HTTPException(status_code=404, detail="Zaposleni nije dostupan za online rezervaciju.")
 
-    # Read-only salon (neplacena pretplata) ne prima nove online rezervacije.
+    # Skriven salon (interni test salon nekom ko nije tester, ili read-only zbog
+    # neplacene pretplate) ne prima nove online rezervacije.
     booking_tenant = db.query(Tenant).filter(Tenant.id == employee.tenant_id).first()
-    if is_tenant_read_only(db, booking_tenant):
+    if is_hidden_from(db, booking_tenant, current_user):
         raise HTTPException(status_code=403, detail="Ovaj salon trenutno ne prima online rezervacije.")
 
     service = db.query(Service).filter(
@@ -445,14 +503,18 @@ class PublicTenantDetailResponse(BaseModel):
 
 
 @router.get("/tenants/by-slug/{slug}", response_model=PublicTenantDetailResponse)
-def get_tenant_by_slug(slug: str, db: Session = Depends(get_db)):
+def get_tenant_by_slug(
+    slug: str,
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+):
     tenant = db.query(Tenant).filter(
         Tenant.slug == slug,
         Tenant.is_active == True,
         Tenant.verification_status == "verified",
     ).first()
 
-    if tenant is None or is_tenant_read_only(db, tenant):
+    if is_hidden_from(db, tenant, viewer):
         raise HTTPException(status_code=404, detail="Salon nije pronadjen.")
 
     employees = db.query(Employee).filter(

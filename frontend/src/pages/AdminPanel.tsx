@@ -14,6 +14,7 @@ interface Tenant {
   owner_name: string | null;
   owner_email: string | null;
   is_beta_tester: boolean;
+  is_internal: boolean;
   read_only: boolean;
   created_at: string | null;
 }
@@ -260,6 +261,20 @@ function AdminPanel({
     }
   };
 
+  const handleInternalToggle = async (tenantId: number, currentValue: boolean) => {
+    setError("");
+    setSuccessMessage("");
+    try {
+      const response = await api.post(`/api/v1/admin/tenants/${tenantId}/internal`, {
+        value: !currentValue,
+      });
+      setSuccessMessage(response.data.detail);
+      fetchTenants(search, page);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Greška prilikom akcije.");
+    }
+  };
+
   const handleShowHealth = async (tenantId: number) => {
     setHealthModalOpen(true);
     setHealthLoading(true);
@@ -337,6 +352,9 @@ function AdminPanel({
                   {t.is_beta_tester && (
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">Beta tester</span>
                   )}
+                  {t.is_internal && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-white">Interni</span>
+                  )}
                   {t.read_only && (
                     <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Read-only</span>
                   )}
@@ -388,6 +406,16 @@ function AdminPanel({
                   }`}
                 >
                   {t.is_beta_tester ? "Ukloni beta" : "Beta tester"}
+                </button>
+                <button
+                  onClick={() => handleInternalToggle(t.id, t.is_internal)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    t.is_internal
+                      ? "bg-slate-800 text-white hover:bg-slate-900"
+                      : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {t.is_internal ? "Vrati javno" : "Interni"}
                 </button>
               </div>
             </div>
@@ -443,6 +471,9 @@ function AdminPanel({
                     >
                       {t.verification_status}
                     </span>
+                    {t.is_internal && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-white">Interni</span>
+                    )}
                     {t.read_only && (
                       <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Read-only</span>
                     )}
@@ -489,6 +520,17 @@ function AdminPanel({
                       }`}
                     >
                       {t.is_beta_tester ? "Ukloni beta" : "Beta tester"}
+                    </button>
+                    <button
+                      onClick={() => handleInternalToggle(t.id, t.is_internal)}
+                      title="Interni test salon - vidljiv samo nalozima označenim kao interni testeri"
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        t.is_internal
+                          ? "bg-slate-800 text-white hover:bg-slate-900"
+                          : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {t.is_internal ? "Vrati javno" : "Interni"}
                     </button>
                   </div>
                 </td>

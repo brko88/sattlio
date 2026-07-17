@@ -15,6 +15,20 @@ interface Tenant {
   owner_email: string | null;
   is_beta_tester: boolean;
   read_only: boolean;
+  created_at: string | null;
+}
+
+/**
+ * Datum registracije salona - kratko (npr. 05.08.2026.), samo informativno.
+ * Formatira se rucno umjesto preko toLocaleDateString("bs-BA") jer taj lokal
+ * nije svugdje dostupan pa zna pasti na ISO oblik (2026-08-05).
+ */
+function formatRegDate(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}.`;
 }
 
 interface TenantHealth {
@@ -333,6 +347,7 @@ function AdminPanel({
               <p className="text-sm text-slate-500">
                 {t.city || "—"}{t.jib ? ` · JIB: ${t.jib}` : ""}
               </p>
+              <p className="text-sm text-slate-500">Registrovan: {formatRegDate(t.created_at)}</p>
               <p className="text-sm text-slate-500 mb-3">Aktivan: {t.is_active ? "Da" : "Ne"}</p>
               <div className="flex gap-2 flex-wrap">
                 <button
@@ -399,6 +414,9 @@ function AdminPanel({
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
                 JIB
               </th>
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">
+                Registrovan
+              </th>
               <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
                 Status
               </th>
@@ -415,6 +433,9 @@ function AdminPanel({
                 <td className="px-4 py-3 text-sm">{t.owner_email || "-"}</td>
                 <td className="px-4 py-3">{t.city || "—"}</td>
                 <td className="px-4 py-3 font-mono text-sm">{t.jib || "—"}</td>
+                <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                  {formatRegDate(t.created_at)}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1 items-start">
                     <span

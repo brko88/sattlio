@@ -1,5 +1,5 @@
 ﻿import smtplib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.billing import (
+    TRIAL_DAYS,
     billing_enforcement_enabled,
     enforcement_since,
     get_setting,
@@ -192,6 +193,7 @@ def reactivate_tenant(
 class BillingSettingsResponse(BaseModel):
     enforcement_enabled: bool
     enforcement_since: str | None
+    protected_count: int = 0
 
 
 class BillingSettingsUpdate(BaseModel):
@@ -221,18 +223,29 @@ def update_billing_settings(
     current_user: User = Depends(require_superadmin),
 ):
     set_setting(db, "billing_enforcement_enabled", "true" if data.enabled else "false")
-    # Prvi put kad se upali, zapamti datum - svi registrovani PRIJE su izuzeti (grandfathering).
+
+    protected = 0
+    # PRVI put kad se upali: zapamti datum i jednokratno oznaci sve tada postojece
+    # salone kao beta testere - tako su prvi korisnici zasticeni, ali izuzece je
+    # VIDLJIVO i moze se skinuti kad se odluci da i oni krenu placati.
     if data.enabled and not get_setting(db, "billing_enforcement_since"):
         set_setting(db, "billing_enforcement_since", datetime.now(timezone.utc).isoformat())
+        protected = (
+            db.query(Tenant)
+            .filter(Tenant.is_beta_tester == False)
+            .update({"is_beta_tester": True}, synchronize_session=False)
+        )
+
     log_admin_action(
         db, current_user.id, "billing_enforcement", "system", 0,
-        "enabled" if data.enabled else "disabled",
+        f"{'enabled' if data.enabled else 'disabled'} (zasticeno postojecih: {protected})",
     )
     db.commit()
     since = enforcement_since(db)
     return BillingSettingsResponse(
         enforcement_enabled=billing_enforcement_enabled(db),
         enforcement_since=since.isoformat() if since else None,
+        protected_count=protected,
     )
 
 
@@ -246,13 +259,32 @@ def set_tenant_beta_tester(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant ne postoji.")
+
     tenant.is_beta_tester = data.value
+
+    # Skidanje beta oznake: ako trial vec istekao (a nije placeno), daj svjezih
+    # TRIAL_DAYS dana - inace bi salon pao u read-only iste sekunde, bez upozorenja.
+    trial_reset = False
+    if not data.value and tenant.billing_status != "active":
+        now = datetime.now(timezone.utc)
+        ends = tenant.trial_ends_at
+        if ends is not None and ends.tzinfo is None:
+            ends = ends.replace(tzinfo=timezone.utc)
+        if ends is None or ends <= now:
+            tenant.billing_status = "trial"
+            tenant.trial_ends_at = now + timedelta(days=TRIAL_DAYS)
+            trial_reset = True
+
     log_admin_action(
         db, current_user.id, "set_beta_tester", "tenant", tenant.id,
-        f"{tenant.name} = {data.value}",
+        f"{tenant.name} = {data.value}{' (+trial reset)' if trial_reset else ''}",
     )
     db.commit()
-    return {"detail": "Ažurirano.", "is_beta_tester": tenant.is_beta_tester}
+
+    detail = "Ažurirano."
+    if trial_reset:
+        detail = f"Beta oznaka skinuta. Salon je dobio novih {TRIAL_DAYS} dana probnog perioda."
+    return {"detail": detail, "is_beta_tester": tenant.is_beta_tester, "trial_reset": trial_reset}
 
 
 # ---------------------------------------------------------------------------

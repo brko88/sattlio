@@ -71,3 +71,4 @@ class TenantAdminResponse(TenantResponse):
     owner_email: str | None = None
     is_beta_tester: bool = False
     read_only: bool = False
+    created_at: datetime | None = None

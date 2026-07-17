@@ -8,11 +8,14 @@ kad je salon u read-only stanju.
 Dizajn (potvrdjeno sa vlasnikom):
 - Globalni prekidac 'billing_enforcement_enabled' (SystemSetting) je UGASEN
   tokom besplatnog test perioda - dok je ugasen, NIKO nije read-only.
-- Kad se prvi put upali, pamti se 'billing_enforcement_since'. Svi saloni
-  registrovani PRIJE tog datuma su automatski izuzeti (grandfathering) - da
-  se ne zeznu prvi beta korisnici kojima je trial odavno "istekao".
-- Po-salon zastavica is_beta_tester rucno izuzima salon (i buduce) od pravila.
-- Za sve ostale: trial (14 dana) -> nakon isteka ako billing_status nije
+- Zastita prvih beta korisnika ide iskljucivo preko zastavice is_beta_tester:
+  kad se naplata PRVI PUT upali, svi tada postojeci saloni se jednokratno
+  oznace kao beta testeri (vidi admin.update_billing_settings). Namjerno NEMA
+  tihog pravila "po datumu registracije" - da bi izuzece bilo vidljivo i da bi
+  se moglo SKINUTI kad se odluci da i oni krenu placati.
+- Skidanje beta oznake salonu kojem je trial istekao mu daje svjezih TRIAL_DAYS
+  dana (vidi admin.set_tenant_beta_tester) da ne padne u read-only iste sekunde.
+- Za sve ostale: trial (TRIAL_DAYS) -> nakon isteka ako billing_status nije
   'active' -> READ ONLY. Paddle webhook ce kasnije postavljati billing_status.
 """
 
@@ -20,6 +23,8 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+
+TRIAL_DAYS = 14
 
 READ_ONLY_DETAIL = (
     "Pristup je trenutno ograničen (samo pregled). Probni period je istekao ili "
@@ -70,24 +75,15 @@ def is_tenant_read_only(db: Session, tenant) -> bool:
     if not billing_enforcement_enabled(db):
         return False
 
-    # 2. Rucno oznacen beta tester - trajno izuzet
+    # 2. Oznacen kao beta tester - izuzet (skidanjem oznake ulazi u naplatu)
     if getattr(tenant, "is_beta_tester", False):
         return False
 
-    # 3. Grandfathering: registrovan prije paljenja naplate - izuzet
-    since = enforcement_since(db)
-    if since is not None and tenant.created_at is not None:
-        created = tenant.created_at
-        if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
-        if created < since:
-            return False
-
-    # 4. Placena pretplata - pun pristup
+    # 3. Placena pretplata - pun pristup
     if tenant.billing_status == "active":
         return False
 
-    # 5. Unutar 14-dnevnog trial-a - pun pristup
+    # 4. Unutar trial perioda - pun pristup
     now = datetime.now(timezone.utc)
     if tenant.billing_status == "trial" and tenant.trial_ends_at is not None:
         ends = tenant.trial_ends_at
@@ -96,7 +92,7 @@ def is_tenant_read_only(db: Session, tenant) -> bool:
         if ends > now:
             return False
 
-    # 6. Trial istekao neplacen, ili past_due/canceled -> READ ONLY
+    # 5. Trial istekao neplacen, ili past_due/canceled -> READ ONLY
     return True
 
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, field_validator
 
-from app.core.billing import assert_tenant_writable, is_tenant_read_only
+from app.core.billing import TRIAL_DAYS, assert_tenant_writable, is_tenant_read_only
 from app.core.database import get_db
 from app.core.media import delete_media_file, process_and_save_image
 from app.core.security import get_current_user
@@ -102,7 +102,7 @@ def create_tenant(
         description=data.description,
         verification_status="pending",
         plan="trial",
-        trial_ends_at=datetime.now(timezone.utc) + timedelta(days=14),
+        trial_ends_at=datetime.now(timezone.utc) + timedelta(days=TRIAL_DAYS),
     )
     db.add(new_tenant)
     db.commit()

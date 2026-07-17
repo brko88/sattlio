@@ -5,6 +5,7 @@ import { SkeletonCards } from "../components/Skeleton";
 interface BillingSettings {
   enforcement_enabled: boolean;
   enforcement_since: string | null;
+  protected_count?: number;
 }
 
 function AdminSubscriptions() {
@@ -35,7 +36,7 @@ function AdminSubscriptions() {
     if (
       turningOn &&
       !window.confirm(
-        "Uključiti naplatu? Svi saloni registrovani OD SADA dobijaju 14-dnevni probni period, a nakon isteka bez plaćanja idu u read-only mode. Postojeći saloni (registrovani prije) ostaju izuzeti."
+        "Uključiti naplatu?\n\n• Svi POSTOJEĆI saloni će automatski biti označeni kao beta testeri (zaštićeni — nastavljaju besplatno).\n• Saloni registrovani OD SADA dobijaju 14 dana probnog perioda, pa read-only ako ne plate.\n\nKad poželiš da i neki od zaštićenih krene plaćati, samo mu skini beta oznaku u Salonima (dobiće svježih 14 dana)."
       )
     ) {
       return;
@@ -46,7 +47,16 @@ function AdminSubscriptions() {
     try {
       const res = await api.patch("/api/v1/admin/billing-settings", { enabled: turningOn });
       setSettings(res.data);
-      setMessage(turningOn ? "Naplata je uključena." : "Naplata je isključena.");
+      if (turningOn) {
+        const n = res.data.protected_count ?? 0;
+        setMessage(
+          n > 0
+            ? `Naplata je uključena. Zaštićeno postojećih salona (označeni kao beta testeri): ${n}.`
+            : "Naplata je uključena."
+        );
+      } else {
+        setMessage("Naplata je isključena.");
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || "Greška prilikom izmjene.");
     } finally {
@@ -73,8 +83,9 @@ function AdminSubscriptions() {
               <h2 className="font-semibold text-slate-900 mb-1">Naplata / read-only mode</h2>
               <p className="text-sm text-slate-500">
                 Kad je <strong>uključeno</strong>: novi saloni imaju 14 dana probnog perioda pa idu u
-                read-only ako ne plate. Postojeći saloni (registrovani prije uključenja) i označeni beta
-                testeri su izuzeti.
+                read-only ako ne plate. Svi <strong>postojeći</strong> saloni se pri uključenju automatski
+                označe kao beta testeri (zaštićeni). Kad poželiš da neki od njih krene plaćati, skini mu
+                beta oznaku u <strong>Salonima</strong> — dobiće svježih 14 dana pa tek onda read-only.
               </p>
             </div>
             <button

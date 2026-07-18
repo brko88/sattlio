@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.billing import assert_tenant_writable
 from app.core.database import get_db
 from app.core.pagination import paginate
+from app.core.permissions import require_staff
 from app.core.security import get_current_user
 from app.models.service import Service
 from app.models.user import User
@@ -28,22 +29,6 @@ def require_owner(db: Session, user_id: int, tenant_id: int):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Samo vlasnik poslovnog subjekta može izvršiti ovu akciju.",
-        )
-
-
-def require_member(db: Session, user_id: int, tenant_id: int):
-    role = (
-        db.query(UserTenantRole)
-        .filter(
-            UserTenantRole.user_id == user_id,
-            UserTenantRole.tenant_id == tenant_id,
-        )
-        .first()
-    )
-    if role is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nemate pristup ovom poslovnom subjektu.",
         )
 
 
@@ -79,7 +64,7 @@ def get_services(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_member(db, current_user.id, tenant_id)
+    require_staff(db, current_user.id, tenant_id)
 
     query = (
         db.query(Service)

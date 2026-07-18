@@ -25,6 +25,11 @@ class User(Base):
     # Interni tester: jedini koji vide/rezervisu salone oznacene kao is_internal
     # (skriveni test saloni na produkciji). Vidi app/api/routes/public.py.
     is_internal_tester = Column(Boolean, default=False, nullable=False, server_default="false")
+    # Per-nalog lockout kao dodatni sloj uz IP-based rate limiting na /auth/login
+    # (vidi app/api/routes/auth.py) - IP limit se zaobilazi rotacijom proxy-a,
+    # ovo ne.
+    failed_login_attempts = Column(Integer, default=0, nullable=False, server_default="0")
+    locked_until = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

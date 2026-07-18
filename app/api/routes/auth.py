@@ -34,6 +34,11 @@ from app.schemas.auth import (
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
+# Per-nalog lockout - dodatni sloj uz IP-based rate limiting (koji se moze
+# zaobici rotacijom proxy IP-ova/botnet-om).
+ACCOUNT_LOCKOUT_THRESHOLD = 10
+ACCOUNT_LOCKOUT_MINUTES = 15
+
 REFRESH_COOKIE_NAME = "refresh_token"
 REFRESH_COOKIE_PATH = "/api/v1/auth"
 
@@ -129,7 +134,23 @@ def register(request: Request, data: RegisterRequest, background_tasks: Backgrou
 def login(request: Request, response: Response, data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
 
+    if user is not None and user.locked_until is not None:
+        locked_until = user.locked_until
+        if locked_until.tzinfo is None:
+            locked_until = locked_until.replace(tzinfo=timezone.utc)
+        if locked_until > datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Previše neuspješnih pokušaja prijave. Pokušajte ponovo za {ACCOUNT_LOCKOUT_MINUTES} minuta.",
+            )
+
     if not user or not verify_password(data.password, user.password_hash):
+        if user is not None:
+            user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+            if user.failed_login_attempts >= ACCOUNT_LOCKOUT_THRESHOLD:
+                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=ACCOUNT_LOCKOUT_MINUTES)
+                user.failed_login_attempts = 0
+            db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Pogrešan email ili lozinka.",
@@ -140,6 +161,10 @@ def login(request: Request, response: Response, data: LoginRequest, db: Session 
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nalog je deaktiviran.",
         )
+
+    if user.failed_login_attempts:
+        user.failed_login_attempts = 0
+        db.commit()
 
     access_token, raw_refresh_token = issue_tokens(db, user.id)
     _set_refresh_cookie(response, raw_refresh_token)
@@ -366,7 +391,9 @@ def resend_verification(request: Request, db: Session = Depends(get_db), current
 
 
 @router.post("/change-password")
+@limiter.limit("5/minute")
 def change_password(
+    request: Request,
     data: ChangePasswordRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

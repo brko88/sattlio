@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     smtp_user: str
     smtp_password: str
     frontend_url: str = "http://localhost:5173"
-    cookie_secure: bool = False
+    # Sigurno po defaultu - ako produkcijski .env slucajno ne postavi
+    # COOKIE_SECURE, refresh cookie i dalje ide samo preko HTTPS-a. Lokalni
+    # dev (plain HTTP) mora eksplicitno postaviti COOKIE_SECURE=false u .env.
+    cookie_secure: bool = True
 
     class Config:
         env_file = ".env"

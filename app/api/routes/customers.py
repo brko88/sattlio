@@ -10,27 +10,10 @@ from app.core.permissions import require_staff
 from app.core.security import get_current_user
 from app.models.customer import Customer
 from app.models.user import User
-from app.models.user_tenant_role import UserTenantRole
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 from app.schemas.pagination import PaginatedResponse
 
 router = APIRouter(prefix="/api/v1/customers", tags=["customers"])
-
-
-def require_member(db: Session, user_id: int, tenant_id: int):
-    role = (
-        db.query(UserTenantRole)
-        .filter(
-            UserTenantRole.user_id == user_id,
-            UserTenantRole.tenant_id == tenant_id,
-        )
-        .first()
-    )
-    if role is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nemate pristup ovom poslovnom subjektu.",
-        )
 
 
 @router.post("", response_model=CustomerResponse)
@@ -39,7 +22,7 @@ def create_customer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_member(db, current_user.id, data.tenant_id)
+    require_staff(db, current_user.id, data.tenant_id)
     assert_tenant_writable(db, data.tenant_id)
 
     new_customer = Customer(

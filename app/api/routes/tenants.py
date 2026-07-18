@@ -9,6 +9,7 @@ from app.core.billing import TRIAL_DAYS, assert_tenant_writable, is_tenant_read_
 from app.core.database import get_db
 from app.core.media import delete_media_file, process_and_save_image
 from app.core.security import get_current_user
+from app.models.employee import Employee
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
@@ -114,6 +115,18 @@ def create_tenant(
         role="owner",
     )
     db.add(owner_role)
+
+    # Vlasnik se automatski dodaje i kao zaposleni - inace ne moze postaviti svoje
+    # radno vrijeme niti se pojaviti kao dostupan za (online) rezervacije.
+    owner_employee = Employee(
+        tenant_id=new_tenant.id,
+        user_id=current_user.id,
+        first_name=current_user.first_name or "Vlasnik",
+        last_name=current_user.last_name or "",
+        phone=current_user.phone,
+        email=current_user.email,
+    )
+    db.add(owner_employee)
     db.commit()
 
     # Pošalji notifikaciju adminu

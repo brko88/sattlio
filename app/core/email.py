@@ -9,6 +9,11 @@ from app.core.config import settings
 
 ADMIN_EMAIL = "podrska@sattlio.com"
 
+# Bez ovoga smtplib.SMTP blokira BEZ GRANICE ako je SMTP provajder spor ili
+# nedostupan - HTTP zahtjev (registracija, reset lozinke...) visi zauvijek
+# umjesto da baci exception koji vec postojeci try/except blokovi hvataju.
+SMTP_TIMEOUT_SECONDS = 10
+
 
 def send_email(to_email: str, subject: str, body: str):
     message = MIMEText(body, "plain", "utf-8")
@@ -16,10 +21,26 @@ def send_email(to_email: str, subject: str, body: str):
     message["From"] = settings.smtp_user
     message["To"] = to_email
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=SMTP_TIMEOUT_SECONDS) as server:
         server.starttls()
         server.login(settings.smtp_user, settings.smtp_password)
         server.send_message(message)
+
+
+def send_email_background(send_fn, *args, **kwargs):
+    """
+    Poziva se preko FastAPI BackgroundTasks.add_task - HTTP odgovor se vraca
+    korisniku ODMAH, slanje emaila se desava poslije. Guta i loguje gresku
+    ako SMTP ne uspije (korisnik ne ceka SMTP round-trip niti dobija 500 zbog
+    njega) - koristi se za emailove gdje uspjeh slanja nije nesto o cemu
+    korisnik mora biti odmah obavijesten (verifikacija, reset lozinke,
+    obavijesti o otkazivanju, admin notifikacije, pozivnice zaposlenima).
+    """
+    try:
+        send_fn(*args, **kwargs)
+    except Exception as e:
+        import logging
+        logging.error(f"Email ({send_fn.__name__}) nije poslan: {e}")
 
 
 def send_verification_email(to_email: str, token: str):
@@ -143,7 +164,7 @@ def send_support_request_email(
         image.add_header("Content-Disposition", "attachment", filename=screenshot_filename or "screenshot.jpg")
         msg.attach(image)
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=SMTP_TIMEOUT_SECONDS) as server:
         server.starttls()
         server.login(settings.smtp_user, settings.smtp_password)
         server.send_message(msg)

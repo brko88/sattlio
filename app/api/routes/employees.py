@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+﻿from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.billing import assert_tenant_writable
@@ -6,7 +6,7 @@ from app.core.database import get_db
 from app.core.media import delete_media_file, process_and_save_image
 from app.core.permissions import require_staff
 from app.core.security import get_current_user
-from app.core.email import send_employee_invitation_email
+from app.core.email import send_email_background, send_employee_invitation_email
 from app.models.tenant import Tenant
 from app.core.plans import get_employee_limit
 from app.models.employee import Employee
@@ -38,6 +38,7 @@ def require_owner(db: Session, user_id: int, tenant_id: int):
 @router.post("", response_model=EmployeeResponse)
 def create_employee(
     data: EmployeeCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -107,15 +108,13 @@ def create_employee(
     if linked_user_id is None:
         tenant = db.query(Tenant).filter(Tenant.id == data.tenant_id).first()
         employee_full_name = f"{data.first_name} {data.last_name}".strip()
-        try:
-            send_employee_invitation_email(
-                data.email,
-                employee_full_name,
-                tenant.name if tenant else "salon",
-            )
-        except Exception as e:
-            import logging
-            logging.error(f"Pozivnica zaposlenom nije poslana: {e}")
+        background_tasks.add_task(
+            send_email_background,
+            send_employee_invitation_email,
+            data.email,
+            employee_full_name,
+            tenant.name if tenant else "salon",
+        )
 
     db.refresh(new_employee)
 

@@ -1,6 +1,6 @@
 ﻿from datetime import datetime, time, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.billing import assert_tenant_writable
@@ -17,7 +17,7 @@ from app.models.service import Service
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
-from app.core.email import send_appointment_cancelled_email
+from app.core.email import send_appointment_cancelled_email, send_email_background
 from app.schemas.appointment import AppointmentCreate, AppointmentResponse, CancelAppointmentRequest, MyAppointmentResponse
 from app.schemas.pagination import PaginatedResponse
 
@@ -265,6 +265,7 @@ def get_appointments(
 @router.post("/{appointment_id}/cancel", response_model=AppointmentResponse)
 def cancel_appointment(
     appointment_id: int,
+    background_tasks: BackgroundTasks,
     data: CancelAppointmentRequest | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -312,19 +313,17 @@ def cancel_appointment(
     if cancelled_by_type == "staff" and customer is not None and customer.email:
         service = db.query(Service).filter(Service.id == appointment.service_id).first()
         tenant = db.query(Tenant).filter(Tenant.id == appointment.tenant_id).first()
-        try:
-            send_appointment_cancelled_email(
-                to_email=customer.email,
-                customer_name=f"{customer.first_name} {customer.last_name}",
-                service_name=service.name if service else "-",
-                tenant_name=tenant.name if tenant else "-",
-                start_time=appointment.start_time,
-                reason=reason,
-                tenant_timezone=tenant.timezone if tenant else "Europe/Sarajevo",
-            )
-        except Exception as e:
-            import logging
-            logging.error(f"Appointment cancellation email nije poslan: {e}")
+        background_tasks.add_task(
+            send_email_background,
+            send_appointment_cancelled_email,
+            to_email=customer.email,
+            customer_name=f"{customer.first_name} {customer.last_name}",
+            service_name=service.name if service else "-",
+            tenant_name=tenant.name if tenant else "-",
+            start_time=appointment.start_time,
+            reason=reason,
+            tenant_timezone=tenant.timezone if tenant else "Europe/Sarajevo",
+        )
 
     return appointment
 

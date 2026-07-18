@@ -1,7 +1,7 @@
 ﻿import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -14,7 +14,7 @@ from app.core.security import (
     hash_refresh_token,
 )
 from app.core.config import settings
-from app.core.email import send_verification_email, send_password_reset_email
+from app.core.email import send_email_background, send_verification_email, send_password_reset_email
 from app.core.limiter import limiter
 from app.models.user import User
 from app.models.refresh_token import RefreshToken
@@ -85,7 +85,7 @@ def issue_tokens(db: Session, user_id: int, family_id: str | None = None) -> tup
 
 @router.post("/register", response_model=UserResponse)
 @limiter.limit("5/minute")
-def register(request: Request, data: RegisterRequest, db: Session = Depends(get_db)):
+def register(request: Request, data: RegisterRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == data.email).first()
     if existing_user:
         raise HTTPException(
@@ -119,11 +119,7 @@ def register(request: Request, data: RegisterRequest, db: Session = Depends(get_
     # vlasnik salona pozvao kao zaposlenog i odmah dobiti pristup klijentima
     # i terminima tog salona, bez ikakve potvrde vlasništva nad email adresom.
 
-    try:
-        send_verification_email(new_user.email, verification_token)
-    except Exception as e:
-        import logging
-        logging.error(f"Verifikacioni email nije poslan: {e}")
+    background_tasks.add_task(send_email_background, send_verification_email, new_user.email, verification_token)
 
     return new_user
 
@@ -276,7 +272,7 @@ def verify_email(request: Request, data: VerifyEmailRequest, db: Session = Depen
 
 @router.post("/forgot-password")
 @limiter.limit("3/minute")
-def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(request: Request, data: ForgotPasswordRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
 
     if user:
@@ -284,11 +280,7 @@ def forgot_password(request: Request, data: ForgotPasswordRequest, db: Session =
         user.password_reset_token = hash_refresh_token(reset_token)
         user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         db.commit()
-        try:
-            send_password_reset_email(user.email, reset_token)
-        except Exception as e:
-            import logging
-            logging.error(f"Password reset email nije poslan: {e}")
+        background_tasks.add_task(send_email_background, send_password_reset_email, user.email, reset_token)
 
     return {"detail": "Ako email postoji u sistemu, poslan je link za reset lozinke."}
 

@@ -1,7 +1,7 @@
 ﻿import smtplib
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -17,7 +17,7 @@ from app.core.billing import (
 )
 from app.core.pagination import paginate
 from app.core.security import require_superadmin
-from app.core.email import send_password_reset_email
+from app.core.email import send_email_background, send_password_reset_email
 from app.models.appointment import Appointment
 from app.models.employee import Employee
 from app.models.tenant import Tenant
@@ -583,6 +583,7 @@ def list_all_users(
 @router.post("/users/{user_id}/reset-password")
 def admin_reset_password(
     user_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin),
 ):
@@ -597,10 +598,7 @@ def admin_reset_password(
     log_admin_action(db, current_user.id, "reset_password", "user", user.id, user.email)
     db.commit()
 
-    try:
-        send_password_reset_email(user.email, reset_token)
-    except Exception:
-        pass
+    background_tasks.add_task(send_email_background, send_password_reset_email, user.email, reset_token)
 
     return {"detail": f"Reset link poslan na {user.email}."}
 

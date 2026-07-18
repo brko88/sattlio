@@ -1,7 +1,7 @@
 ﻿import re
 from zoneinfo import available_timezones
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, field_validator
 
@@ -16,7 +16,7 @@ from app.models.user_tenant_role import UserTenantRole
 from datetime import datetime, timedelta, timezone
 
 from app.schemas.tenant import TenantCreate, TenantResponse, TenantWithRoleResponse
-from app.core.email import send_new_tenant_notification
+from app.core.email import send_email_background, send_new_tenant_notification
 
 MAX_LOGO_BYTES = 5 * 1024 * 1024
 MAX_COVER_BYTES = 5 * 1024 * 1024
@@ -67,6 +67,7 @@ def require_owner(db: Session, user_id: int, tenant_id: int):
 @router.post("", response_model=TenantResponse)
 def create_tenant(
     data: TenantCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -132,7 +133,9 @@ def create_tenant(
     # Pošalji notifikaciju adminu
     total_tenants = db.query(Tenant).count()
     owner_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or current_user.email
-    send_new_tenant_notification(
+    background_tasks.add_task(
+        send_email_background,
+        send_new_tenant_notification,
         owner_email=current_user.email,
         owner_name=owner_name,
         tenant_name=new_tenant.name,

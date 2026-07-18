@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.billing import assert_tenant_writable
 from app.core.database import get_db
-from app.core.email import send_appointment_cancelled_email
+from app.core.email import send_appointment_cancelled_email, send_email_background
 from app.core.permissions import require_staff
 from app.core.scheduling import find_weekly_conflicting_appointments
 from app.core.security import get_current_user
@@ -62,6 +62,7 @@ def require_can_manage_hours(db: Session, current_user: User, tenant_id: int, em
 @router.post("", response_model=WorkingHoursSaveResult)
 def create_or_update_working_hours(
     data: WorkingHoursCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -176,19 +177,17 @@ def create_or_update_working_hours(
             customer = customers.get(a.customer_id)
             service = services.get(a.service_id)
             if customer is not None and customer.email:
-                try:
-                    send_appointment_cancelled_email(
-                        to_email=customer.email,
-                        customer_name=f"{customer.first_name} {customer.last_name}",
-                        service_name=service.name if service else "-",
-                        tenant_name=tenant.name if tenant else "-",
-                        start_time=a.start_time,
-                        reason=reason,
-                        tenant_timezone=tenant.timezone if tenant else "Europe/Sarajevo",
-                    )
-                except Exception as e:
-                    import logging
-                    logging.error(f"Appointment cancellation email nije poslan: {e}")
+                background_tasks.add_task(
+                    send_email_background,
+                    send_appointment_cancelled_email,
+                    to_email=customer.email,
+                    customer_name=f"{customer.first_name} {customer.last_name}",
+                    service_name=service.name if service else "-",
+                    tenant_name=tenant.name if tenant else "-",
+                    start_time=a.start_time,
+                    reason=reason,
+                    tenant_timezone=tenant.timezone if tenant else "Europe/Sarajevo",
+                )
             notified_info.append(ConflictingAppointmentInfo(
                 id=a.id,
                 start_time=a.start_time,

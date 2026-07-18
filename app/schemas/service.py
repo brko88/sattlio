@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 class ServiceCreate(BaseModel):
     tenant_id: int
     name: str = Field(max_length=60)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=500)
     duration_minutes: int
     price: float
     color: str | None = None
@@ -12,7 +12,7 @@ class ServiceCreate(BaseModel):
 
 class ServiceUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=60)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=500)
     duration_minutes: int | None = None
     price: float | None = None
     color: str | None = None

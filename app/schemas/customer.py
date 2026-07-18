@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.core.validators import normalize_email
 
 
 class CustomerCreate(BaseModel):
@@ -6,16 +8,26 @@ class CustomerCreate(BaseModel):
     first_name: str = Field(max_length=30)
     last_name: str = Field(max_length=30)
     phone: str | None = Field(default=None, max_length=20)
-    email: str | None = None
+    email: EmailStr | None = None
     notes: str | None = Field(default=None, max_length=300)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str | None) -> str | None:
+        return normalize_email(value) if value is not None else value
 
 
 class CustomerUpdate(BaseModel):
     first_name: str | None = Field(default=None, max_length=30)
     last_name: str | None = Field(default=None, max_length=30)
     phone: str | None = Field(default=None, max_length=20)
-    email: str | None = None
+    email: EmailStr | None = None
     notes: str | None = Field(default=None, max_length=300)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str | None) -> str | None:
+        return normalize_email(value) if value is not None else value
 
 
 class CustomerResponse(BaseModel):

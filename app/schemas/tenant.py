@@ -1,18 +1,25 @@
 ﻿from datetime import datetime
 import re
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.core.validators import normalize_email
 
 
 class TenantCreate(BaseModel):
     name: str = Field(max_length=100)
     address: str | None = Field(default=None, max_length=150)
     city: str | None = Field(default=None, max_length=50)
-    country: str | None = None
+    country: str | None = Field(default=None, max_length=60)
     phone: str | None = Field(default=None, max_length=20)
-    email: str | None = None
+    email: EmailStr | None = None
     jib: str
-    business_category: str | None = None
+    business_category: str | None = Field(default=None, max_length=60)
     description: str | None = Field(default=None, max_length=800)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str | None) -> str | None:
+        return normalize_email(value) if value is not None else value
 
     @field_validator("jib")
     @classmethod

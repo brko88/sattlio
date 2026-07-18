@@ -10,6 +10,30 @@ MEDIA_URL_PREFIX = "/api/media"
 
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
+UPLOAD_CHUNK_BYTES = 256 * 1024
+
+
+async def read_limited(file: UploadFile, max_bytes: int) -> bytes:
+    """
+    Cita upload u komadima i prekida CIM predje max_bytes, umjesto da prvo
+    ucita cijeli fajl u memoriju pa tek onda provjeri velicinu. Bez ovoga,
+    ako backend port ikad bude direktno mrezno izlozen (mimo nginx-ovog
+    body-size limita), proizvoljno veliki upload bi trosio memoriju/disk
+    prije nego se uopste odbije.
+    """
+    chunks = bytearray()
+    while True:
+        chunk = await file.read(UPLOAD_CHUNK_BYTES)
+        if not chunk:
+            break
+        chunks.extend(chunk)
+        if len(chunks) > max_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Fajl je prevelik. Maksimalno {max_bytes // (1024 * 1024)} MB.",
+            )
+    return bytes(chunks)
+
 
 def _open_and_normalize(raw: bytes) -> Image.Image:
     try:
@@ -61,9 +85,7 @@ async def process_and_save_image(
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail="Dozvoljeni formati: JPG, PNG, WEBP.")
 
-    raw = await file.read()
-    if len(raw) > max_bytes:
-        raise HTTPException(status_code=400, detail=f"Fajl je prevelik. Maksimalno {max_bytes // (1024 * 1024)} MB.")
+    raw = await read_limited(file, max_bytes)
 
     img = _open_and_normalize(raw)
 

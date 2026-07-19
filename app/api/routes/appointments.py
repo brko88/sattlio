@@ -136,14 +136,24 @@ def get_my_appointments(
         .all()
     )
 
-    tenants_by_id: dict[int, Tenant] = {}
+    if not appointments:
+        return []
+
+    # Batch-uj Service/Employee/Tenant umjesto po-termin upita u petlji - klijent
+    # sa 50 termina kod raznih salona inace pravi ~100 dodatnih upita.
+    service_ids = {a.service_id for a in appointments}
+    employee_ids = {a.employee_id for a in appointments}
+    tenant_ids = {a.tenant_id for a in appointments}
+
+    services_by_id = {s.id: s for s in db.query(Service).filter(Service.id.in_(service_ids)).all()}
+    employees_by_id = {e.id: e for e in db.query(Employee).filter(Employee.id.in_(employee_ids)).all()}
+    tenants_by_id = {t.id: t for t in db.query(Tenant).filter(Tenant.id.in_(tenant_ids)).all()}
+
     result = []
     for a in appointments:
-        service = db.query(Service).filter(Service.id == a.service_id).first()
-        employee = db.query(Employee).filter(Employee.id == a.employee_id).first()
-        if a.tenant_id not in tenants_by_id:
-            tenants_by_id[a.tenant_id] = db.query(Tenant).filter(Tenant.id == a.tenant_id).first()
-        tenant = tenants_by_id[a.tenant_id]
+        service = services_by_id.get(a.service_id)
+        employee = employees_by_id.get(a.employee_id)
+        tenant = tenants_by_id.get(a.tenant_id)
         result.append({
             "id": a.id,
             "employee_id": a.employee_id,

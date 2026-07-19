@@ -9,7 +9,7 @@ from app.core.pagination import paginate
 from app.core.permissions import require_staff
 from app.core.scheduling import get_effective_hours
 from app.core.security import get_current_user
-from app.core.timezone_utils import get_tenant_timezone
+from app.core.timezone_utils import get_tenant_timezone, zoneinfo_for_tenant
 from app.models.appointment import Appointment
 from app.models.customer import Customer
 from app.models.employee import Employee
@@ -66,9 +66,11 @@ def require_can_modify_appointment(db: Session, current_user, appointment, actio
             detail="Mozete otkazati samo vlastite rezervacije.",
         )
 
-def check_working_hours(db: Session, tenant_id: int, employee_id: int, start_time: datetime, end_time: datetime):
-    # Konvertuj u lokalno vrijeme za provjeru radnog vremena
-    tz = get_tenant_timezone(db, tenant_id)
+def check_working_hours(db: Session, tenant_id: int, employee_id: int, start_time: datetime, end_time: datetime, tenant=None):
+    # Konvertuj u lokalno vrijeme za provjeru radnog vremena. Ako je pozivalac
+    # vec ucitao Tenant (npr. iz assert_tenant_writable), proslijedi ga da se
+    # ista tabela ne upituje ponovo za isti tenant_id u istom zahtjevu.
+    tz = zoneinfo_for_tenant(tenant) if tenant is not None else get_tenant_timezone(db, tenant_id)
     local_start = start_time.astimezone(tz)
     local_end = end_time.astimezone(tz)
 
@@ -177,11 +179,11 @@ def create_appointment(
     current_user: User = Depends(get_current_user),
 ):
     require_staff(db, current_user.id, data.tenant_id)
-    assert_tenant_writable(db, data.tenant_id)
+    tenant = assert_tenant_writable(db, data.tenant_id)
 
     # Konvertuj u UTC sa timezone info
     if data.start_time.tzinfo is None:
-        tz = get_tenant_timezone(db, data.tenant_id)
+        tz = zoneinfo_for_tenant(tenant)
         start_time = data.start_time.replace(tzinfo=tz).astimezone(timezone.utc)
     else:
         start_time = data.start_time.astimezone(timezone.utc)
@@ -217,7 +219,7 @@ def create_appointment(
 
     end_time = start_time + timedelta(minutes=service.duration_minutes)
 
-    check_working_hours(db, data.tenant_id, data.employee_id, start_time, end_time)
+    check_working_hours(db, data.tenant_id, data.employee_id, start_time, end_time, tenant=tenant)
     check_overlap(db, data.employee_id, start_time, end_time)
 
     new_appointment = Appointment(

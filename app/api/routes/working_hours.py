@@ -13,7 +13,6 @@ from app.core.security import get_current_user
 from app.models.customer import Customer
 from app.models.employee import Employee
 from app.models.service import Service
-from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.models.working_hours import WorkingHours
@@ -67,7 +66,7 @@ def create_or_update_working_hours(
     current_user: User = Depends(get_current_user),
 ):
     require_can_manage_hours(db, current_user, data.tenant_id, data.employee_id)
-    assert_tenant_writable(db, data.tenant_id)
+    tenant = assert_tenant_writable(db, data.tenant_id)
 
     # Provjeri validnost pauze
     if data.break_start and data.break_end:
@@ -166,7 +165,6 @@ def create_or_update_working_hours(
 
     notified_info = []
     if conflicting:
-        tenant = db.query(Tenant).filter(Tenant.id == data.tenant_id).first()
         customers = {c.id: c for c in db.query(Customer).filter(
             Customer.id.in_([a.customer_id for a in conflicting])
         ).all()}

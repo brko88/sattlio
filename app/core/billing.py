@@ -96,10 +96,15 @@ def is_tenant_read_only(db: Session, tenant) -> bool:
     return True
 
 
-def assert_tenant_writable(db: Session, tenant_id: int) -> None:
-    """Poziva se u write rutama nakon provjere pristupa. Baca 403 ako je salon read-only."""
+def assert_tenant_writable(db: Session, tenant_id: int):
+    """
+    Poziva se u write rutama nakon provjere pristupa. Baca 403 ako je salon
+    read-only. Vraca uceitani Tenant (ili None) da pozivaoci koji odmah zatim
+    trebaju taj isti red (npr. za timezone) ne moraju ponovo upitati bazu.
+    """
     from app.models.tenant import Tenant
 
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if tenant is not None and is_tenant_read_only(db, tenant):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=READ_ONLY_DETAIL)
+    return tenant

@@ -15,7 +15,6 @@ from app.models.customer import Customer
 from app.models.employee import Employee
 from app.models.service import Service
 from app.models.special_day import SpecialDay
-from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.user_tenant_role import UserTenantRole
 from app.schemas.special_day import (
@@ -106,7 +105,7 @@ def create_special_day(
     current_user: User = Depends(get_current_user),
 ):
     require_can_manage_hours(db, current_user, data.tenant_id, data.employee_id)
-    assert_tenant_writable(db, data.tenant_id)
+    tenant = assert_tenant_writable(db, data.tenant_id)
 
     if data.is_working_day:
         if not data.start_time or not data.end_time:
@@ -217,7 +216,6 @@ def create_special_day(
 
     notified_info = []
     if conflicting:
-        tenant = db.query(Tenant).filter(Tenant.id == data.tenant_id).first()
         customers = {c.id: c for c in db.query(Customer).filter(
             Customer.id.in_([a.customer_id for a in conflicting])
         ).all()}

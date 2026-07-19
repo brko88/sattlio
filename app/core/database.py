@@ -6,6 +6,15 @@ from app.core.config import settings
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
+    # SQLAlchemy default (pool_size=5 + max_overflow=10 = 15) je bio usko
+    # grlo pod opterecenjem: sa vise istovremenih zahtjeva nego slobodnih
+    # konekcija, ostatak ceka u redu (pool_timeout, default 30s) dok baza
+    # sama ostaje skoro besposlena. 20 po worker procesu x 4 workera
+    # (vidi Dockerfile --workers 4) = maksimalno 80 konekcija, sigurno ispod
+    # Postgres-ovog max_connections=100 (default), sa rezervom za
+    # healthcheck/admin alate.
+    pool_size=10,
+    max_overflow=10,
 )
 
 if engine.dialect.name == "postgresql":

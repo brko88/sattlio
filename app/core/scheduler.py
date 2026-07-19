@@ -2,12 +2,22 @@ from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import text
 
 from app.core.database import SessionLocal
 from app.core.timezone_utils import get_tenant_timezone
 from app.models.appointment import Appointment
 
 scheduler = BackgroundScheduler()
+
+# Proizvoljan konstantan broj - identifikuje OVAJ posao za Postgres advisory
+# lock. Sa vise uvicorn worker procesa (--workers N), svaki proces pokrece
+# svoju kopiju BackgroundScheduler-a (on_startup se izvrsava po procesu), pa
+# bi se expire_past_appointments inace izvrsavao N puta paralelno na isti
+# tick. Lock osigurava da u datom trenutku posao stvarno radi samo JEDAN
+# worker - ostali ga preskoce (bezopasno, sljedeci tick za 30min ce ga
+# svakako pokupiti bilo koji slobodan worker).
+EXPIRE_JOB_LOCK_ID = 918273645
 
 
 def expire_past_appointments():
@@ -23,6 +33,14 @@ def expire_past_appointments():
     """
     db = SessionLocal()
     try:
+        # pg_try_advisory_xact_lock je transakciono-skopiran - automatski se
+        # oslobadja na commit/rollback, bez rucnog unlock-a (sigurno i uz
+        # connection pooling, gdje bi rucno "unlock" na recikliranoj konekciji
+        # moglo pogoditi pogresnu sesiju).
+        got_lock = db.execute(text("SELECT pg_try_advisory_xact_lock(:id)"), {"id": EXPIRE_JOB_LOCK_ID}).scalar()
+        if not got_lock:
+            return
+
         candidates = db.query(Appointment).filter(Appointment.status.in_(["created", "confirmed"])).all()
         tz_cache: dict[int, ZoneInfo] = {}
         now_utc = datetime.now(timezone.utc)

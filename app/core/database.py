@@ -8,13 +8,21 @@ engine = create_engine(
     pool_pre_ping=True,
     # SQLAlchemy default (pool_size=5 + max_overflow=10 = 15) je bio usko
     # grlo pod opterecenjem: sa vise istovremenih zahtjeva nego slobodnih
-    # konekcija, ostatak ceka u redu (pool_timeout, default 30s) dok baza
-    # sama ostaje skoro besposlena. 20 po worker procesu x 4 workera
-    # (vidi Dockerfile --workers 4) = maksimalno 80 konekcija, sigurno ispod
-    # Postgres-ovog max_connections=100 (default), sa rezervom za
-    # healthcheck/admin alate.
-    pool_size=10,
-    max_overflow=10,
+    # konekcija, ostatak ceka u redu dok baza sama ostaje skoro besposlena.
+    #
+    # VAZNO: pool je PO WORKER PROCESU, ne dijeljen. Stress test (21.07.2026.)
+    # je pokazao da se svaki worker zaglavi na SVOJIH 20 konekcija i onda baca
+    # "QueuePool limit of size 10 overflow 10 reached" - iako je baza mirna.
+    # 40 po workeru x 4 workera (vidi Dockerfile --workers 4) = maksimalno 160,
+    # ispod Postgres max_connections=200 (postavljen u docker-compose.yml),
+    # sa rezervom od 40 za healthcheck/migracije/psql.
+    pool_size=20,
+    max_overflow=20,
+    # Default je 30s. Zahtjev koji je 30 sekundi cekao slobodnu konekciju je
+    # ionako izgubljen - korisnik je odavno odustao - a dotle drzi worker nit
+    # zauzetu i pogorsava zagusenje. Bolje brzo odustati i vratiti 503 sa
+    # Retry-After (vidi handler u app/main.py) nego dugo visiti pa baciti 500.
+    pool_timeout=10,
 )
 
 if engine.dialect.name == "postgresql":

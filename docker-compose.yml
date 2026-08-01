@@ -1,6 +1,16 @@
-﻿services:
+﻿# Log rotation: bez ovoga docker logs raste neograniceno i vremenom napuni
+# disk. 50MB x 10 fajlova = do ~500MB istorije po kontejneru (par sedmica),
+# dovoljno da se unazad istrazi incident, a ograniceno.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "10"
+
+services:
   db:
     image: postgres:16
+    logging: *default-logging
     # max_connections=200: aplikacija smije 160 (4 uvicorn workera x pool 20+20,
     # vidi app/core/database.py), ostatak je rezerva za migracije/psql/healthcheck.
     command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all -c max_connections=200
@@ -20,6 +30,7 @@
 
   backend:
     build: .
+    logging: *default-logging
     depends_on:
       db:
         condition: service_healthy
@@ -44,6 +55,7 @@
 
   frontend:
     build: ./frontend
+    logging: *default-logging
     depends_on:
       - backend
     ports:

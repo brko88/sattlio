@@ -7,6 +7,7 @@ from sqlalchemy import text
 from app.core.database import SessionLocal
 from app.core.timezone_utils import get_tenant_timezone
 from app.models.appointment import Appointment
+from app.models.refresh_token import RefreshToken
 
 scheduler = BackgroundScheduler()
 
@@ -18,6 +19,7 @@ scheduler = BackgroundScheduler()
 # worker - ostali ga preskoce (bezopasno, sljedeci tick za 30min ce ga
 # svakako pokupiti bilo koji slobodan worker).
 EXPIRE_JOB_LOCK_ID = 918273645
+CLEANUP_TOKENS_LOCK_ID = 918273646
 
 
 def expire_past_appointments():
@@ -61,8 +63,41 @@ def expire_past_appointments():
         db.close()
 
 
+def cleanup_expired_refresh_tokens():
+    """
+    Brise ISTEKLE redove iz refresh_tokens - bez ovoga tabela raste neograniceno
+    (svaki login/refresh dodaje red, a niko nikad ne brise; korisnik koji samo
+    zatvori browser bez logout-a ostavlja red koji ceka expires_at + 30 dana).
+
+    NAMJERNO ne brise opozvane (is_revoked=true) a jos neistekle tokene: na
+    njima pociva replay detekcija - kad neko podnese opozvan token, sistem
+    prepozna kradju i ponisti cijelu family_id porodicu sesija. Obrisan red bi
+    replay pretvorio u obican "nije pronadjen" 401, bez alarma. Isteknu li,
+    ionako postaju beskorisni napadacu, pa ih je tad bezbjedno pocistiti.
+    """
+    db = SessionLocal()
+    try:
+        got_lock = db.execute(text("SELECT pg_try_advisory_xact_lock(:id)"), {"id": CLEANUP_TOKENS_LOCK_ID}).scalar()
+        if not got_lock:
+            return
+
+        deleted = (
+            db.query(RefreshToken)
+            .filter(RefreshToken.expires_at < datetime.now(timezone.utc))
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        if deleted:
+            import logging
+            logging.info(f"refresh_tokens cleanup: obrisano {deleted} isteklih redova.")
+    finally:
+        db.close()
+
+
 def start_scheduler():
     scheduler.add_job(expire_past_appointments, "interval", minutes=30, id="expire_past_appointments")
+    # Jednom dnevno je dovoljno - tabela raste sporo (red po loginu/refresh-u).
+    scheduler.add_job(cleanup_expired_refresh_tokens, "interval", hours=24, id="cleanup_expired_refresh_tokens")
     scheduler.start()
 
 

@@ -437,9 +437,15 @@ def get_platform_health(
     except Exception:
         pass
 
+    from app.core.database import get_pool_status
+
     return {
         "backend": {"status": "online"},
         "database": {"status": "online" if db_ok else "offline"},
+        # Popunjenost pool-a SAMO workera koji je opsluzio ovaj zahtjev (pool
+        # je po procesu; worker_pid kaze kojeg gledas). Za sliku sva 4 workera
+        # vidi periodicne "DB pool [pid ...]" linije u docker logs.
+        "connection_pool": get_pool_status(),
         "smtp": {"status": "online" if smtp_ok else "offline"},
         "paddle": {"status": "not_configured"},
     }

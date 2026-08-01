@@ -404,12 +404,8 @@ def change_password(
             detail="Trenutna lozinka nije tacna.",
         )
 
-    if len(data.new_password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nova lozinka mora imati barem 8 karaktera.",
-        )
-
+    # Duzina/jacina nove lozinke se provjerava u ChangePasswordRequest shemi
+    # (zajednicki validator, isti kao za registraciju i reset).
     current_user.password_hash = hash_password(data.new_password)
 
     # Poništi sve aktivne refresh tokene (uklj. trenutnu sesiju) - isti razlog

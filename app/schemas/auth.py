@@ -1,6 +1,6 @@
 ﻿from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from app.core.validators import normalize_email
+from app.core.validators import normalize_email, validate_password
 
 
 class RegisterRequest(BaseModel):
@@ -14,6 +14,11 @@ class RegisterRequest(BaseModel):
     @classmethod
     def validate_email(cls, value: str) -> str:
         return normalize_email(value)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        return validate_password(value)
 
     @field_validator("terms_accepted")
     @classmethod
@@ -74,6 +79,17 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        return validate_password(value)
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, value: str) -> str:
+        return validate_password(value)

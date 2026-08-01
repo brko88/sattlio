@@ -68,6 +68,15 @@ def create_or_update_working_hours(
     require_can_manage_hours(db, current_user, data.tenant_id, data.employee_id)
     tenant = assert_tenant_writable(db, data.tenant_id)
 
+    # Pocetak mora biti prije kraja (samo za radni dan - neradni dan legitimno
+    # nosi bilo kakva vremena jer se ne koriste). Bez ove provjere obrnut
+    # interval prodje i takav zaposleni "ne radi nikad" u slot kalkulaciji.
+    if data.is_working_day and data.start_time >= data.end_time:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Početak radnog vremena mora biti prije kraja.",
+        )
+
     # Provjeri validnost pauze
     if data.break_start and data.break_end:
         if data.break_start >= data.break_end:

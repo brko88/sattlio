@@ -14,11 +14,19 @@ interface PlatformStats {
   pending_tenants: number;
 }
 
+interface ConnectionPool {
+  worker_pid: number;
+  checked_out: number;
+  capacity: number;
+  utilization_pct: number;
+}
+
 interface PlatformHealth {
   backend: { status: string };
   database: { status: string };
   smtp: { status: string };
   paddle: { status: string };
+  connection_pool?: ConnectionPool;
 }
 
 interface WorkingHoursRangeDay {
@@ -40,7 +48,7 @@ const STAT_CARDS: { key: keyof PlatformStats; label: string }[] = [
   { key: "suspended_tenants", label: "Suspendovani" },
 ];
 
-const HEALTH_ITEMS: { key: keyof PlatformHealth; label: string }[] = [
+const HEALTH_ITEMS: { key: keyof Omit<PlatformHealth, "connection_pool">; label: string }[] = [
   { key: "backend", label: "Backend" },
   { key: "database", label: "Baza podataka" },
   { key: "smtp", label: "Email (SMTP)" },
@@ -132,6 +140,33 @@ function Dashboard() {
                       <StatusDot status={health[item.key].status} />
                     </div>
                   ))}
+
+                  {health.connection_pool && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-slate-700">Konekcije na bazu</span>
+                        <span className="text-sm text-slate-600">
+                          {health.connection_pool.checked_out}/{health.connection_pool.capacity}{" "}
+                          ({health.connection_pool.utilization_pct}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            health.connection_pool.utilization_pct >= 75
+                              ? "bg-red-500"
+                              : health.connection_pool.utilization_pct >= 50
+                              ? "bg-amber-400"
+                              : "bg-green-500"
+                          }`}
+                          style={{ width: `${Math.max(health.connection_pool.utilization_pct, 2)}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Jedan od 4 worker procesa (pid {health.connection_pool.worker_pid}) — puna slika u server logovima.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

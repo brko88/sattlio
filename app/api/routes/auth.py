@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import (
+    DUMMY_PASSWORD_HASH,
     hash_password,
     verify_password,
     create_access_token,
@@ -144,7 +145,14 @@ def login(request: Request, response: Response, data: LoginRequest, db: Session 
                 detail=f"Previše neuspješnih pokušaja prijave. Pokušajte ponovo za {ACCOUNT_LOCKOUT_MINUTES} minuta.",
             )
 
-    if not user or not verify_password(data.password, user.password_hash):
+    # Bcrypt se izvrsava UVIJEK, i kad email ne postoji (protiv laznog hasha) -
+    # inace bi nepostojeci email odgovarao ~20x brze i vrijeme odgovora bi
+    # odavalo ko ima nalog, iako je poruka greske namjerno ista u oba slucaja.
+    password_ok = verify_password(
+        data.password, user.password_hash if user else DUMMY_PASSWORD_HASH
+    )
+
+    if not user or not password_ok:
         if user is not None:
             user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
             if user.failed_login_attempts >= ACCOUNT_LOCKOUT_THRESHOLD:

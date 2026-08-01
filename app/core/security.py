@@ -25,6 +25,15 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
+# Lazni hash za izjednacavanje vremena odgovora na loginu. Bez njega, login za
+# NEPOSTOJECI email odgovara za ~9ms (preskoci bcrypt), a za postojeci sa
+# pogresnom lozinkom ~190ms - napadac stopericom pouzdano saznaje ko ima nalog,
+# iako je poruka greske ista. Kad korisnik ne postoji, lozinka se provjerava
+# protiv ovog hasha pa oba puta traju jednako (rezultat se ionako odbacuje).
+# Izracunat jednom pri startu procesa, ne po zahtjevu.
+DUMMY_PASSWORD_HASH = pwd_context.hash("timing-guard-dummy-password")
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 

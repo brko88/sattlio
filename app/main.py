@@ -1,4 +1,5 @@
-﻿import mimetypes
+﻿import logging
+import mimetypes
 from pathlib import Path
 
 from fastapi import FastAPI, Request, status
@@ -8,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.exc import TimeoutError as SQLAlchemyPoolTimeout
 
 from app.core.limiter import limiter
 from app.core.config import settings
@@ -74,6 +76,30 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": detail},
+    )
+
+
+@app.exception_handler(SQLAlchemyPoolTimeout)
+async def pool_timeout_handler(request: Request, exc: SQLAlchemyPoolTimeout):
+    """
+    Kad su sve konekcije iz pool-a zauzete, SQLAlchemy baca TimeoutError koji bi
+    inace izasao kao goli 500 ("Internal Server Error") - sto je i pogresno
+    (server radi, samo je preopterecen) i beskorisno korisniku.
+
+    503 + Retry-After je tacan odgovor: privremeno zagusenje, pokusaj ponovo.
+    Bitno i za buducnost: load balanceri i browseri razumiju 503 i ne racunaju ga
+    kao kvar aplikacije, dok 500 obicno pali alarme i retry logiku bez cekanja.
+    """
+    logging.warning(
+        "DB pool iscrpljen (%s %s) - vracen 503. Ako se ponavlja, povecati "
+        "pool_size/max_overflow u app/core/database.py i max_connections u Postgres-u.",
+        request.method,
+        request.url.path,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "Sistem je trenutno preopterećen. Pokušajte ponovo za nekoliko sekundi."},
+        headers={"Retry-After": "5"},
     )
 
 

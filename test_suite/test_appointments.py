@@ -8,7 +8,7 @@ kreirati duplikat rezervacije za isti termin).
 """
 import threading
 
-from conftest import register_and_login, create_tenant, auth_headers
+from conftest import register_and_login, create_tenant, create_employee, auth_headers
 
 
 def setup_booking_environment(client, email="booking@test.com"):
@@ -17,12 +17,7 @@ def setup_booking_environment(client, email="booking@test.com"):
     token = register_and_login(client, email=email)
     tenant_id = create_tenant(client, token, name="Booking Test Salon")
 
-    emp_response = client.post(
-        "/api/v1/employees",
-        json={"tenant_id": tenant_id, "first_name": "Frizer", "last_name": "Test"},
-        headers=auth_headers(token),
-    )
-    employee_id = emp_response.json()["id"]
+    employee_id = create_employee(client, token, tenant_id, first_name="Frizer", last_name="Test")
 
     for day in range(7):
         client.post(
@@ -81,7 +76,10 @@ def test_create_appointment_success(client):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "created"
-    assert data["end_time"] == "2026-12-01T10:30:00"
+    # API prima naivno vrijeme u tenant-ovoj zoni, a VRAĆA UTC (frontend
+    # konvertuje nazad preko tenant_timezone). 10:00 Sarajevo u decembru
+    # (CET, +1) = 09:00 UTC, pa je kraj termina od 30 min 09:30 UTC.
+    assert data["end_time"] == "2026-12-01T09:30:00"
 
 
 def test_overlapping_appointment_rejected(client):
@@ -118,12 +116,7 @@ def test_appointment_outside_working_hours_rejected(client):
     token = register_and_login(client, email="appt_no_wh@test.com")
     tenant_id = create_tenant(client, token, name="No WH Salon")
 
-    emp_response = client.post(
-        "/api/v1/employees",
-        json={"tenant_id": tenant_id, "first_name": "Bez", "last_name": "RadnogVremena"},
-        headers=auth_headers(token),
-    )
-    employee_id = emp_response.json()["id"]
+    employee_id = create_employee(client, token, tenant_id, first_name="Bez", last_name="RadnogVremena")
 
     srv_response = client.post(
         "/api/v1/services",

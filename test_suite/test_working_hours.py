@@ -4,16 +4,7 @@ Testovi za Working Hours modul.
 Pokriva i bug koji je otkriven u sesiji 26.06.2026: dodavanje radnog
 vremena za isti dan dva puta je pravilo duplikat umjesto ažuriranja.
 """
-from conftest import register_and_login, create_tenant, auth_headers
-
-
-def create_employee(client, token, tenant_id, first_name="Test", last_name="Employee"):
-    response = client.post(
-        "/api/v1/employees",
-        json={"tenant_id": tenant_id, "first_name": first_name, "last_name": last_name},
-        headers=auth_headers(token),
-    )
-    return response.json()["id"]
+from conftest import register_and_login, create_tenant, create_employee, auth_headers
 
 
 def test_create_working_hours_success(client):
@@ -33,8 +24,10 @@ def test_create_working_hours_success(client):
         headers=auth_headers(token),
     )
 
+    # Endpoint vraća SaveResult omotač: {saved, working_hours, conflicts}
     assert response.status_code == 200
-    assert response.json()["day_of_week"] == 0
+    assert response.json()["saved"] is True
+    assert response.json()["working_hours"]["day_of_week"] == 0
 
 
 def test_start_time_must_be_before_end_time(client):
@@ -122,7 +115,7 @@ def test_delete_working_hours(client):
         },
         headers=auth_headers(token),
     )
-    wh_id = create_response.json()["id"]
+    wh_id = create_response.json()["working_hours"]["id"]
 
     delete_response = client.delete(
         f"/api/v1/working-hours/{wh_id}", headers=auth_headers(token)

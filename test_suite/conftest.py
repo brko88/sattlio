@@ -60,18 +60,35 @@ def disable_real_email_sending(monkeypatch):
     """
     Sprečava testove da šalju stvarne email-ove kroz Gmail SMTP.
     Standardna praksa: eksterni servisi se simuliraju ("mock") u testovima.
+
+    Bitno: rute importuju email funkcije direktno (from app.core.email import X),
+    pa patch mora ići na SVAKI modul rute koji ih koristi, ne samo na
+    app.core.email. TestClient izvršava background taskove sinhrono, pa bi
+    nepokriven poziv stvarno pokušao SMTP konekciju i drastično usporio test.
     """
-    def fake_send_email(to_email, subject, body):
+    def fake_send(*args, **kwargs):
         pass
-
-    def fake_send_verification_email(to_email, token):
-        pass
-
-    monkeypatch.setattr(email_module, "send_email", fake_send_email)
-    monkeypatch.setattr(email_module, "send_verification_email", fake_send_verification_email)
 
     import app.api.routes.auth as auth_module
-    monkeypatch.setattr(auth_module, "send_verification_email", fake_send_verification_email)
+    import app.api.routes.employees as employees_module
+    import app.api.routes.appointments as appointments_module
+    import app.api.routes.working_hours as working_hours_module
+    import app.api.routes.special_days as special_days_module
+
+    for target, name in [
+        (email_module, "send_email"),
+        (email_module, "send_verification_email"),
+        (email_module, "send_password_reset_email"),
+        (email_module, "send_employee_invitation_email"),
+        (email_module, "send_appointment_cancelled_email"),
+        (auth_module, "send_verification_email"),
+        (auth_module, "send_password_reset_email"),
+        (employees_module, "send_employee_invitation_email"),
+        (appointments_module, "send_appointment_cancelled_email"),
+        (working_hours_module, "send_appointment_cancelled_email"),
+        (special_days_module, "send_appointment_cancelled_email"),
+    ]:
+        monkeypatch.setattr(target, name, fake_send, raising=False)
 
 
 @pytest.fixture
@@ -90,7 +107,13 @@ def register_and_login(client, email="test@example.com", password="lozinka123"):
     """Pomoćna funkcija: registruje korisnika, potvrđuje email (mimo API-ja, direktno u testnoj bazi) i vraća access_token."""
     client.post(
         "/api/v1/auth/register",
-        json={"email": email, "password": password, "first_name": "Test", "last_name": "Korisnik"},
+        json={
+            "email": email,
+            "password": password,
+            "first_name": "Test",
+            "last_name": "Korisnik",
+            "terms_accepted": True,
+        },
     )
 
     session = TestSessionLocal()
@@ -117,6 +140,26 @@ def create_tenant(client, token, name="Test Salon"):
     response = client.post(
         "/api/v1/tenants",
         json={"name": name, "city": "Banja Luka", "jib": str(_jib_counter[0])},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    return response.json()["id"]
+
+
+_emp_email_counter = [0]
+
+
+def create_employee(client, token, tenant_id, first_name="Test", last_name="Employee"):
+    """Pomoćna funkcija: kreira zaposlenog (email je obavezan u shemi —
+    pozivnica zaposlenom ide na email), vraća employee_id."""
+    _emp_email_counter[0] += 1
+    response = client.post(
+        "/api/v1/employees",
+        json={
+            "tenant_id": tenant_id,
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": f"zaposleni{_emp_email_counter[0]}@test.com",
+        },
         headers={"Authorization": f"Bearer {token}"},
     )
     return response.json()["id"]

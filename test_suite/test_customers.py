@@ -71,6 +71,7 @@ def test_customer_search_by_name(client):
         headers=auth_headers(token),
     )
 
-    results = response.json()
+    # GET /customers je paginiran: {items, total, page, page_size}
+    results = response.json()["items"]
     assert len(results) == 1
     assert results[0]["first_name"] == "Jovan"

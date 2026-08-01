@@ -7,7 +7,7 @@ potvrđuje: Tenant A ne može vidjeti podatke Tenant B."
 Ovo testira da TVOJ kod ispravno ODBIJA pokušaje pristupa tuđim podacima -
 nije pokušaj "probijanja" sistema, već provjera da postojeća zaštita radi.
 """
-from conftest import register_and_login, create_tenant, auth_headers
+from conftest import register_and_login, create_tenant, create_employee, auth_headers
 
 
 def setup_two_tenants(client):
@@ -31,11 +31,7 @@ def test_employee_cross_tenant_access_denied(client):
     setup = setup_two_tenants(client)
 
     # Owner A dodaje zaposlenog u svoj tenant
-    client.post(
-        "/api/v1/employees",
-        json={"tenant_id": setup["tenant_a_id"], "first_name": "Tajni", "last_name": "Zaposleni"},
-        headers=auth_headers(setup["token_a"]),
-    )
+    create_employee(client, setup["token_a"], setup["tenant_a_id"], first_name="Tajni", last_name="Zaposleni")
 
     # Owner B pokušava da vidi zaposlene Tenant-a A
     response = client.get(
@@ -52,7 +48,12 @@ def test_employee_cross_tenant_creation_denied(client):
 
     response = client.post(
         "/api/v1/employees",
-        json={"tenant_id": setup["tenant_a_id"], "first_name": "Upada", "last_name": "Silom"},
+        json={
+            "tenant_id": setup["tenant_a_id"],
+            "first_name": "Upada",
+            "last_name": "Silom",
+            "email": "upad.izolacija@test.com",
+        },
         headers=auth_headers(setup["token_b"]),
     )
 
@@ -107,12 +108,7 @@ def test_appointments_cross_tenant_access_denied(client):
 def test_working_hours_cross_tenant_access_denied(client):
     setup = setup_two_tenants(client)
 
-    emp_response = client.post(
-        "/api/v1/employees",
-        json={"tenant_id": setup["tenant_a_id"], "first_name": "Test", "last_name": "Employee"},
-        headers=auth_headers(setup["token_a"]),
-    )
-    employee_id = emp_response.json()["id"]
+    employee_id = create_employee(client, setup["token_a"], setup["tenant_a_id"])
 
     response = client.get(
         f"/api/v1/working-hours?tenant_id={setup['tenant_a_id']}&employee_id={employee_id}",
@@ -129,12 +125,7 @@ def test_cannot_use_employee_from_other_tenant_in_appointment(client):
     """
     setup = setup_two_tenants(client)
 
-    emp_response = client.post(
-        "/api/v1/employees",
-        json={"tenant_id": setup["tenant_a_id"], "first_name": "Employee", "last_name": "A"},
-        headers=auth_headers(setup["token_a"]),
-    )
-    employee_a_id = emp_response.json()["id"]
+    employee_a_id = create_employee(client, setup["token_a"], setup["tenant_a_id"], first_name="Employee", last_name="A")
 
     cust_response = client.post(
         "/api/v1/customers",

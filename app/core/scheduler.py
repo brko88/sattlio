@@ -1,10 +1,11 @@
+import logging
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import text
 
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, get_pool_status
 from app.core.timezone_utils import get_tenant_timezone
 from app.models.appointment import Appointment
 from app.models.refresh_token import RefreshToken
@@ -20,6 +21,20 @@ scheduler = BackgroundScheduler()
 # svakako pokupiti bilo koji slobodan worker).
 EXPIRE_JOB_LOCK_ID = 918273645
 CLEANUP_TOKENS_LOCK_ID = 918273646
+
+POOL_LOG_INTERVAL_MINUTES = 2
+POOL_WARN_THRESHOLD_PCT = 75
+
+# Vlastiti logger sa vlastitim handlerom: default root logger je na WARNING
+# nivou pa bi INFO linije (trend popunjenosti) bile tiho progutane i nikad
+# ne bi stigle u docker logs.
+pool_logger = logging.getLogger("sattlio.pool")
+if not pool_logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(levelname)s:     %(message)s"))
+    pool_logger.addHandler(_handler)
+    pool_logger.setLevel(logging.INFO)
+    pool_logger.propagate = False
 
 
 def expire_past_appointments():
@@ -94,10 +109,37 @@ def cleanup_expired_refresh_tokens():
         db.close()
 
 
+def log_pool_status():
+    """
+    Periodicni snimak popunjenosti DB connection pool-a: INFO za trend,
+    WARNING kad se priblizi iscrpljenju (rano upozorenje - 503 handler u
+    main.py se javi tek kad je pool VEC prazan).
+
+    NAMJERNO BEZ advisory locka, za razliku od ostala dva posla: pool je PO
+    WORKER PROCESU (4 odvojena pool-a od po 40), a stress test 21.07.2026. je
+    pokazao da se sistem rusi kad JEDAN worker potrosi svoj pool dok su ostali
+    mirni. Lock bi ostavio tri workera kao slijepu tacku - svaki worker mora
+    logovati svoje brojeve (pid u liniji kaze ciji su).
+    """
+    stats = get_pool_status()
+    message = (
+        f"DB pool [pid {stats['worker_pid']}]: "
+        f"{stats['checked_out']}/{stats['capacity']} ({stats['utilization_pct']}%)"
+    )
+    if stats["utilization_pct"] >= POOL_WARN_THRESHOLD_PCT:
+        pool_logger.warning(
+            f"{message} - blizu iscrpljenja! Ako se ponavlja, povecati "
+            f"pool_size/max_overflow (app/core/database.py) i max_connections (Postgres)."
+        )
+    else:
+        pool_logger.info(message)
+
+
 def start_scheduler():
     scheduler.add_job(expire_past_appointments, "interval", minutes=30, id="expire_past_appointments")
     # Jednom dnevno je dovoljno - tabela raste sporo (red po loginu/refresh-u).
     scheduler.add_job(cleanup_expired_refresh_tokens, "interval", hours=24, id="cleanup_expired_refresh_tokens")
+    scheduler.add_job(log_pool_status, "interval", minutes=POOL_LOG_INTERVAL_MINUTES, id="log_pool_status")
     scheduler.start()
 
 

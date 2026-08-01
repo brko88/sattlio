@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -47,3 +49,23 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def get_pool_status() -> dict:
+    """
+    Trenutna popunjenost connection pool-a OVOG worker procesa. Pool je po
+    procesu (svaki uvicorn worker ima svoj), pa worker_pid kaze ciji su
+    brojevi - bez njega bi 4 workera pisala nerazlucive linije, a citalac
+    admin/health odgovora bi pomislio da gleda cijelu aplikaciju.
+    """
+    pool = engine.pool
+    # _max_overflow nema javni getter na QueuePool-u; vrijednost je ista
+    # konstanta proslijedjena u create_engine iznad.
+    capacity = pool.size() + pool._max_overflow
+    checked_out = pool.checkedout()
+    return {
+        "worker_pid": os.getpid(),
+        "checked_out": checked_out,
+        "capacity": capacity,
+        "utilization_pct": round(checked_out / capacity * 100) if capacity else 0,
+    }

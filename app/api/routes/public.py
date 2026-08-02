@@ -138,7 +138,7 @@ def get_active_announcements(db: Session = Depends(get_db)):
 
 
 @router.get("/tenants", response_model=list[PublicTenantResponse])
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def get_public_tenants(
     request: Request,
     db: Session = Depends(get_db),
@@ -153,7 +153,7 @@ def get_public_tenants(
 
 
 @router.get("/tenants/{tenant_id}/employees", response_model=list[PublicEmployeeResponse])
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def get_tenant_public_employees(
     tenant_id: int,
     request: Request,
@@ -174,7 +174,7 @@ def get_tenant_public_employees(
 
 
 @router.get("/employees", response_model=list[PublicEmployeeResponse])
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def get_all_public_employees(
     request: Request,
     db: Session = Depends(get_db),
@@ -198,7 +198,7 @@ def get_all_public_employees(
 
 
 @router.get("/employees/{employee_id}", response_model=PublicEmployeeResponse)
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def get_public_employee(
     employee_id: int,
     request: Request,
@@ -225,7 +225,7 @@ def get_public_employee(
 
 
 @router.get("/employees/{employee_id}/services", response_model=list[PublicServiceResponse])
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def get_public_services(
     employee_id: int,
     request: Request,
@@ -255,7 +255,7 @@ def get_public_services(
 
 
 @router.get("/employees/{employee_id}/slots")
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def get_available_slots(
     employee_id: int,
     request: Request,
@@ -515,7 +515,7 @@ class PublicTenantDetailResponse(BaseModel):
 
 
 @router.get("/tenants/by-slug/{slug}", response_model=PublicTenantDetailResponse)
-@limiter.limit("30/minute")
+@limiter.limit("120/minute")
 def get_tenant_by_slug(
     slug: str,
     request: Request,

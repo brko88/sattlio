@@ -19,7 +19,27 @@ from app.api.routes import auth, tenants, employees, services, working_hours as 
 
 app = FastAPI(title="Sattlio API")
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """
+    Standardni slowapi 429 odgovor + log linija. Skok broja ovih linija na
+    javnim browse rutama je signal da CGNAT (mnogo korisnika iza istog
+    operaterskog IP-a) gusi legitiman saobracaj - reagovati podizanjem
+    limita ili finijim kljucem PRIJE nego sto stignu zalbe korisnika.
+    """
+    from app.core.limiter import user_or_ip
+    logging.warning(
+        "Rate limit 429: %s %s [kljuc %s, limit %s]",
+        request.method,
+        request.url.path,
+        user_or_ip(request),
+        exc.detail,
+    )
+    return _rate_limit_exceeded_handler(request, exc)
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 
 @app.exception_handler(RequestValidationError)

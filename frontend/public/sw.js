@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sattlio-v4';
+const CACHE_NAME = 'sattlio-v5';
 
 const STATIC_ASSETS = [
   '/',
@@ -79,9 +79,12 @@ self.addEventListener('fetch', (event) => {
 
   // index.html, manifest.json, ikonice — network first, fallback cache.
   // Mora ostati svjeze da update-banner mehanizam ispravno detektuje novu
-  // verziju (vidi UpdateBanner.tsx).
+  // verziju (vidi UpdateBanner.tsx). cache:'no-cache' tjera browser da
+  // revalidira kroz HTTP kes (ETag/304) umjesto da servira po heuristici -
+  // bez toga je SW-ov fetch() mogao dobiti STARI index.html iz HTTP kesa
+  // i korisnik bi vidio staru verziju do hard refresh-a.
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then((response) => {
         if (response.ok) {
           const responseClone = response.clone();

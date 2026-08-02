@@ -52,7 +52,16 @@ def create_access_token(user_id: int) -> str:
 def decode_access_token(token: str) -> dict | None:
     try:
         payload = jwt.decode(
-            token, settings.secret_key, algorithms=[settings.algorithm]
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+            # exp je OBAVEZAN claim: bez ovoga bi token potpisan tacnim secretom
+            # ali BEZ exp polja vazio zauvijek. Nasi tokeni exp uvijek imaju
+            # (create_access_token) - ovo brani od rucno skovanih "vjecnih"
+            # tokena ako SECRET_KEY ikad procuri (defense-in-depth).
+            # PAZNJA: python-jose sintaksa je "require_exp" - PyJWT-ov
+            # {"require": ["exp"]} bi bio TIHO ignorisan (testirano!).
+            options={"require_exp": True},
         )
         return payload
     except JWTError:

@@ -1,5 +1,7 @@
 # Sattlio Platform — Release Checklist v1.0
 
+> ⚠️ **ZASTARJELI SNAPSHOT (26.06.2026.) — NE ODRŽAVA SE.** Ovaj fajl je starija verzija istog dokumenta; živa, održavana verzija sa presjekom statusa svake stavke (✅/⏳, ažurirano 02.08.2026.) je **`RELEASE_CHECKLIST_v1.0.md`** u istom folderu. Sve ispod čitati samo kao istorijski zapis stanja od 26.06.2026. — velika većina "nedostataka" navedenih ovdje je u međuvremenu riješena.
+
 **Datum:** 26.06.2026.
 **Status:** Faza A + Faza B + Faza C + Faza C.5 (Test Suite) — KOMPLETNE
 **Sljedeća faza:** Faza D (Docker, deployment, security poliranje) — prije prvog stvarnog salona

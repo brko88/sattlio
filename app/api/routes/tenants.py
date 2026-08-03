@@ -51,6 +51,20 @@ def slugify(name: str) -> str:
     return slug
 
 
+# Javni profil salona zivi na korijenu (/naziv-salona), pa slug koji se poklapa
+# sa sistemskom rutom cini taj salon NEDOSTUPNIM - frontend rutira na svoju
+# stranicu, ne na profil. Zato se ovi nazivi preskacu (dobiju sufiks -1, -2...).
+# Mora ostati usklađeno sa frontend/src/reservedPaths.ts i rutama u App.tsx.
+RESERVED_SLUGS = {
+    "admin", "api", "book", "login", "register", "logout", "profile",
+    "dashboard", "calendar", "appointments", "customers", "services",
+    "employees", "working-hours", "settings", "onboarding", "create-tenant",
+    "my-appointments", "report-issue", "roadmap", "blog", "verify-email",
+    "forgot-password", "reset-password", "uslovi-koristenja",
+    "politika-privatnosti", "static", "assets", "media",
+}
+
+
 def require_owner(db: Session, user_id: int, tenant_id: int):
     role = db.query(UserTenantRole).filter(
         UserTenantRole.user_id == user_id,
@@ -87,7 +101,8 @@ def create_tenant(
     base_slug = slugify(data.name)
     slug = base_slug
     counter = 1
-    while db.query(Tenant).filter(Tenant.slug == slug).first():
+    # Petlja hvata i zauzet slug i sudar sa sistemskom rutom (RESERVED_SLUGS).
+    while slug in RESERVED_SLUGS or db.query(Tenant).filter(Tenant.slug == slug).first():
         counter += 1
         slug = f"{base_slug}-{counter}"
 

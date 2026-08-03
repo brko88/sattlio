@@ -88,14 +88,22 @@ function Landing() {
 function LandingHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const navLinks = [
+  /**
+   * Stavke sa `href` su sidra na ovoj stranici, stavke sa `to` vode na zasebnu
+   * rutu.
+   *
+   * Roadmap NAMJERNO vodi na punu stranicu, ne na sidro: mini sekcija je peta
+   * od šest na landingu, pa je skok na nju bacao posjetioca na 85% stranice
+   * (scrollbar skoro na dnu, ispod samo kontakt i podnožje) — djelovalo je kao
+   * da ga je odvelo na kraj. Puna stranica je ionako ono što stavka obećava.
+   */
+  const navLinks: { label: string; href?: string; to?: string }[] = [
     { href: `#${LANDING_SECTIONS.features}`, label: "Funkcionalnosti" },
     { href: `#${LANDING_SECTIONS.pricing}`, label: "Cijene" },
     { href: `#${LANDING_SECTIONS.industries}`, label: "Industrije" },
-    // Ranije je ovdje stajala "Integracija" → #integration, ali ta sekcija
-    // nikad nije napravljena (mrtav link). Roadmap sekcija POSTOJI i sad je
-    // konačno dostupna iz menija.
-    { href: `#${LANDING_SECTIONS.roadmap}`, label: "Roadmap" },
+    // Ranije je ovdje stajala "Integracija" → #integration, sekcija koja nikad
+    // nije napravljena (mrtav link).
+    { to: ROUTES.roadmap, label: "Roadmap" },
   ];
 
   return (
@@ -114,13 +122,27 @@ function LandingHeader() {
           <span className="font-bold text-slate-900 text-lg">{BRAND.productName}</span>
         </Link>
 
-        {/* Desktop navigacija — anchor linkovi ka sekcijama na istoj stranici */}
+        {/* Desktop navigacija — sidra na ovoj stranici + linkovi ka zasebnim rutama */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
-          {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className={`${ANIMATION.transitionClass} hover:text-blue-600`}>
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) =>
+            link.to ? (
+              <Link
+                key={link.label}
+                to={link.to}
+                className={`${ANIMATION.transitionClass} hover:text-blue-600`}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                className={`${ANIMATION.transitionClass} hover:text-blue-600`}
+              >
+                {link.label}
+              </a>
+            )
+          )}
         </nav>
 
         {/* Akcije u headeru — prijava i registracija + mobilni hamburger */}
@@ -164,19 +186,31 @@ function LandingHeader() {
         </div>
       </div>
 
-      {/* Mobilni padajući meni — anchor linkovi ka sekcijama */}
+      {/* Mobilni padajući meni — ista lista, sidra i rute */}
       {mobileNavOpen && (
         <nav className="md:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col gap-1 text-sm text-slate-600">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={() => setMobileNavOpen(false)}
-              className={`px-2 py-2.5 rounded-md ${ANIMATION.transitionClass} hover:bg-slate-50 hover:text-blue-600`}
-            >
-              {link.label}
-            </a>
-          ))}
+          {navLinks.map((link) => {
+            const itemClass = `px-2 py-2.5 rounded-md ${ANIMATION.transitionClass} hover:bg-slate-50 hover:text-blue-600`;
+            return link.to ? (
+              <Link
+                key={link.label}
+                to={link.to}
+                onClick={() => setMobileNavOpen(false)}
+                className={itemClass}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                onClick={() => setMobileNavOpen(false)}
+                className={itemClass}
+              >
+                {link.label}
+              </a>
+            );
+          })}
         </nav>
       )}
     </header>
@@ -267,7 +301,7 @@ function HeroSection() {
 function FeaturesSection() {
   return (
     // Sekcija sa id-jem za anchor navigaciju iz headera
-    <section id={LANDING_SECTIONS.features} className="py-16 md:py-20">
+    <section id={LANDING_SECTIONS.features} className="scroll-mt-24 py-16 md:py-20">
       <div className="max-w-6xl mx-auto px-4">
         {/* Naslov sekcije */}
         <h2 className={`${TYPOGRAPHY.sectionTitleClass} text-slate-900 text-center mb-3`}>
@@ -310,7 +344,7 @@ function PricingSection() {
   }, []);
 
   return (
-    <section id={LANDING_SECTIONS.pricing} className="py-16 md:py-20 bg-white border-y border-slate-200">
+    <section id={LANDING_SECTIONS.pricing} className="scroll-mt-24 py-16 md:py-20 bg-white border-y border-slate-200">
       <div className="max-w-6xl mx-auto px-4">
         <h2 className={`${TYPOGRAPHY.sectionTitleClass} text-slate-900 text-center mb-3`}>
           Jednostavan cjenovnik
@@ -413,7 +447,7 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
 // ---------------------------------------------------------------------------
 function IndustriesSection() {
   return (
-    <section id={LANDING_SECTIONS.industries} className="py-16 md:py-20">
+    <section id={LANDING_SECTIONS.industries} className="scroll-mt-24 py-16 md:py-20">
       <div className="max-w-6xl mx-auto px-4">
         <h2 className={`${TYPOGRAPHY.sectionTitleClass} text-slate-900 text-center mb-10`}>
           Za sve uslužne djelatnosti
@@ -467,7 +501,7 @@ function RoadmapSection() {
   ).filter((group): group is NonNullable<typeof group> => group !== undefined);
 
   return (
-    <section id={LANDING_SECTIONS.roadmap} className="py-16 md:py-20 bg-white border-y border-slate-200">
+    <section id={LANDING_SECTIONS.roadmap} className="scroll-mt-24 py-16 md:py-20 bg-white border-y border-slate-200">
       <div className="max-w-6xl mx-auto px-4">
         <h2 className={`${TYPOGRAPHY.sectionTitleClass} text-slate-900 text-center mb-3`}>
           Gdje smo i kuda idemo
@@ -535,7 +569,7 @@ function RoadmapSection() {
 // ---------------------------------------------------------------------------
 function ContactSection() {
   return (
-    <section id={LANDING_SECTIONS.contact} className="py-16 md:py-20 bg-white border-t border-slate-200">
+    <section id={LANDING_SECTIONS.contact} className="scroll-mt-24 py-16 md:py-20 bg-white border-t border-slate-200">
       <div className="max-w-6xl mx-auto px-4 text-center">
         <h2 className={`${TYPOGRAPHY.sectionTitleClass} text-slate-900 mb-3`}>
           Imate pitanja?

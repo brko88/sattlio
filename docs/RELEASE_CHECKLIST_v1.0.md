@@ -147,7 +147,7 @@ Redoslijed važan zbog zavisnosti između stavki. Detalji i tehničke skice za s
 
 ### 4.2 Infrastrukturna ograničenja *(presjek 02.08.2026.)*
 - ✅ **Docker implementiran** — uz kasnija poboljšanja: 4 uvicorn workera, DB pool 20+20/workeru + Postgres max_connections=200, pg_stat_statements, log rotation (50m×10), pool monitoring (periodični log + admin panel)
-- ✅ ~~**Nema audit log servisa**~~ — RIJEŠENO za admin akcije: `admin_action_logs` tabela + Audit log ekran u admin panelu (ko/šta/nad kim/kada)
+- 🟡 ~~**Nema audit log servisa**~~ — DJELIMIČNO: `admin_action_logs` tabela + bilježenje svih admin akcija (ko/šta/nad kim/kada) rade; ekran za pregled je još `ComingSoon` (ispravka 03.08.2026.)
 - ✅ ~~**Nema rate limiting-a**~~ — RIJEŠENO: auth rute (5-10/min), javne browse rute (120/min), self-booking (10/30s); ključ je user_id za ulogovane / IP za anonimne (CGNAT-otporno); svaki 429 se loguje. Poznata ograda: brojači su per-worker (efektivno do 4× limita) — precizno tek uz Redis, nije bloker
 - ✅ ~~**Nema brute-force zaštite**~~ — RIJEŠENO: account lockout u bazi (10 pokušaja → 15 min zaključan, precizno kroz sve workere) + IP rate limit + izjednačeno vrijeme odgovora (timing ne otkriva postoji li nalog)
 - ✅ ~~**Nema sigurnosnih HTTP headera**~~ — RIJEŠENO u `frontend/nginx.conf`: HSTS, CSP, X-Frame-Options DENY, X-Content-Type-Options, Referrer-Policy (+ Cache-Control politika 02.08.2026.)
@@ -258,7 +258,7 @@ Dopuna na osnovu Dokumenta 01, sekcija 3.1 (Super Administrator ovlaštenja) i n
 **Dodatne ideje (presjek 02.08.2026.):**
 - [x] Brza statistika po tenant-u — ✅ GOTOVO ("Detalji" dugme → tenant health pregled: vlasnik, zaposleni, usluge, radno vrijeme)
 - [x] Filter po statusu — ✅ GOTOVO (Sve / Na čekanju / Verifikovano / Suspendovano dugmad na Saloni stranici)
-- [x] Audit log pregled — ✅ GOTOVO (`admin_action_logs` + Audit log stranica; puni se od nastanka tabele)
+- 🟡 Audit log — **DJELIMIČNO** (ispravka 03.08.2026.): backend bilježi sve admin akcije u `admin_action_logs` i podaci se skupljaju od nastanka tabele, ALI `/admin/audit-log` ruta je vezana na `ComingSoon` placeholder — **prikaza još nema**. Ostaje: napraviti stranicu (lista + filter po adminu/akciji/datumu).
 - [ ] Brisanje User naloga (GDPR "right to be forgotten") — ⏳ i dalje otvoreno, relevantno tek za EU fazu
 
 **Status: Lista zapisana za buduće sesije. Redoslijed prioriteta nije fiksiran — odlučiti kad se dođe do implementacije, na osnovu toga šta se pokaže kao stvarno potrebno u praksi (npr. ako bude support upita "ko je registrovan na ovom mailu", to ide prvo).**
@@ -274,10 +274,10 @@ Dopuna na osnovu Dokumenta 01, sekcija 3.1 (Super Administrator ovlaštenja) i n
 
 ### 5.4 Operativna spremnost *(presjek 02.08.2026.)*
 - [ ] Pokrenuti kompletan test suite na produkcijskoj kopiji koda prije deploya — ⏳ (suite je zelen: 50/50 na dev-u, 01.08.2026.)
-- [x] Plan podrške za prve korisnike — ✅ OSNOVA POSTOJI: "Prijavi problem" u aplikaciji (email + WhatsApp + screenshot upload kroz support modul)
+- [x] Plan podrške za prve korisnike — ✅ OSNOVA POSTOJI: "Prijavi problem" forma u aplikaciji (sa uploadom screenshot-a) + email podrške. *(Ispravka 03.08.2026.: WhatsApp kao kanal podrške je uklonjen — ostaje samo forma + email.)*
 - [ ] Jednostavno uputstvo za vlasnika salona — ⏳
 - [x] Model pristupa za prve korisnike — ✅ ODLUČENO I IMPLEMENTIRANO: besplatna beta (jasno komunicirano na registraciji), beta-tester zaštita pri budućem paljenju naplate, interni test salon mehanizam za testiranje na produkciji
-- [x] Kanal za feedback — ✅ (isti support modul: email boris.kalamanda@gmail.com + WhatsApp)
+- [x] Kanal za feedback — ✅ (isti support modul: forma u aplikaciji + email podrške)
 
 ### 5.5 Monitoring (minimum za prvi launch) *(presjek 02.08.2026.)*
 - [ ] Osnovni uptime monitoring (spoljni servis koji pinga) — ⏳ na dan deploya (jeftino: UptimeRobot i sl.)

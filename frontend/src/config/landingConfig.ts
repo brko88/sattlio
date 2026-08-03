@@ -135,6 +135,8 @@ export const API = {
 export const ROUTES = {
   /** Javna landing stranica (ova stranica) */
   home: "/",
+  /** Javni roadmap — sadržaj u config/roadmapConfig.ts */
+  roadmap: "/roadmap",
   login: "/login",
   register: "/register",
   forgotPassword: "/forgot-password",
@@ -251,7 +253,7 @@ export const SEO = {
 // ---------------------------------------------------------------------------
 export const SOCIAL_LINKS = {
   facebook: "https://facebook.com/sattlio",
-  instagram: "https://instagram.com/sattlio",
+  instagram: "https://instagram.com/getsattlio",
   linkedin: "https://linkedin.com/company/sattlio",
   youtube: "https://youtube.com/@sattlio",
 } as const;

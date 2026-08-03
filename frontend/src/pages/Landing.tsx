@@ -14,7 +14,6 @@ import {
   BRAND,
   COLORS,
   CONTACT,
-  FEATURES_ROADMAP,
   FEATURES_TODAY,
   LANDING_SECTIONS,
   ROUTES,
@@ -25,6 +24,12 @@ import {
   TYPOGRAPHY,
   annualPriceKM,
 } from "../config/landingConfig";
+import {
+  MINI_ROADMAP_KEYS,
+  ROADMAP,
+  ROADMAP_STATUS_META,
+  miniRoadmapItems,
+} from "../config/roadmapConfig";
 
 interface PricingPlan {
   key: string;
@@ -87,7 +92,10 @@ function LandingHeader() {
     { href: `#${LANDING_SECTIONS.features}`, label: "Funkcionalnosti" },
     { href: `#${LANDING_SECTIONS.pricing}`, label: "Cijene" },
     { href: `#${LANDING_SECTIONS.industries}`, label: "Industrije" },
-    { href: `#${LANDING_SECTIONS.integration}`, label: "Integracija" },
+    // Ranije je ovdje stajala "Integracija" → #integration, ali ta sekcija
+    // nikad nije napravljena (mrtav link). Roadmap sekcija POSTOJI i sad je
+    // konačno dostupna iz menija.
+    { href: `#${LANDING_SECTIONS.roadmap}`, label: "Roadmap" },
   ];
 
   return (
@@ -452,29 +460,64 @@ function IndustryColumn({
 // RoadmapSection — planirane funkcionalnosti (Dok. 22)
 // ---------------------------------------------------------------------------
 function RoadmapSection() {
+  // Prikazuju se samo grupe iz MINI_ROADMAP_KEYS (urađeno / u izradi / planirano),
+  // i to samo stavke označene sa highlight — vizija i ideje su na punoj stranici.
+  const miniGroups = MINI_ROADMAP_KEYS.map((key) =>
+    ROADMAP.find((group) => group.key === key)
+  ).filter((group): group is NonNullable<typeof group> => group !== undefined);
+
   return (
     <section id={LANDING_SECTIONS.roadmap} className="py-16 md:py-20 bg-white border-y border-slate-200">
       <div className="max-w-6xl mx-auto px-4">
         <h2 className={`${TYPOGRAPHY.sectionTitleClass} text-slate-900 text-center mb-3`}>
-          Planirano u narednih 2 godine
+          Gdje smo i kuda idemo
         </h2>
-        <p className="text-slate-500 text-center mb-10">
-          Marketplace, mobilne aplikacije i napredne funkcionalnosti — sve na istom principu: jednostavno i korisno.
+        <p className="text-slate-500 text-center mb-10 max-w-2xl mx-auto">
+          Otvoreno objavljujemo šta je gotovo, na čemu radimo i šta slijedi.
         </p>
 
-        <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-          {FEATURES_ROADMAP.map((item) => (
-            <li
-              key={item}
-              className="flex items-start gap-3 text-sm text-slate-600 bg-slate-50 rounded-lg px-4 py-3 border border-slate-200"
-            >
-              <span className="text-blue-600 font-bold shrink-0" aria-hidden="true">
-                →
-              </span>
-              {item}
-            </li>
-          ))}
-        </ul>
+        {/* Tri kolone — po jedna grupa roadmapa */}
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {miniGroups.map((group) => {
+            const meta = ROADMAP_STATUS_META[group.status];
+            return (
+              <div
+                key={group.key}
+                className="bg-slate-50 rounded-xl border border-slate-200 p-5"
+              >
+                {/* Zaglavlje kolone — status uz tekst, ne samo boja */}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`w-2 h-2 rounded-full ${meta.dotClass}`} aria-hidden="true" />
+                  <h3 className="font-semibold text-slate-900 text-sm">{group.title}</h3>
+                </div>
+                {group.period && (
+                  <p className="text-xs text-slate-400 mb-4 ml-4">{group.period}</p>
+                )}
+
+                <ul className="space-y-2.5">
+                  {miniRoadmapItems(group).map((item) => (
+                    <li key={item.title} className="text-sm text-slate-600 flex gap-2">
+                      <span className="text-slate-300 shrink-0" aria-hidden="true">
+                        •
+                      </span>
+                      {item.title}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Link ka punoj stranici sa vizijom i idejama */}
+        <div className="text-center mt-8">
+          <Link
+            to={ROUTES.roadmap}
+            className={`inline-block px-6 py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl hover:border-blue-500 hover:text-blue-600 ${ANIMATION.transitionClass}`}
+          >
+            Pogledajte pun roadmap →
+          </Link>
+        </div>
       </div>
     </section>
   );
@@ -566,8 +609,11 @@ function LandingFooter() {
           </div>
         </div>
 
-        {/* Pravni linkovi */}
-        <div className="flex justify-center md:justify-start gap-4 text-xs mt-6 pt-6 border-t border-slate-700">
+        {/* Pravni linkovi + roadmap */}
+        <div className="flex flex-wrap justify-center md:justify-start gap-4 text-xs mt-6 pt-6 border-t border-slate-700">
+          <Link to={ROUTES.roadmap} className={`${ANIMATION.transitionClass} hover:text-white`}>
+            Roadmap
+          </Link>
           <Link to="/uslovi-koristenja" className={`${ANIMATION.transitionClass} hover:text-white`}>
             Uslovi korištenja
           </Link>

@@ -28,6 +28,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const Roadmap = lazy(() => import("./pages/Roadmap"));
 const BookAppointment = lazy(() => import("./pages/BookAppointment"));
 const SalonProfile = lazy(() => import("./pages/SalonProfile"));
 
@@ -234,6 +235,7 @@ function App() {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/uslovi-koristenja" element={<TermsOfService />} />
           <Route path="/politika-privatnosti" element={<PrivacyPolicy />} />
+          <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/book/:employeeId" element={<BookAppointment />} />
 
           <Route path="/*" element={<PublicOrApp />} />

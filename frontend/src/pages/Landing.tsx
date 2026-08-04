@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import BrandLogo from "../components/BrandLogo";
 import {
   ANIMATION,
   APPOINTMENT_STATUS_COLORS,
@@ -111,17 +112,8 @@ function LandingHeader() {
     // Sticky header — ostaje vidljiv pri scroll-u (Dok. 09, mobile sticky akcije)
     <header className="sticky top-[env(safe-area-inset-top)] z-50 bg-white/95 backdrop-blur border-b border-slate-200">
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-        {/* Logo / naziv brenda — Link na početnu (ROUTES.home) */}
-        <Link to={ROUTES.home} className="flex items-center gap-2">
-          {/* SVG ikona kalendara — minimalistički logo stil (Dok. 24 sekcija 14) */}
-          <span
-            className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm font-bold"
-            aria-hidden="true"
-          >
-            S
-          </span>
-          <span className="font-bold text-slate-900 text-lg">{BRAND.productName}</span>
-        </Link>
+        {/* Logo / naziv brenda — vidi components/BrandLogo.tsx */}
+        <BrandLogo />
 
         {/* Desktop navigacija — sidra na ovoj stranici + linkovi ka zasebnim rutama */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">

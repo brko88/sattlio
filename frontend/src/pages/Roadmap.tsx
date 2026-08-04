@@ -7,6 +7,7 @@
 
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import BrandLogo from "../components/BrandLogo";
 import {
   ANIMATION,
   BRAND,
@@ -38,15 +39,7 @@ function Roadmap() {
       {/* Jednostavan header — povratak na landing, bez pune navigacije */}
       <header className="sticky top-[env(safe-area-inset-top)] z-50 bg-white/95 backdrop-blur border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to={ROUTES.home} className="flex items-center gap-2">
-            <span
-              className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-sm font-bold"
-              aria-hidden="true"
-            >
-              S
-            </span>
-            <span className="font-bold text-slate-900 text-lg">{BRAND.productName}</span>
-          </Link>
+          <BrandLogo />
 
           <Link
             to={ROUTES.register}

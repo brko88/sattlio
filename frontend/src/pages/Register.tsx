@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
+import BrandLogo from "../components/BrandLogo";
 
 function Register() {
   const [firstName, setFirstName] = useState("");
@@ -40,7 +41,8 @@ function Register() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
+        <BrandLogo size="lg" className="mb-6" />
         <div className="bg-white rounded-lg shadow-sm p-8 w-full max-w-sm text-center">
           <h1 className="text-2xl font-bold text-slate-900 mb-4">
             Registracija uspješna
@@ -61,10 +63,11 @@ function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
+      <BrandLogo size="lg" className="mb-6" />
       <div className="bg-white rounded-lg shadow-sm p-8 w-full max-w-sm">
         <h1 className="text-2xl font-bold text-slate-900 mb-2">
-          Sattlio — Registracija
+          Registracija
         </h1>
 
         {/* Beta pristup — besplatno tokom beta faze */}

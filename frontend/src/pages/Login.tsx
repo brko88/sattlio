@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import api from "../services/api";
 import { vibrateSuccess } from "../utils/haptics";
+import BrandLogo from "../components/BrandLogo";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -73,10 +74,11 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4">
+      <BrandLogo size="lg" className="mb-6" />
       <div className="bg-white rounded-lg shadow-sm p-8 w-full max-w-sm">
         <h1 className="text-2xl font-bold text-slate-900 mb-6">
-          Sattlio - Prijava
+          Prijava
         </h1>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">

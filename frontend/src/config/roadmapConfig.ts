@@ -271,6 +271,19 @@ export const ROADMAP: RoadmapGroup[] = [
     status: "idea",
     intro: "Još nisu planirane. Ako vam neka od njih treba — javite, to mijenja prioritete.",
     items: [
+      {
+        title: "AI agent za rezervacije preko WhatsApp/Viber",
+        description: "Klijent zakazuje porukom, bez otvaranja aplikacije — agent provjeri slobodan termin i rezerviše direktno u vaš kalendar.",
+      },
+      {
+        title: "Pretvori rokovnik u digitalni kalendar",
+        // Bez konkretne brojke (npr. "30 sekundi") - vidi razgovor 03.08.2026.:
+        // uparivanje rukom pisanih zapisa sa stvarnim zaposlenim/uslugom/
+        // klijentom + prolazak kroz sve postojece provjere (radno vrijeme,
+        // preklapanje) je mnogo teze nego "OCR procita tekst", pa konkretno
+        // vremensko obecanje na javnoj stranici nosi rizik da ga ne ispunimo.
+        description: "Uslikaj svoj rokovnik. AI prepozna termine i sam ih prenese u aplikaciju.",
+      },
       { title: "Glasovno zakazivanje" },
       { title: "Video konsultacije" },
       { title: "Prodaja proizvoda kroz aplikaciju" },

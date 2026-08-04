@@ -20,7 +20,7 @@ import {
   SEO,
   SOCIAL_LINKS,
   SUBSCRIPTION,
-  TARGET_INDUSTRIES,
+  TARGET_CATEGORIES,
   TYPOGRAPHY,
   annualPriceKM,
 } from "../config/landingConfig";
@@ -36,6 +36,7 @@ interface PricingPlan {
   name: string;
   price_bam: number | null;
   price_label: string;
+  price_conversion_label: string | null;
   employee_limit: number | null;
   employee_limit_label: string;
   location_limit_label: string;
@@ -392,6 +393,12 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
       <h3 className="font-bold text-lg text-slate-900 mb-1">{plan.name}</h3>
       {/* Cijena */}
       <p className="text-2xl font-bold text-blue-600 mb-1">{plan.price_label}</p>
+      {/* Okvirna cijena u EUR/RSD — za posjetioce iz Srbije/Hrvatske, da ne
+          moraju sami računati konverziju. EUR je tačan (BAM/EUR je fiksni
+          currency board kurs), RSD je okvirna (tržišni kurs, vidi plans.py). */}
+      {plan.price_conversion_label && (
+        <p className="text-xs text-slate-400 mb-1">{plan.price_conversion_label}</p>
+      )}
       {/* Godišnja cijena sa popustom — prikaz samo za fiksne pakete */}
       {annual !== null && (
         <p className="text-xs text-slate-500 mb-3">
@@ -443,50 +450,30 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
 }
 
 // ---------------------------------------------------------------------------
-// IndustriesSection — ciljne industrije (Dok. 00 Growth Strategy)
+// IndustriesSection — ciljne djelatnosti, kompaktan prikaz (odluka 03.08.2026.:
+// bez "Godina 1/2/3" okvira - isti razlog kao roadmap pravilo #1, ne obećavati
+// javno redoslijed koji se lako promijeni. Ista lista kao dropdown u
+// CreateTenant.tsx (TARGET_CATEGORIES, landingConfig.ts).
 // ---------------------------------------------------------------------------
 function IndustriesSection() {
   return (
-    <section id={LANDING_SECTIONS.industries} className="scroll-mt-24 py-16 md:py-20">
-      <div className="max-w-6xl mx-auto px-4">
-        <h2 className={`${TYPOGRAPHY.sectionTitleClass} text-slate-900 text-center mb-10`}>
-          Za sve uslužne djelatnosti
+    <section id={LANDING_SECTIONS.industries} className="scroll-mt-24 py-12 md:py-16">
+      <div className="max-w-4xl mx-auto px-4 text-center">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-5">
+          Namijenjeno za
         </h2>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Godina 1 — Beauty & Wellness */}
-          <IndustryColumn title="Godina 1 — Beauty & Wellness" items={TARGET_INDUSTRIES.year1} />
-          {/* Godina 2 — Services */}
-          <IndustryColumn title="Godina 2 — Services" items={TARGET_INDUSTRIES.year2} />
-          {/* Godina 3 — Health */}
-          <IndustryColumn title="Godina 3 — Health" items={TARGET_INDUSTRIES.year3} />
+        <div className="flex flex-wrap justify-center gap-3">
+          {TARGET_CATEGORIES.map((category) => (
+            <span
+              key={category}
+              className="px-4 py-2 rounded-full bg-blue-50 text-blue-700 text-sm font-medium border border-blue-100"
+            >
+              {category}
+            </span>
+          ))}
         </div>
       </div>
     </section>
-  );
-}
-
-function IndustryColumn({
-  title,
-  items,
-}: {
-  title: string;
-  items: readonly string[];
-}) {
-  return (
-    <div className={`${COLORS.cardClass} rounded-xl border ${COLORS.borderClass} p-6 shadow-sm`}>
-      <h3 className="font-semibold text-slate-900 mb-4">{title}</h3>
-      <ul className="space-y-2">
-        {items.map((item) => (
-          <li key={item} className="text-sm text-slate-600 flex gap-2">
-            <span className="text-blue-600" aria-hidden="true">
-              •
-            </span>
-            {item}
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

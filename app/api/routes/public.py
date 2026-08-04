@@ -86,6 +86,7 @@ class PlanResponse(BaseModel):
     name: str
     price_bam: float | None
     price_label: str
+    price_conversion_label: str | None
     employee_limit: int | None
     employee_limit_label: str
     location_limit_label: str

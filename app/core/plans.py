@@ -14,6 +14,15 @@ do kojeg se plan smije popuniti.
 
 from dataclasses import dataclass, field
 
+# BAM/EUR je fiksni currency board kurs (zakonski, BiH) - nikad se ne mijenja,
+# pa je EUR cijena ispod TACNA, ne procjena.
+BAM_TO_EUR_RATE = 1.95583
+
+# RSD NIJE vezan za EUR/KM kao sto je slucaj sa BAM - trzisni kurs koji pluta.
+# Priblizna vrijednost, azurirati periodicno (npr. svakih par mjeseci) ako
+# znatnije odskoci. Za razliku od BAM_TO_EUR_RATE, ovo NIJE "postavi i zaboravi".
+RSD_PER_EUR = 117
+
 
 @dataclass(frozen=True)
 class Plan:
@@ -29,6 +38,21 @@ class Plan:
     excluded: tuple[str, ...] = field(default_factory=tuple)
     highlighted: bool = False
     cta_label: str = "Započni probni period"
+
+    @property
+    def price_conversion_label(self) -> str | None:
+        """
+        Okvirna cijena u EUR/RSD ispod glavne KM cijene - za regionalni launch
+        (Srbija/Hrvatska), da posjetilac ne mora sam racunati konverziju.
+        None za besplatan trial (price_bam=0) i "Po dogovoru" (price_bam=None) -
+        konverzija nema smisla ni za jedno ni za drugo.
+        """
+        if not self.price_bam:
+            return None
+        eur = self.price_bam / BAM_TO_EUR_RATE
+        rsd = eur * RSD_PER_EUR
+        rsd_str = f"{round(rsd):,}".replace(",", ".")
+        return f"≈{round(eur)} € / ≈{rsd_str} RSD"
 
 
 PLANS: dict[str, Plan] = {

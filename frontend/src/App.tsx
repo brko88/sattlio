@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useTenant } from "./contexts/TenantContext";
 
@@ -218,9 +218,30 @@ function RoleRouter() {
   return <Navigate to="/login" replace />;
 }
 
+/**
+ * ScrollToTop — React Router (BrowserRouter+Routes, ne data-router API) NE
+ * skroluje automatski na vrh pri promjeni rute - klik na Link zadrzava TACNU
+ * poziciju skrola sa prethodne stranice. Bez ovoga: skroluj do dna landinga
+ * (gdje zivi "Roadmap" dugme/link), klikni ga, i nova /roadmap stranica se
+ * otvori vec skrolovana na tu istu visinu u pikselima - djeluje kao da te
+ * "baca na dno", iako je nova stranica ucitana ispravno od vrha.
+ *
+ * Namjerno gleda SAMO pathname (ne cijeli location) - anchor linkovi na istoj
+ * stranici (#features, #pricing) ne prolaze kroz React Router uopste (obican
+ * <a href>, browser ih sam obradjuje), pa se ovaj efekat i ne pokrece za njih.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <UpdateBanner />
       <NetworkStatusBanner />
       <GlobalAnnouncementBanner />

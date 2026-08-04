@@ -2,25 +2,12 @@ import { useState } from "react";
 import api from "../services/api";
 import { useTenant } from "../contexts/TenantContext";
 import { useToast } from "../contexts/ToastContext";
+import { TARGET_CATEGORIES } from "../config/landingConfig";
 
-const BUSINESS_CATEGORIES = [
-  "Frizerski salon",
-  "Barber salon",
-  "Kozmetički salon",
-  "Masažni studio",
-  "Manikir / Pedikir",
-  "Tattoo studio",
-  "Spa centar",
-  "Fitnes studio",
-  "Ordinacija",
-  "Fizioterapija",
-  "Stomatologija",
-  "Servis računara",
-  "Servis mobilnih telefona",
-  "Automehaničar",
-  "Vulkanizer",
-  "Ostalo",
-];
+// "Ostalo" je catch-all samo za registracionu formu, ne i za landing chip
+// prikaz (vidi IndustriesSection u Landing.tsx) - TARGET_CATEGORIES je
+// jedini izvor istine za same djelatnosti.
+const BUSINESS_CATEGORIES = [...TARGET_CATEGORIES, "Ostalo"];
 
 function CreateTenant() {
   const [name, setName] = useState("");
@@ -179,7 +166,7 @@ function CreateTenant() {
           <div className="mb-4">
             <input
               type="text"
-              placeholder="JIB (13 cifara) *"
+              placeholder="Identifikacioni broj firme *"
               value={jib}
               onChange={(e) => setJib(e.target.value)}
               required
@@ -187,7 +174,7 @@ function CreateTenant() {
               className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
             />
             <p className="text-xs text-slate-400 mt-1">
-              Jedinstveni identifikacioni broj vašeg poslovnog subjekta
+              Unesite identifikacioni broj vaše firme (JIB, PIB ili OIB — 9 do 13 cifara)
             </p>
           </div>
 

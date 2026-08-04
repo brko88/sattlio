@@ -24,11 +24,18 @@ class TenantCreate(BaseModel):
     @field_validator("jib")
     @classmethod
     def validate_jib(cls, value: str) -> str:
+        """
+        Regionalni identifikacioni broj poslovnog subjekta - namjerno prihvata
+        raspon 9-13 cifara umjesto strogo 13, jer platforma pokriva vise zemalja:
+        BiH JIB = 13 cifara, Srbija PIB = 9 cifara, Hrvatska OIB = 11 cifara.
+        Ne provjeravamo tacan checksum algoritam po zemlji (van obima za MVP) -
+        samo format i trivijalni "ista cifra ponovljena" obrazac.
+        """
         value = value.strip()
-        if not re.fullmatch(r"\d{13}", value):
-            raise ValueError("JIB mora sadržavati tačno 13 cifara.")
+        if not re.fullmatch(r"\d{9,13}", value):
+            raise ValueError("Identifikacioni broj mora imati između 9 i 13 cifara.")
         if len(set(value)) == 1:
-            raise ValueError("JIB ne može sadržavati istu cifru ponovljenu 13 puta.")
+            raise ValueError("Identifikacioni broj ne može sadržavati istu cifru ponovljenu više puta.")
         return value
 
 

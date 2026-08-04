@@ -225,13 +225,20 @@ export const FEATURES_ROADMAP = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// INDUSTRIJE — Dokument 00 (Long-Term Vision + Growth Strategy)
+// CILJNE DJELATNOSTI — jedini izvor istine, koristi i landing (chip prikaz,
+// vidi IndustriesSection) i CreateTenant.tsx (dropdown + "Ostalo"). Ranija
+// verzija je imala "Godina 1/2/3" okvir (Dok. 00) - namjerno uklonjen
+// (odluka 03.08.2026.): javno obećavanje redoslijeda po godinama se lako
+// pretvori u "obećao pa nisi ispunio", isto obrazloženje kao kod roadmapa
+// (vidi roadmapConfig.ts pravilo #1).
 // ---------------------------------------------------------------------------
-export const TARGET_INDUSTRIES = {
-  year1: ["Frizerski saloni", "Barber saloni", "Kozmetički saloni", "Masažni studiji"],
-  year2: ["Automehaničari", "Vulkanizeri", "Servisi računara", "Servisi mobilnih telefona"],
-  year3: ["Stomatolozi", "Fizioterapeuti", "Privatne ordinacije"],
-} as const;
+export const TARGET_CATEGORIES = [
+  "Frizerski salon",
+  "Barber salon",
+  "Kozmetički salon",
+  "Masažni studio",
+  "Manikir / Pedikir",
+] as const;
 
 // ---------------------------------------------------------------------------
 // SEO — Dokument 23 (meta tagovi za javne stranice)
@@ -241,7 +248,7 @@ export const SEO = {
   description:
     "Jednostavna SaaS platforma za upravljanje rezervacijama, zaposlenima, klijentima i kalendarom. 14 dana besplatnog probnog perioda.",
   keywords:
-    "rezervacije, booking, salon, frizer, kalendar, SaaS, BiH, Sattlio, SmartBooking, upravljanje terminima",
+    "rezervacije, booking, salon, frizer, kalendar, SaaS, BiH, Srbija, Hrvatska, Sattlio, SmartBooking, upravljanje terminima",
   ogType: "website",
   locale: "bs_BA",
   /** robots.txt preporuka — Dok. 23: javna landing indeksirati, dashboard blokirati */

@@ -174,6 +174,17 @@ def login(request: Request, response: Response, data: LoginRequest, db: Session 
         user.failed_login_attempts = 0
         db.commit()
 
+    # Jedna aktivna sesija po nalogu — nov login poništi sve ostale (uklj. na
+    # drugim uređajima). Isti obrazac kao change_password/reset_password
+    # (bulk revoke po user_id), samo okinut na login umjesto na promjenu
+    # lozinke. Stari uređaj ne dobija posebnu poruku (nema push infrastrukture) -
+    # sljedeći put kad njegov access token istekne i pokusa tihi refresh, dobije
+    # 401 i frontend interceptor ga izloguje (postojeci mehanizam, vidi api.ts).
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.is_revoked == False,
+    ).update({"is_revoked": True})
+
     access_token, raw_refresh_token = issue_tokens(db, user.id)
     _set_refresh_cookie(response, raw_refresh_token)
     return AccessTokenResponse(access_token=access_token)

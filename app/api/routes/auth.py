@@ -367,8 +367,7 @@ def update_me(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    current_user.first_name = data.first_name
-    current_user.last_name = data.last_name
+    # Samo telefon. Ime i prezime se NE diraju - vidi UpdateProfileRequest.
     current_user.phone = data.phone
     db.commit()
     db.refresh(current_user)

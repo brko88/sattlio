@@ -15,8 +15,8 @@ function Profile() {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
+  // Ime i prezime se NE mogu mijenjati (vidi UpdateProfileRequest na backendu) —
+  // zato nemaju edit state, prikazuju se samo za čitanje.
   const [editPhone, setEditPhone] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
@@ -34,8 +34,6 @@ function Profile() {
       .get("/api/v1/auth/me")
       .then((res) => {
         setMe(res.data);
-        setEditFirstName(res.data.first_name || "");
-        setEditLastName(res.data.last_name || "");
         setEditPhone(res.data.phone || "");
       })
       .finally(() => setLoading(false));
@@ -48,8 +46,6 @@ function Profile() {
     setSavingProfile(true);
     try {
       const response = await api.put("/api/v1/auth/me", {
-        first_name: editFirstName,
-        last_name: editLastName,
         phone: editPhone || null,
       });
       setMe(response.data);
@@ -107,6 +103,13 @@ function Profile() {
             Osnovni podaci
           </h2>
           <div className="space-y-2 text-sm mb-4">
+            {/* Ime i prezime — samo prikaz, ne mogu se mijenjati nakon registracije */}
+            <div className="flex justify-between">
+              <span className="text-slate-500">Ime i prezime</span>
+              <span className="font-medium text-slate-900">
+                {[me.first_name, me.last_name].filter(Boolean).join(" ") || "—"}
+              </span>
+            </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Email</span>
               <span className="font-medium text-slate-900">{me.email}</span>
@@ -123,29 +126,13 @@ function Profile() {
             </div>
           </div>
 
+          {/* Objašnjenje zašto ime nije polje u formi ispod */}
+          <p className="text-xs text-slate-400 mb-4 pb-4 border-b border-slate-100">
+            Ime i prezime se postavljaju pri registraciji i ne mogu se naknadno
+            mijenjati. Ako je potrebna ispravka, obratite se podršci.
+          </p>
+
           <form onSubmit={handleSaveProfile}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-500 mb-2">Ime</label>
-              <input
-                type="text"
-                value={editFirstName}
-                onChange={(e) => setEditFirstName(e.target.value)}
-                required
-                maxLength={30}
-                className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-500 mb-2">Prezime</label>
-              <input
-                type="text"
-                value={editLastName}
-                onChange={(e) => setEditLastName(e.target.value)}
-                required
-                maxLength={30}
-                className="w-full px-3 py-2 border border-slate-200 rounded-md focus:outline-none focus:border-blue-500"
-              />
-            </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-slate-500 mb-2">Telefon (opciono)</label>
               <div className="flex gap-2">

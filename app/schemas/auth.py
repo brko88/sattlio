@@ -57,8 +57,17 @@ class UserResponse(BaseModel):
 
 
 class UpdateProfileRequest(BaseModel):
-    first_name: str = Field(max_length=30)
-    last_name: str = Field(max_length=30)
+    """
+    Ime i prezime NAMJERNO nisu ovdje - postavljaju se jednom, pri registraciji,
+    i korisnik ih poslije ne moze mijenjati. Ime vlasnika se vezuje za salon i
+    njegovu verifikaciju (JIB), pojavljuje se u admin evidenciji i u zapisu
+    administrativnih radnji - tiha promjena identiteta poslije verifikacije bi
+    tu evidenciju obesmislila.
+
+    Pydantic ignorise nepoznata polja, pa stariji klijent koji jos salje
+    first_name/last_name nece dobiti gresku - ta polja ce jednostavno biti
+    zanemarena.
+    """
     phone: str | None = Field(default=None, max_length=20)
 
 

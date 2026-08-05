@@ -131,6 +131,13 @@ function OwnerLayout() {
 
         <div className="flex flex-col gap-1 mb-2 border-t border-slate-700 pt-3">
           <Link
+            to="/faq"
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            Najčešća pitanja
+          </Link>
+          <Link
             to="/report-issue"
             onClick={() => setMobileOpen(false)}
             className="px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"

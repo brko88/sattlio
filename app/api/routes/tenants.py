@@ -59,7 +59,7 @@ RESERVED_SLUGS = {
     "admin", "api", "book", "login", "register", "logout", "profile",
     "dashboard", "calendar", "appointments", "customers", "services",
     "employees", "working-hours", "settings", "onboarding", "create-tenant",
-    "my-appointments", "report-issue", "roadmap", "blog", "verify-email",
+    "my-appointments", "report-issue", "faq", "roadmap", "video-uputstva", "blog", "verify-email",
     "forgot-password", "reset-password", "uslovi-koristenja",
     "politika-privatnosti", "static", "assets", "media",
 }

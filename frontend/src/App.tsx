@@ -29,6 +29,7 @@ const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Roadmap = lazy(() => import("./pages/Roadmap"));
+const VideoTutorials = lazy(() => import("./pages/VideoTutorials"));
 const BookAppointment = lazy(() => import("./pages/BookAppointment"));
 const SalonProfile = lazy(() => import("./pages/SalonProfile"));
 
@@ -48,6 +49,7 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Settings = lazy(() => import("./pages/Settings"));
 const ReportIssue = lazy(() => import("./pages/ReportIssue"));
+const FAQ = lazy(() => import("./pages/FAQ"));
 const AdminAnnouncements = lazy(() => import("./pages/AdminAnnouncements"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 
@@ -173,6 +175,7 @@ function RoleRouter() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/report-issue" element={<ReportIssue />} />
+          <Route path="/faq" element={<FAQ />} />
           <Route path="/create-tenant" element={<CreateTenant />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
@@ -192,6 +195,7 @@ function RoleRouter() {
           <Route path="/working-hours" element={<WorkingHours />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/report-issue" element={<ReportIssue />} />
+          <Route path="/faq" element={<FAQ />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
@@ -257,6 +261,7 @@ function App() {
           <Route path="/uslovi-koristenja" element={<TermsOfService />} />
           <Route path="/politika-privatnosti" element={<PrivacyPolicy />} />
           <Route path="/roadmap" element={<Roadmap />} />
+          <Route path="/video-uputstva" element={<VideoTutorials />} />
           <Route path="/book/:employeeId" element={<BookAppointment />} />
 
           <Route path="/*" element={<PublicOrApp />} />

@@ -27,11 +27,13 @@ export const RESERVED_PATHS = new Set<string>([
     "book",
     "profile",
     "report-issue",
+    "faq",
     // Admin
     "admin",
     // Javne marketing stranice (moraju biti i u RESERVED_SLUGS u
     // app/api/routes/tenants.py, da salon ne dobije slug koji ih poklapa)
     "roadmap",
+    "video-uputstva",
   ]);
   
   /** Vraća true ako je prvi segment putanje interna ruta (ne salon slug). */

@@ -21,7 +21,6 @@ import {
   SEO,
   SOCIAL_LINKS,
   SUBSCRIPTION,
-  TARGET_CATEGORIES,
   TYPOGRAPHY,
   annualPriceKM,
 } from "../config/landingConfig";
@@ -72,7 +71,7 @@ function Landing() {
         <HeroSection />
         <FeaturesSection />
         <PricingSection />
-        <IndustriesSection />
+        <LossCalculatorSection />
         <RoadmapSection />
         {/*<IntegrationSection />*/}
         <ContactSection />
@@ -102,7 +101,7 @@ function LandingHeader() {
   const navLinks: { label: string; href?: string; to?: string }[] = [
     { href: `#${LANDING_SECTIONS.features}`, label: "Funkcionalnosti" },
     { href: `#${LANDING_SECTIONS.pricing}`, label: "Cijene" },
-    { href: `#${LANDING_SECTIONS.industries}`, label: "Industrije" },
+    { href: `#${LANDING_SECTIONS.calculator}`, label: "Kalkulator" },
     // Ranije je ovdje stajala "Integracija" → #integration, sekcija koja nikad
     // nije napravljena (mrtav link).
     { to: ROUTES.roadmap, label: "Roadmap" },
@@ -442,27 +441,131 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
 }
 
 // ---------------------------------------------------------------------------
-// IndustriesSection — ciljne djelatnosti, kompaktan prikaz (odluka 03.08.2026.:
-// bez "Godina 1/2/3" okvira - isti razlog kao roadmap pravilo #1, ne obećavati
-// javno redoslijed koji se lako promijeni. Ista lista kao dropdown u
-// CreateTenant.tsx (TARGET_CATEGORIES, landingConfig.ts).
+// LossCalculatorSection — interaktivni kalkulator gubitka od nedolazaka.
+// Zamijenio raniju IndustriesSection (odluka 05.08.2026.) — chip lista
+// djelatnosti manje uvjerljiva od konkretne cifre. Cijena za poređenje je
+// istaknuti (highlighted) paket iz istog /public/plans endpointa koji koristi
+// PricingSection, ne hardkodovana vrijednost — ostaje tačna ako se plans.py
+// ikad promijeni.
 // ---------------------------------------------------------------------------
-function IndustriesSection() {
+function LossCalculatorSection() {
+  const [avgPrice, setAvgPrice] = useState(30);
+  const [noShows, setNoShows] = useState(3);
+  const [highlightedPlan, setHighlightedPlan] = useState<PricingPlan | null>(null);
+
+  useEffect(() => {
+    api
+      .get("/api/v1/public/plans")
+      .then((res) => {
+        const plans = res.data as PricingPlan[];
+        setHighlightedPlan(plans.find((p) => p.highlighted) ?? null);
+      })
+      .catch(() => setHighlightedPlan(null));
+  }, []);
+
+  // Prosjek 4.33 sedmice/mjesec (52/12), ne grubo x4 — tačnije na duži rok.
+  const monthlyLoss = Math.round(avgPrice * noShows * (52 / 12));
+  const annualLoss = Math.round(avgPrice * noShows * 52);
+  const planPrice = highlightedPlan?.price_bam ?? null;
+  const netMonthly = planPrice !== null ? Math.round(monthlyLoss - planPrice) : null;
+
   return (
-    <section id={LANDING_SECTIONS.industries} className="scroll-mt-24 py-12 md:py-16">
-      <div className="max-w-4xl mx-auto px-4 text-center">
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-5">
-          Namijenjeno za
+    <section id={LANDING_SECTIONS.calculator} className="scroll-mt-24 py-16 md:py-20">
+      <div className="max-w-4xl mx-auto px-4">
+        <h2 className={`${TYPOGRAPHY.sectionTitleClass} text-slate-900 text-center mb-3`}>
+          Koliko gubite na nedolascima?
         </h2>
-        <div className="flex flex-wrap justify-center gap-3">
-          {TARGET_CATEGORIES.map((category) => (
-            <span
-              key={category}
-              className="px-4 py-2 rounded-full bg-blue-50 text-blue-700 text-sm font-medium border border-blue-100"
+        <p className="text-slate-500 text-center mb-10 max-w-2xl mx-auto">
+          Svaki nedolazak je prazan termin koji niko drugi nije mogao rezervisati. Pomjerite
+          klizače i vidite pravu cifru.
+        </p>
+
+        <div className={`${COLORS.cardClass} rounded-xl shadow-sm border ${COLORS.borderClass} p-6 md:p-10`}>
+          {/* Dva klizača — cijena usluge i broj nedolazaka sedmično */}
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            <div>
+              <div className="flex justify-between items-baseline mb-2">
+                <label htmlFor="calc-price" className="text-sm font-medium text-slate-700">
+                  Prosječna cijena usluge
+                </label>
+                <span className="text-lg font-bold text-blue-600">{avgPrice} KM</span>
+              </div>
+              <input
+                id="calc-price"
+                type="range"
+                min={10}
+                max={200}
+                step={5}
+                value={avgPrice}
+                onChange={(e) => setAvgPrice(Number(e.target.value))}
+                className="w-full accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-slate-400 mt-1">
+                <span>10 KM</span>
+                <span>200 KM</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-baseline mb-2">
+                <label htmlFor="calc-noshows" className="text-sm font-medium text-slate-700">
+                  Nedolasci sedmično
+                </label>
+                <span className="text-lg font-bold text-blue-600">{noShows}</span>
+              </div>
+              <input
+                id="calc-noshows"
+                type="range"
+                min={0}
+                max={15}
+                step={1}
+                value={noShows}
+                onChange={(e) => setNoShows(Number(e.target.value))}
+                className="w-full accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-slate-400 mt-1">
+                <span>0</span>
+                <span>15</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Rezultat — gubitak nasuprot cijeni istaknutog paketa */}
+          <div className="grid sm:grid-cols-2 gap-4 text-center">
+            <div className="bg-red-50 rounded-lg p-5 border border-red-100">
+              <p className="text-xs text-red-500 font-medium uppercase tracking-wide mb-1">
+                Mjesečni gubitak
+              </p>
+              <p className="text-3xl font-bold text-red-600">{monthlyLoss} KM</p>
+              <p className="text-xs text-slate-400 mt-1">≈ {annualLoss} KM godišnje</p>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-5 border border-blue-100">
+              <p className="text-xs text-blue-500 font-medium uppercase tracking-wide mb-1">
+                {highlightedPlan ? `Sattlio ${highlightedPlan.name}` : "Sattlio pretplata"}
+              </p>
+              <p className="text-3xl font-bold text-blue-600">
+                {planPrice !== null ? `${planPrice.toFixed(2).replace(".", ",")} KM` : "…"}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">mjesečno</p>
+            </div>
+          </div>
+
+          {netMonthly !== null && netMonthly > 0 && (
+            <p className="text-center text-sm text-slate-600 mt-6">
+              To je{" "}
+              <span className="font-semibold text-slate-900">{netMonthly} KM</span> mjesečno koje
+              trenutno odlazi u prazne termine — više nego što košta cijela pretplata.
+            </p>
+          )}
+
+          <div className="text-center mt-8">
+            <Link
+              to={ROUTES.register}
+              className={`inline-block px-6 py-3 ${COLORS.primaryClass} text-white font-medium rounded-xl ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
             >
-              {category}
-            </span>
-          ))}
+              Započni besplatno — {SUBSCRIPTION.trialDays} dana
+            </Link>
+          </div>
         </div>
       </div>
     </section>

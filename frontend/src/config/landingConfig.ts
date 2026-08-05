@@ -174,7 +174,7 @@ export const ROUTES = {
 export const LANDING_SECTIONS = {
   features: "features",
   pricing: "pricing",
-  industries: "industries",
+  calculator: "kalkulator",
   roadmap: "roadmap",
   integration: "integration",
   contact: "contact",

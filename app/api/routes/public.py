@@ -456,9 +456,16 @@ def self_book_appointment(
     if overlapping:
         raise HTTPException(status_code=409, detail="Termin je već zauzet.")
 
-    # Ne blokiramo termine u drugim salonima u isto vrijeme (npr. rezervacija za
-    # sebe u jednom, za dijete u drugom) - samo upozoravamo, korisnik svjesno
-    # potvrdjuje da nastavi (override_conflict) ako je namjerno.
+    # Ne blokiramo drugi termin u isto vrijeme (npr. rezervacija za sebe kod
+    # jednog zaposlenog, za dijete kod drugog - u istom ili drugom salonu) -
+    # samo upozoravamo, korisnik svjesno potvrdjuje da nastavi
+    # (override_conflict) ako je namjerno. Ranije je ovo provjeravalo SAMO
+    # druge salone (Appointment.tenant_id != employee.tenant_id) - isti salon
+    # sa drugim zaposlenim je prolazio bez ikakvog upozorenja (otkriveno
+    # 24.08.2026, klijent zakazao kod dva razlicita zaposlena u istom salonu
+    # u isti termin). Sad se provjerava bilo koji drugi zaposleni, isti ili
+    # drugi salon - jedini izuzetak je TACNO isti employee_id, koji je vec
+    # tvrdo blokiran provjerom iznad (overlapping).
     if not data.override_conflict:
         conflict = (
             db.query(Appointment, Tenant.name)
@@ -466,7 +473,7 @@ def self_book_appointment(
             .join(Tenant, Appointment.tenant_id == Tenant.id)
             .filter(
                 Customer.email == current_user.email,
-                Appointment.tenant_id != employee.tenant_id,
+                Appointment.employee_id != data.employee_id,
                 Appointment.status.in_(["created", "confirmed"]),
                 Appointment.start_time < end_time,
                 Appointment.end_time > start_time,

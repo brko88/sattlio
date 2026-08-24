@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Avatar from "../components/Avatar";
@@ -24,6 +24,19 @@ interface Employee {
 
 function SkeletonCard() {
   return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden animate-pulse">
+      <div className="h-36 sm:h-40 bg-slate-200" />
+      <div className="p-4 pt-6 space-y-2">
+        <div className="h-4 bg-slate-200 rounded w-2/3" />
+        <div className="h-3 bg-slate-100 rounded w-1/3" />
+        <div className="h-3 bg-slate-100 rounded w-1/2" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonRow() {
+  return (
     <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 animate-pulse">
       <div className="flex items-center gap-3">
         <div className="w-11 h-11 rounded-full bg-slate-200" />
@@ -44,6 +57,9 @@ function BookingLanding() {
   const [loading, setLoading] = useState(true);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [cityFilter, setCityFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
     api
@@ -52,6 +68,37 @@ function BookingLanding() {
       .catch(() => setError("Greška prilikom učitavanja salona."))
       .finally(() => setLoading(false));
   }, []);
+
+  const cities = useMemo(
+    () => Array.from(new Set(tenants.map((t) => t.city).filter((c): c is string => !!c))).sort(),
+    [tenants]
+  );
+  const categories = useMemo(
+    () => Array.from(new Set(tenants.map((t) => t.business_category).filter((c): c is string => !!c))).sort(),
+    [tenants]
+  );
+
+  const filteredTenants = useMemo(() => {
+    const q = search.trim().toLocaleLowerCase("bs");
+    return tenants.filter((t) => {
+      if (cityFilter && t.city !== cityFilter) return false;
+      if (categoryFilter && t.business_category !== categoryFilter) return false;
+      if (!q) return true;
+      return (
+        t.name.toLocaleLowerCase("bs").includes(q) ||
+        (t.city ?? "").toLocaleLowerCase("bs").includes(q) ||
+        (t.address ?? "").toLocaleLowerCase("bs").includes(q)
+      );
+    });
+  }, [tenants, search, cityFilter, categoryFilter]);
+
+  const filtersActive = search.trim() !== "" || cityFilter !== "" || categoryFilter !== "";
+
+  const resetFilters = () => {
+    setSearch("");
+    setCityFilter("");
+    setCategoryFilter("");
+  };
 
   const handleSelectTenant = async (tenant: Tenant) => {
     setSelectedTenant(tenant);
@@ -99,13 +146,45 @@ function BookingLanding() {
             <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Odaberite salon</h2>
             {!loading && tenants.length > 0 && (
               <span className="text-xs bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded-full">
-                {tenants.length}
+                {filteredTenants.length}
               </span>
             )}
           </div>
 
+          {!loading && tenants.length > 0 && (
+            <div className="flex flex-col sm:flex-row gap-3 mb-5">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Pretraga po nazivu, gradu ili adresi..."
+                className="w-full sm:flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full sm:w-56 px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500 bg-white"
+              >
+                <option value="">Sve kategorije</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="w-full sm:w-48 px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-blue-500 bg-white"
+              >
+                <option value="">Svi gradovi</option>
+                {cities.map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {loading ? (
-            <div className="grid gap-3 max-w-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
@@ -117,32 +196,65 @@ function BookingLanding() {
               </div>
               <p className="text-slate-500 text-sm">Trenutno nema dostupnih salona.</p>
             </div>
+          ) : filteredTenants.length === 0 ? (
+            <div className="bg-white rounded-xl p-10 text-center border border-slate-100">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-xl">
+                🔍
+              </div>
+              <p className="text-slate-500 text-sm mb-3">Nema salona koji odgovaraju pretrazi.</p>
+              {filtersActive && (
+                <button
+                  onClick={resetFilters}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Poništi filtere
+                </button>
+              )}
+            </div>
           ) : (
-            <div className="grid gap-3 max-w-lg">
-              {tenants.map((tenant) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredTenants.map((tenant) => (
                 <button
                   key={tenant.id}
                   onClick={() => handleSelectTenant(tenant)}
-                  className="group bg-white rounded-xl p-5 shadow-sm text-left transition-all duration-200 border border-slate-100 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5"
+                  className="group bg-white rounded-xl shadow-sm text-left transition-all duration-200 border border-slate-100 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5 overflow-hidden flex flex-col"
                 >
-                  <div className="flex items-start gap-3">
-                    <Avatar src={tenant.logo_url} firstName={tenant.name} size={44} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-900 text-base truncate">{tenant.name}</p>
-                      {tenant.business_category && (
-                        <span className="inline-block text-xs bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded-full mt-1">
-                          {tenant.business_category}
-                        </span>
-                      )}
-                      {tenant.city && (
-                        <p className="text-sm text-slate-500 mt-1.5 flex items-center gap-1">
-                          <span>📍</span> {tenant.city}{tenant.address ? `, ${tenant.address}` : ""}
-                        </p>
-                      )}
+                  <div className="relative w-full h-36 sm:h-40 bg-slate-800 shrink-0">
+                    {tenant.cover_url ? (
+                      <img src={tenant.cover_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-slate-700 to-slate-900" />
+                    )}
+                    <div className="absolute -bottom-5 left-4">
+                      <Avatar
+                        src={tenant.logo_url}
+                        firstName={tenant.name}
+                        size={44}
+                        className="ring-4 ring-white shadow-md"
+                      />
                     </div>
-                    <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity self-center text-lg">
-                      →
-                    </span>
+                  </div>
+
+                  <div className="flex-1 flex flex-col p-4 pt-7">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold text-slate-900 text-base truncate">{tenant.name}</p>
+                      <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-lg">
+                        →
+                      </span>
+                    </div>
+                    {tenant.business_category && (
+                      <span className="inline-block w-fit text-xs bg-blue-50 text-blue-700 font-medium px-2 py-0.5 rounded-full mt-1.5">
+                        {tenant.business_category}
+                      </span>
+                    )}
+                    {tenant.description && (
+                      <p className="text-sm text-slate-500 mt-2 line-clamp-2">{tenant.description}</p>
+                    )}
+                    {tenant.city && (
+                      <p className="text-sm text-slate-500 mt-auto pt-2.5 flex items-center gap-1">
+                        <span>📍</span> {tenant.city}{tenant.address ? `, ${tenant.address}` : ""}
+                      </p>
+                    )}
                   </div>
                 </button>
               ))}
@@ -179,8 +291,8 @@ function BookingLanding() {
 
           {loadingEmployees ? (
             <div className="grid gap-3 max-w-lg">
-              <SkeletonCard />
-              <SkeletonCard />
+              <SkeletonRow />
+              <SkeletonRow />
             </div>
           ) : employees.length === 0 ? (
             <div className="bg-white rounded-xl p-10 text-center border border-slate-100">

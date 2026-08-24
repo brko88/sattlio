@@ -6,6 +6,8 @@ from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
 
 from app.core.config import settings
+from app.core.database import SessionLocal
+from app.models.email_log import EmailLog
 
 ADMIN_EMAIL = "podrska@sattlio.com"
 
@@ -14,17 +16,40 @@ ADMIN_EMAIL = "podrska@sattlio.com"
 # umjesto da baci exception koji vec postojeci try/except blokovi hvataju.
 SMTP_TIMEOUT_SECONDS = 10
 
+# Gmail (besplatan nalog) blokira slanje na 24h nakon 500 emailova u rolling
+# 24h prozoru. Koristi se za brojac u Admin panelu (Dashboard > Platform Health).
+GMAIL_DAILY_LIMIT = 500
 
-def send_email(to_email: str, subject: str, body: str):
+
+def _log_email_attempt(email_type: str, to_email: str, success: bool, error: str | None = None):
+    """Otvara svoju kratkotrajnu sesiju - ova funkcija se poziva i iz background taskova
+    bez postojece request-scoped sesije."""
+    db = SessionLocal()
+    try:
+        db.add(EmailLog(email_type=email_type, to_email=to_email, success=success, error=error))
+        db.commit()
+    except Exception:
+        import logging
+        logging.error("Upis u email_logs nije uspio", exc_info=True)
+    finally:
+        db.close()
+
+
+def send_email(to_email: str, subject: str, body: str, email_type: str = "generic"):
     message = MIMEText(body, "plain", "utf-8")
     message["Subject"] = subject
     message["From"] = settings.smtp_user
     message["To"] = to_email
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=SMTP_TIMEOUT_SECONDS) as server:
-        server.starttls()
-        server.login(settings.smtp_user, settings.smtp_password)
-        server.send_message(message)
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=SMTP_TIMEOUT_SECONDS) as server:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+            server.send_message(message)
+    except Exception as e:
+        _log_email_attempt(email_type, to_email, False, str(e))
+        raise
+    _log_email_attempt(email_type, to_email, True)
 
 
 def send_email_background(send_fn, *args, **kwargs):
@@ -54,7 +79,7 @@ def send_verification_email(to_email: str, token: str):
         f"Link je jednokratan i važi samo za vašu registraciju.\n\n"
         f"Ako se niste registrovali, ignorišite ovaj email."
     )
-    send_email(to_email, subject, body)
+    send_email(to_email, subject, body, email_type="verification")
 
 
 def send_password_reset_email(to_email: str, token: str):
@@ -68,7 +93,7 @@ def send_password_reset_email(to_email: str, token: str):
         f"Link važi 1 sat.\n\n"
         f"Ako niste zatražili reset lozinke, ignorišite ovaj email."
     )
-    send_email(to_email, subject, body)
+    send_email(to_email, subject, body, email_type="password_reset")
 
 
 def send_new_tenant_notification(
@@ -98,7 +123,7 @@ def send_new_tenant_notification(
         f"Admin panel: {settings.frontend_url}/admin/tenants"
     )
     try:
-        send_email(ADMIN_EMAIL, subject, body)
+        send_email(ADMIN_EMAIL, subject, body, email_type="new_tenant_notification")
     except Exception as e:
         import logging
         logging.error(f"Notifikacija nije poslana: {e}")
@@ -124,7 +149,28 @@ def send_appointment_cancelled_email(
         f"Za novi termin, slobodno nas kontaktirajte ili zakažite ponovo preko platforme.\n\n"
         f"Izvinjavamo se zbog neugodnosti."
     )
-    send_email(to_email, subject, body)
+    send_email(to_email, subject, body, email_type="appointment_cancelled")
+
+
+def send_appointment_reminder_email(
+    to_email: str,
+    customer_name: str,
+    service_name: str,
+    tenant_name: str,
+    employee_name: str,
+    start_time: datetime,
+    tenant_timezone: str = "Europe/Sarajevo",
+):
+    local_time = start_time.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo(tenant_timezone))
+    formatted_time = local_time.strftime("%d.%m.%Y. u %H:%M")
+    subject = f"Podsjetnik: termin za sat vremena — {tenant_name}"
+    body = (
+        f"Pozdrav {customer_name},\n\n"
+        f"Podsjećamo vas da imate zakazan termin za uslugu \"{service_name}\" "
+        f"kod {employee_name} u salonu \"{tenant_name}\" danas u {formatted_time}.\n\n"
+        f"Ako ne možete doći, otkažite termin na vrijeme kroz Sattlio platformu."
+    )
+    send_email(to_email, subject, body, email_type="appointment_reminder")
 
 
 def send_support_request_email(
@@ -164,10 +210,15 @@ def send_support_request_email(
         image.add_header("Content-Disposition", "attachment", filename=screenshot_filename or "screenshot.jpg")
         msg.attach(image)
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=SMTP_TIMEOUT_SECONDS) as server:
-        server.starttls()
-        server.login(settings.smtp_user, settings.smtp_password)
-        server.send_message(msg)
+    try:
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=SMTP_TIMEOUT_SECONDS) as server:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+            server.send_message(msg)
+    except Exception as e:
+        _log_email_attempt("support_request", ADMIN_EMAIL, False, str(e))
+        raise
+    _log_email_attempt("support_request", ADMIN_EMAIL, True)
 
 
 def send_employee_invitation_email(to_email: str, employee_name: str, tenant_name: str):
@@ -184,7 +235,7 @@ def send_employee_invitation_email(to_email: str, employee_name: str, tenant_nam
         f"Ako mislite da je ovo greska, slobodno ignorisite ovaj email."
     )
     try:
-        send_email(to_email, subject, body)
+        send_email(to_email, subject, body, email_type="employee_invitation")
     except Exception as e:
         import logging
         logging.error(f"Employee invitation email nije poslan: {e}")

@@ -165,6 +165,7 @@ def get_my_appointments(
             "status": a.status,
             "service_name": service.name if service else "—",
             "tenant_name": tenant.name if tenant else "-",
+            "tenant_logo_url": tenant.logo_url if tenant else None,
             "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "—",
             "tenant_timezone": tenant.timezone if tenant else "Europe/Sarajevo",
         })
@@ -231,6 +232,7 @@ def create_appointment(
         start_time=start_time,
         end_time=end_time,
         status="created",
+        price=service.price,
     )
     db.add(new_appointment)
     db.commit()

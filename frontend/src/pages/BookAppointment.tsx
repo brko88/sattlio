@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { formatTime } from "../utils/time";
 import Avatar from "../components/Avatar";
+import ConfirmModal from "../components/ConfirmModal";
 import { SkeletonCards } from "../components/Skeleton";
 import { vibrateSuccess } from "../utils/haptics";
 
@@ -35,6 +36,7 @@ function BookAppointment() {
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [error, setError] = useState("");
+  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
 
   const token = localStorage.getItem("access_token");
 
@@ -107,7 +109,7 @@ function BookAppointment() {
       .finally(() => setLoadingSlots(false));
   }, [selectedDate, selectedService]);
 
-  const handleBook = async () => {
+  const handleBook = async (overrideConflict = false) => {
     if (!selectedSlot || !selectedService) return;
     if (!token) {
       localStorage.setItem(
@@ -129,11 +131,16 @@ function BookAppointment() {
         service_id: selectedService,
         start_time: selectedSlot,
         note: note || null,
+        override_conflict: overrideConflict,
       });
       vibrateSuccess();
       sessionStorage.setItem("toast_message", "Rezervacija kreirana ✔️");
       window.location.href = "/my-appointments";
     } catch (err: any) {
+      if (err.response?.headers?.["x-error-code"] === "cross_tenant_conflict") {
+        setConflictMessage(err.response.data.detail);
+        return;
+      }
       setError(err.response?.data?.detail || "Greška prilikom rezervacije.");
     }
   };
@@ -256,13 +263,26 @@ function BookAppointment() {
 
         {selectedSlot && (
           <button
-            onClick={handleBook}
+            onClick={() => handleBook()}
             className="w-full px-5 py-3 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
           >
             {token ? "Potvrdi rezervaciju" : "Prijavite se za rezervaciju"}
           </button>
         )}
       </div>
+
+      {conflictMessage && (
+        <ConfirmModal
+          title="Termin se preklapa"
+          message={`${conflictMessage} Rezervisati ipak?`}
+          confirmLabel="Rezerviši ipak"
+          onCancel={() => setConflictMessage(null)}
+          onConfirm={() => {
+            setConflictMessage(null);
+            handleBook(true);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -17,7 +17,8 @@ from app.core.billing import (
 )
 from app.core.pagination import paginate
 from app.core.security import require_superadmin
-from app.core.email import send_email_background, send_password_reset_email
+from app.core.email import GMAIL_DAILY_LIMIT, send_email_background, send_password_reset_email
+from app.models.email_log import EmailLog
 from app.models.appointment import Appointment
 from app.models.employee import Employee
 from app.models.tenant import Tenant
@@ -439,6 +440,18 @@ def get_platform_health(
 
     from app.core.database import get_pool_status
 
+    last_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+    sent_last_24h = (
+        db.query(EmailLog)
+        .filter(EmailLog.created_at >= last_24h, EmailLog.success == True)
+        .count()
+    )
+    failed_last_24h = (
+        db.query(EmailLog)
+        .filter(EmailLog.created_at >= last_24h, EmailLog.success == False)
+        .count()
+    )
+
     return {
         "backend": {"status": "online"},
         "database": {"status": "online" if db_ok else "offline"},
@@ -446,7 +459,12 @@ def get_platform_health(
         # je po procesu; worker_pid kaze kojeg gledas). Za sliku sva 4 workera
         # vidi periodicne "DB pool [pid ...]" linije u docker logs.
         "connection_pool": get_pool_status(),
-        "smtp": {"status": "online" if smtp_ok else "offline"},
+        "smtp": {
+            "status": "online" if smtp_ok else "offline",
+            "sent_last_24h": sent_last_24h,
+            "failed_last_24h": failed_last_24h,
+            "daily_limit": GMAIL_DAILY_LIMIT,
+        },
         "paddle": {"status": "not_configured"},
     }
 

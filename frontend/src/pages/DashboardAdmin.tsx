@@ -21,10 +21,17 @@ interface ConnectionPool {
   utilization_pct: number;
 }
 
+interface SmtpHealth {
+  status: string;
+  sent_last_24h?: number;
+  failed_last_24h?: number;
+  daily_limit?: number;
+}
+
 interface PlatformHealth {
   backend: { status: string };
   database: { status: string };
-  smtp: { status: string };
+  smtp: SmtpHealth;
   paddle: { status: string };
   connection_pool?: ConnectionPool;
 }
@@ -164,6 +171,39 @@ function Dashboard() {
                       </div>
                       <p className="text-[11px] text-slate-400 mt-1">
                         Jedan od 4 worker procesa (pid {health.connection_pool.worker_pid}) — puna slika u server logovima.
+                      </p>
+                    </div>
+                  )}
+
+                  {health.smtp.daily_limit != null && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-slate-700">Emailovi (24h)</span>
+                        <span className="text-sm text-slate-600">
+                          {health.smtp.sent_last_24h ?? 0}/{health.smtp.daily_limit}
+                          {(health.smtp.failed_last_24h ?? 0) > 0 && (
+                            <span className="text-red-600"> ({health.smtp.failed_last_24h} palo)</span>
+                          )}
+                        </span>
+                      </div>
+                      {(() => {
+                        const pct = Math.min(
+                          100,
+                          ((health.smtp.sent_last_24h ?? 0) / health.smtp.daily_limit!) * 100
+                        );
+                        return (
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                pct >= 75 ? "bg-red-500" : pct >= 50 ? "bg-amber-400" : "bg-green-500"
+                              }`}
+                              style={{ width: `${Math.max(pct, 2)}%` }}
+                            />
+                          </div>
+                        );
+                      })()}
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Gmail SMTP limit — rolling 24h prozor, ne kalendarski dan.
                       </p>
                     </div>
                   )}

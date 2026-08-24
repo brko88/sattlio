@@ -113,6 +113,7 @@ class SelfBookingCreate(BaseModel):
     service_id: int
     start_time: datetime
     note: str | None = Field(default=None, max_length=300)
+    override_conflict: bool = False
 
 
 class SelfBookingResponse(BaseModel):
@@ -455,6 +456,35 @@ def self_book_appointment(
     if overlapping:
         raise HTTPException(status_code=409, detail="Termin je već zauzet.")
 
+    # Ne blokiramo termine u drugim salonima u isto vrijeme (npr. rezervacija za
+    # sebe u jednom, za dijete u drugom) - samo upozoravamo, korisnik svjesno
+    # potvrdjuje da nastavi (override_conflict) ako je namjerno.
+    if not data.override_conflict:
+        conflict = (
+            db.query(Appointment, Tenant.name)
+            .join(Customer, Appointment.customer_id == Customer.id)
+            .join(Tenant, Appointment.tenant_id == Tenant.id)
+            .filter(
+                Customer.email == current_user.email,
+                Appointment.tenant_id != employee.tenant_id,
+                Appointment.status.in_(["created", "confirmed"]),
+                Appointment.start_time < end_time,
+                Appointment.end_time > start_time,
+            )
+            .first()
+        )
+        if conflict is not None:
+            conflict_appt, conflict_tenant_name = conflict
+            conflict_local_start = conflict_appt.start_time.replace(tzinfo=timezone.utc).astimezone(tz)
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Već imate termin u „{conflict_tenant_name}” "
+                    f"{conflict_local_start.strftime('%d.%m.%Y.')} u {conflict_local_start.strftime('%H:%M')}."
+                ),
+                headers={"X-Error-Code": "cross_tenant_conflict"},
+            )
+
     customer = existing_customer
     if customer is None:
         customer = Customer(
@@ -489,6 +519,7 @@ def self_book_appointment(
         end_time=end_time,
         status="created",
         notes=data.note,
+        price=service.price,
     )
     db.add(new_appointment)
     db.commit()

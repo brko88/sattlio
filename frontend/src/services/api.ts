@@ -35,9 +35,41 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+/**
+ * Normalizuje error.response.data.detail u citljiv string PRIJE nego bilo koja
+ * stranica pozove err.response?.data?.detail (obrazac koriscen na 30+ mjesta
+ * u aplikaciji). Backend uvijek vraca JSON sa .detail (vidi RequestValidationError
+ * handler u app/main.py) - ali reverse proxy ISPRED backenda (nginx, buduci
+ * load balancer) moze odbiti zahtjev prije nego stigne do backenda i vratiti
+ * golu HTML stranicu (npr. 413 kad fajl pređe client_max_body_size). Bez ovoga
+ * korisnik vidi generican "Greska prilikom uploada" bez pravog razloga - tacno
+ * ovo se desilo sa cover slikom (nginx default limit 1MB, backend dozvoljava 5MB).
+ */
+function friendlyDetailForStatus(status: number | undefined): string {
+  if (status === 413) {
+    return "Fajl je prevelik za slanje. Pokušajte sa manjom slikom.";
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return "Server je trenutno nedostupan. Pokušajte ponovo za par sekundi.";
+  }
+  if (status) {
+    return `Greška servera (${status}). Pokušajte ponovo.`;
+  }
+  return "Nema odgovora servera. Provjerite internet konekciju.";
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (error.response && typeof error.response.data?.detail !== "string") {
+      // .data je HTML string, prazan, ili objekat bez .detail — zamijeni
+      // citljivom porukom da je err.response.data.detail UVIJEK string.
+      error.response.data = {
+        ...(typeof error.response.data === "object" ? error.response.data : {}),
+        detail: friendlyDetailForStatus(error.response.status),
+      };
+    }
+
     const originalRequest = error.config;
 
     // Ako nije 401 ili je već retry — ne pokušavaj refresh

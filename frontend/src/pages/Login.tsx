@@ -3,11 +3,34 @@ import { Link } from "react-router-dom";
 import api from "../services/api";
 import { vibrateSuccess } from "../utils/haptics";
 import BrandLogo from "../components/BrandLogo";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [conflict, setConflict] = useState<{ message: string; booking: any } | null>(null);
+
+  const finishBooking = async (booking: any) => {
+    await api.post("/api/v1/public/appointments", booking);
+    vibrateSuccess();
+    sessionStorage.setItem("toast_message", "Rezervacija kreirana ✔️");
+    window.location.href = "/my-appointments";
+  };
+
+  const confirmConflictBooking = async () => {
+    if (!conflict) return;
+    try {
+      await finishBooking({ ...conflict.booking, override_conflict: true });
+    } catch (err: any) {
+      setError(
+        err.response?.data?.detail ||
+          "Rezervacija nije uspjela. Prijavljeni ste, ali ćete morati ponovo pokušati sa stranice salona."
+      );
+    } finally {
+      setConflict(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,14 +66,15 @@ function Login() {
       const pendingBookingRaw = localStorage.getItem("pending_booking");
       if (pendingBookingRaw) {
         localStorage.removeItem("pending_booking");
+        const pendingBooking = JSON.parse(pendingBookingRaw);
         try {
-          const pendingBooking = JSON.parse(pendingBookingRaw);
-          await api.post("/api/v1/public/appointments", pendingBooking);
-          vibrateSuccess();
-          sessionStorage.setItem("toast_message", "Rezervacija kreirana ✔️");
-          window.location.href = "/my-appointments";
+          await finishBooking(pendingBooking);
           return;
         } catch (err: any) {
+          if (err.response?.headers?.["x-error-code"] === "cross_tenant_conflict") {
+            setConflict({ message: err.response.data.detail, booking: pendingBooking });
+            return;
+          }
           // Rezervacija nije uspjela (npr. termin je u meduvremenu zauzet,
           // ili email nije potvrdjen). Korisnik JE prijavljen, ali ga ne
           // redirektujemo - ciljna stranica ovisi o ulozi/tenant-u (npr. bez
@@ -125,6 +149,19 @@ function Login() {
           </Link>
         </p>
       </div>
+
+      {conflict && (
+        <ConfirmModal
+          title="Termin se preklapa"
+          message={`${conflict.message} Rezervisati ipak?`}
+          confirmLabel="Rezerviši ipak"
+          onCancel={() => {
+            setConflict(null);
+            setError("Rezervacija nije potvrđena. Prijavljeni ste, možete pokušati ponovo sa stranice salona.");
+          }}
+          onConfirm={confirmConflictBooking}
+        />
+      )}
     </div>
   );
 }

@@ -708,8 +708,8 @@ function LandingFooter() {
 
           {/* Linkovi ka društvenim mrežama — SOCIAL_LINKS iz Dok. 27 */}
           <nav className="flex flex-wrap justify-center gap-4 text-sm">
-            <SocialLink href={SOCIAL_LINKS.facebook} label="Facebook" />
             <SocialLink href={SOCIAL_LINKS.instagram} label="Instagram" />
+            <SocialLink href={SOCIAL_LINKS.tiktok} label="TikTok" />
             <SocialLink href={SOCIAL_LINKS.linkedin} label="LinkedIn" />
             <SocialLink href={SOCIAL_LINKS.youtube} label="YouTube" />
           </nav>

@@ -26,6 +26,7 @@ class AppointmentResponse(BaseModel):
     end_time: datetime
     status: str
     notes: str | None
+    price: float | None
     cancelled_by_type: str | None
     cancelled_by_name: str | None
     cancellation_reason: str | None
@@ -44,6 +45,7 @@ class MyAppointmentResponse(BaseModel):
     status: str
     service_name: str
     tenant_name: str
+    tenant_logo_url: str | None
     employee_name: str
     tenant_timezone: str
 

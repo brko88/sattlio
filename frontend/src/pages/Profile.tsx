@@ -98,7 +98,7 @@ function Profile() {
       <p className="text-slate-500 mb-6">Vaši osnovni podaci i sigurnost naloga</p>
 
       {me && (
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6 max-w-md">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-100 p-6 mb-6 max-w-md">
           <h2 className="text-sm font-semibold text-slate-700 uppercase mb-4">
             Osnovni podaci
           </h2>
@@ -171,7 +171,7 @@ function Profile() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm p-6 max-w-md">
+      <div className="bg-white rounded-lg shadow-sm border border-slate-100 p-6 max-w-md">
         <h2 className="text-sm font-semibold text-slate-700 uppercase mb-4">
           Promjena lozinke
         </h2>

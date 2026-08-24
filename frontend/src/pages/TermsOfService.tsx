@@ -8,12 +8,6 @@ function TermsOfService() {
           ← Nazad na početnu
         </Link>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6 text-sm text-amber-800">
-          <strong>Napomena:</strong> Ovo je radni nacrt Uslova korištenja, pripremljen kao polazna
-          osnova. Prije javnog lansiranja platforme, tekst treba pregledati advokat kako bi se
-          potvrdilo da je usklađen sa važećim zakonima u Bosni i Hercegovini.
-        </div>
-
         <div className="bg-white rounded-lg shadow-sm p-8">
           <h1 className="text-2xl font-bold text-slate-900 mb-1">Uslovi korištenja</h1>
           <p className="text-sm text-slate-400 mb-6">Posljednje ažurirano: 13.7.2026.</p>

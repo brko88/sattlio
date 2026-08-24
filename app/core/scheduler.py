@@ -6,9 +6,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import text
 
 from app.core.database import SessionLocal, get_pool_status
+from app.core.email import send_appointment_reminder_email
 from app.core.timezone_utils import get_tenant_timezone
 from app.models.appointment import Appointment
+from app.models.customer import Customer
+from app.models.employee import Employee
 from app.models.refresh_token import RefreshToken
+from app.models.service import Service
+from app.models.tenant import Tenant
 
 scheduler = BackgroundScheduler()
 
@@ -21,6 +26,31 @@ scheduler = BackgroundScheduler()
 # svakako pokupiti bilo koji slobodan worker).
 EXPIRE_JOB_LOCK_ID = 918273645
 CLEANUP_TOKENS_LOCK_ID = 918273646
+REMINDER_JOB_LOCK_ID = 918273647
+
+# Posao se izvrsava svakih REMINDER_INTERVAL_MINUTES - prozor je namjerno SIRI
+# od intervala (10 min prozor na 5 min tick) da nijedan termin ne "propadne
+# izmedju" dva tick-a zbog kasnjenja/preklapanja; reminder_sent flag sprjecava
+# duplo slanje unutar preklapajucih prozora.
+REMINDER_INTERVAL_MINUTES = 5
+REMINDER_WINDOW_START_MINUTES = 55
+REMINDER_WINDOW_END_MINUTES = 65
+
+# PRIVREMENA OGRADA (18.08.2026.) - baza ima ~400 aktivnih test termina sa
+# izmisljenim email domenima (sattlio-audit.qa, audit.test, sattlio-smoke3.qa)
+# koji bi se bez ovoga odmah "bounce"-ovali nazad na sattlio.app@gmail.com i
+# trosili Gmail-ov dnevni limit slanja (500/dan). Dok se ne potvrdi da posao
+# radi ispravno, podsjetnici idu SAMO na Borisove test naloge
+# (boris.kalamanda(+bilo sta)@gmail.com). UKLONITI OVU PROVJERU prije nego
+# se funkcija pusti za sve korisnike.
+REMINDER_TEST_MODE_ONLY_BORIS = True
+
+
+def _reminder_recipient_allowed(email: str) -> bool:
+    if not REMINDER_TEST_MODE_ONLY_BORIS:
+        return True
+    local_part, _, domain = email.partition("@")
+    return domain.lower() == "gmail.com" and local_part.split("+")[0].lower() == "boris.kalamanda"
 
 POOL_LOG_INTERVAL_MINUTES = 2
 POOL_WARN_THRESHOLD_PCT = 75
@@ -58,9 +88,21 @@ def expire_past_appointments():
         if not got_lock:
             return
 
-        candidates = db.query(Appointment).filter(Appointment.status.in_(["created", "confirmed"])).all()
-        tz_cache: dict[int, ZoneInfo] = {}
         now_utc = datetime.now(timezone.utc)
+        # start_time < now je nuzan uslov za istek: termin istice tek kad prodje
+        # njegov LOKALNI kalendarski dan, sto ne moze prije samog pocetka termina.
+        # Bez ovog filtera posao bi svakih 30 min ucitavao i SVE buduce rezervacije
+        # (na 100k korisnika: stotine hiljada redova u memoriju, uzalud).
+        # Kolona je naivni UTC, pa poredimo naivnom vrijednoscu.
+        candidates = (
+            db.query(Appointment)
+            .filter(
+                Appointment.status.in_(["created", "confirmed"]),
+                Appointment.start_time < now_utc.replace(tzinfo=None),
+            )
+            .all()
+        )
+        tz_cache: dict[int, ZoneInfo] = {}
 
         for a in candidates:
             if a.tenant_id not in tz_cache:
@@ -74,6 +116,83 @@ def expire_past_appointments():
                 a.status = "expired"
 
         db.commit()
+    finally:
+        db.close()
+
+
+def send_appointment_reminders():
+    """
+    Email podsjetnik ~sat vremena prije pocetka termina. Sansa da klijent
+    zaboravi termin i ne dodje raste sa vremenom od rezervacije do termina -
+    ovo je najstandardniji nacin da booking platforma smanji nedolaske.
+
+    Salje se samo ako Customer.email postoji (rucno unesen klijent bez emaila
+    - nema kome poslati) i samo ako je email uspio (SMTP greska ostavlja
+    reminder_sent=False, pa ce sljedeci tick pokusati ponovo dok je termin
+    jos unutar prozora).
+    """
+    db = SessionLocal()
+    try:
+        got_lock = db.execute(text("SELECT pg_try_advisory_xact_lock(:id)"), {"id": REMINDER_JOB_LOCK_ID}).scalar()
+        if not got_lock:
+            return
+
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        window_start = now_utc + timedelta(minutes=REMINDER_WINDOW_START_MINUTES)
+        window_end = now_utc + timedelta(minutes=REMINDER_WINDOW_END_MINUTES)
+
+        candidates = (
+            db.query(Appointment)
+            .filter(
+                Appointment.status.in_(["created", "confirmed"]),
+                Appointment.reminder_sent == False,
+                Appointment.start_time >= window_start,
+                Appointment.start_time < window_end,
+            )
+            .all()
+        )
+        if not candidates:
+            return
+
+        customer_ids = {a.customer_id for a in candidates}
+        employee_ids = {a.employee_id for a in candidates}
+        tenant_ids = {a.tenant_id for a in candidates}
+        service_ids = {a.service_id for a in candidates}
+
+        customers_by_id = {c.id: c for c in db.query(Customer).filter(Customer.id.in_(customer_ids)).all()}
+        employees_by_id = {e.id: e for e in db.query(Employee).filter(Employee.id.in_(employee_ids)).all()}
+        tenants_by_id = {t.id: t for t in db.query(Tenant).filter(Tenant.id.in_(tenant_ids)).all()}
+        services_by_id = {s.id: s for s in db.query(Service).filter(Service.id.in_(service_ids)).all()}
+
+        for a in candidates:
+            customer = customers_by_id.get(a.customer_id)
+            if customer is None or not customer.email:
+                continue
+            if not _reminder_recipient_allowed(customer.email):
+                continue
+            employee = employees_by_id.get(a.employee_id)
+            tenant = tenants_by_id.get(a.tenant_id)
+            service = services_by_id.get(a.service_id)
+            if tenant is None:
+                continue
+
+            try:
+                send_appointment_reminder_email(
+                    customer.email,
+                    f"{customer.first_name} {customer.last_name}".strip(),
+                    service.name if service else "termin",
+                    tenant.name,
+                    f"{employee.first_name} {employee.last_name}" if employee else "—",
+                    a.start_time,
+                    tenant.timezone,
+                )
+            except Exception as e:
+                import logging
+                logging.error(f"Podsjetnik za termin {a.id} nije poslan: {e}")
+                continue
+
+            a.reminder_sent = True
+            db.commit()
     finally:
         db.close()
 
@@ -137,6 +256,7 @@ def log_pool_status():
 
 def start_scheduler():
     scheduler.add_job(expire_past_appointments, "interval", minutes=30, id="expire_past_appointments")
+    scheduler.add_job(send_appointment_reminders, "interval", minutes=REMINDER_INTERVAL_MINUTES, id="send_appointment_reminders")
     # Jednom dnevno je dovoljno - tabela raste sporo (red po loginu/refresh-u).
     scheduler.add_job(cleanup_expired_refresh_tokens, "interval", hours=24, id="cleanup_expired_refresh_tokens")
     scheduler.add_job(log_pool_status, "interval", minutes=POOL_LOG_INTERVAL_MINUTES, id="log_pool_status")

@@ -259,8 +259,8 @@ export const SEO = {
 // DRUŠTVENE MREŽE — Dokument 27 (Faza 0 — rezervacija korisničkih imena)
 // ---------------------------------------------------------------------------
 export const SOCIAL_LINKS = {
-  facebook: "https://facebook.com/sattlio",
   instagram: "https://instagram.com/getsattlio",
+  tiktok: "https://tiktok.com/@sattlio.com",
   linkedin: "https://linkedin.com/company/sattlio",
   youtube: "https://youtube.com/@sattlio",
 } as const;

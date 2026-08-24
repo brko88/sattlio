@@ -439,6 +439,7 @@ def get_platform_health(
         pass
 
     from app.core.database import get_pool_status
+    from app.core.system_stats import get_cpu_load, get_disk_usage, get_memory_usage
 
     last_24h = datetime.now(timezone.utc) - timedelta(hours=24)
     sent_last_24h = (
@@ -456,9 +457,14 @@ def get_platform_health(
         "backend": {"status": "online"},
         "database": {"status": "online" if db_ok else "offline"},
         # Popunjenost pool-a SAMO workera koji je opsluzio ovaj zahtjev (pool
-        # je po procesu; worker_pid kaze kojeg gledas). Za sliku sva 4 workera
-        # vidi periodicne "DB pool [pid ...]" linije u docker logs.
+        # je po procesu; worker_pid kaze kojeg gledas). Za sliku svih
+        # web_concurrency workera vidi periodicne "DB pool [pid ...]" linije
+        # u docker logs.
         "connection_pool": get_pool_status(),
+        "worker_count": settings.web_concurrency,
+        "disk": get_disk_usage(),
+        "memory": get_memory_usage(),
+        "cpu": get_cpu_load(),
         "smtp": {
             "status": "online" if smtp_ok else "offline",
             "sent_last_24h": sent_last_24h,

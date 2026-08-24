@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # COOKIE_SECURE, refresh cookie i dalje ide samo preko HTTPS-a. Lokalni
     # dev (plain HTTP) mora eksplicitno postaviti COOKIE_SECURE=false u .env.
     cookie_secure: bool = True
+    # Mora pratiti stvarni --workers broj u Dockerfile CMD-u (isti WEB_CONCURRENCY
+    # env var) - koristi se SAMO za prikaz na /admin/health, ne kontrolise uvicorn.
+    web_concurrency: int = 2
 
     class Config:
         env_file = ".env"

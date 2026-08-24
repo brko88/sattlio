@@ -28,12 +28,28 @@ interface SmtpHealth {
   daily_limit?: number;
 }
 
+interface ResourceUsage {
+  total_gb: number;
+  used_gb: number;
+  used_pct: number;
+}
+
+interface CpuLoad {
+  load_1min: number;
+  cores: number;
+  used_pct: number;
+}
+
 interface PlatformHealth {
   backend: { status: string };
   database: { status: string };
   smtp: SmtpHealth;
   paddle: { status: string };
   connection_pool?: ConnectionPool;
+  worker_count?: number;
+  disk?: ResourceUsage | null;
+  memory?: ResourceUsage | null;
+  cpu?: CpuLoad | null;
 }
 
 interface WorkingHoursRangeDay {
@@ -170,9 +186,38 @@ function Dashboard() {
                         />
                       </div>
                       <p className="text-[11px] text-slate-400 mt-1">
-                        Jedan od 4 worker procesa (pid {health.connection_pool.worker_pid}) — puna slika u server logovima.
+                        Jedan od {health.worker_count ?? "?"} worker procesa (pid {health.connection_pool.worker_pid}) — puna slika u server logovima.
                       </p>
                     </div>
+                  )}
+
+                  {[
+                    { data: health.cpu, label: "CPU", detail: health.cpu ? `${health.cpu.load_1min} load / ${health.cpu.cores} jezgara` : "" },
+                    { data: health.memory, label: "Memorija", detail: health.memory ? `${health.memory.used_gb}/${health.memory.total_gb} GB` : "" },
+                    { data: health.disk, label: "Disk", detail: health.disk ? `${health.disk.used_gb}/${health.disk.total_gb} GB` : "" },
+                  ].map(({ data, label, detail }) =>
+                    data ? (
+                      <div key={label} className="pt-2 border-t border-slate-100">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-slate-700">{label}</span>
+                          <span className="text-sm text-slate-600">
+                            {detail} ({data.used_pct}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              data.used_pct >= 75
+                                ? "bg-red-500"
+                                : data.used_pct >= 50
+                                ? "bg-amber-400"
+                                : "bg-green-500"
+                            }`}
+                            style={{ width: `${Math.max(data.used_pct, 2)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null
                   )}
 
                   {health.smtp.daily_limit != null && (

@@ -246,7 +246,7 @@ export const TARGET_CATEGORIES = [
 export const SEO = {
   title: "Sattlio — Rezervacije termina za salone i uslužne djelatnosti",
   description:
-    "Jednostavna SaaS platforma za upravljanje rezervacijama, zaposlenima, klijentima i kalendarom. 14 dana besplatnog probnog perioda.",
+    "Jednostavna SaaS platforma za upravljanje rezervacijama, zaposlenima, klijentima i kalendarom. Trenutno potpuno besplatno tokom beta perioda.",
   keywords:
     "rezervacije, booking, salon, frizer, kalendar, SaaS, BiH, Srbija, Hrvatska, Sattlio, SmartBooking, upravljanje terminima",
   ogType: "website",

@@ -147,7 +147,7 @@ export const ROADMAP: RoadmapGroup[] = [
       },
       {
         title: "Besplatan probni period",
-        description: "14 dana bez obaveze i bez unosa kartice.",
+        description: "Bez obaveze i bez unosa kartice, besplatno tokom cijelog beta perioda.",
       },
       {
         title: "Prijava problema iz aplikacije",

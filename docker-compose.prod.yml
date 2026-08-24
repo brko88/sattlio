@@ -1,5 +1,7 @@
 services:
   backend:
+    environment:
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
     volumes:
       - ./infra/network_usage.csv:/app/infra/network_usage.csv:ro
 

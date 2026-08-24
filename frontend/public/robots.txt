@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /calendar
+Disallow: /appointments
+Disallow: /customers
+Disallow: /services
+Disallow: /employees
+Disallow: /working-hours
+Disallow: /settings
+Disallow: /create-tenant
+Disallow: /onboarding
+Disallow: /my-appointments
+Disallow: /book
+Disallow: /profile
+Disallow: /report-issue
+Disallow: /faq
+Disallow: /admin
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /api/
+
+Sitemap: https://sattlio.com/sitemap.xml

@@ -153,8 +153,10 @@ function RoleRouter() {
       <Routes>
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/create-tenant" element={<CreateTenant />} />
-        <Route path="/book" element={<BookingLanding />} />
-        <Route path="/book/:employeeId" element={<BookAppointment />} />
+        <Route element={<CustomerLayout />}>
+          <Route path="/book" element={<BookingLanding />} />
+          <Route path="/book/:employeeId" element={<BookAppointment />} />
+        </Route>
         <Route path="*" element={<Navigate to="/onboarding" replace />} />
       </Routes>
     );

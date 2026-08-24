@@ -9,7 +9,11 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.email_log import EmailLog
 
-ADMIN_EMAIL = "podrska@sattlio.com"
+# Direktno na Gmail, NE na podrska@sattlio.com (koji Porkbun forward-uje
+# nazad na isti Gmail nalog) - potvrdjeno 24.08.2026. da Gmail odbija/spam-uje
+# takav "sam sebi poslat" mail (SPF/DMARC neuspjeh - Porkbun-ov server nije
+# ovlasten da salje kao gmail.com). Ukloniti kad se pređe na pravi email servis.
+ADMIN_EMAIL = "sattlio.app@gmail.com"
 
 # Bez ovoga smtplib.SMTP blokira BEZ GRANICE ako je SMTP provajder spor ili
 # nedostupan - HTTP zahtjev (registracija, reset lozinke...) visi zauvijek

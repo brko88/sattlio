@@ -88,6 +88,13 @@ function Landing() {
 // ---------------------------------------------------------------------------
 function LandingHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // "/" se prikazuje SVIMA (i ulogovanim), jer je top-level ruta van
+  // RoleRouter-a - bez ovoga bi ulogovan korisnik i dalje vidio "Prijavi
+  // se/Registruj se". "/dashboard" je sigurna meta za bilo koju ulogu -
+  // svaki RoleRouter blok ima fallback (`path="*"`) koji vlasnika/radnika
+  // vodi na njihov dashboard, a klijenta/superadmina na njihovu stvarnu
+  // pocetnu rutu.
+  const isLoggedIn = !!localStorage.getItem("access_token");
 
   /**
    * Stavke sa `href` su sidra na ovoj stranici, stavke sa `to` vode na zasebnu
@@ -139,20 +146,34 @@ function LandingHeader() {
 
         {/* Akcije u headeru — prijava i registracija + mobilni hamburger */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Sekundarno dugme — vodi na postojeću Login stranicu */}
-          <Link
-            to={ROUTES.login}
-            className={`px-3 sm:px-4 py-2 text-sm font-medium text-slate-700 border ${COLORS.borderClass} rounded-lg ${ANIMATION.transitionClass} hover:bg-slate-50`}
-          >
-            Prijavi se
-          </Link>
-          {/* Primarno dugme — glavni CTA ka registraciji (Dok. 09: jedno dominantno primary po stranici u hero/headeru) */}
-          <Link
-            to={ROUTES.register}
-            className={`px-3 sm:px-4 py-2 text-sm font-medium text-white ${COLORS.primaryClass} rounded-lg ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
-          >
-            Registruj se
-          </Link>
+          {isLoggedIn ? (
+            /* Vec ulogovan - profil/odjava vec postoje unutar app-a (OwnerLayout
+               i sl.), ovdje samo jedno dugme da ga tamo odvede umjesto da
+               duplira citav profilni meni na marketing stranici. */
+            <Link
+              to={ROUTES.dashboard}
+              className={`px-3 sm:px-4 py-2 text-sm font-medium text-white ${COLORS.primaryClass} rounded-lg ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
+            >
+              Idi na kontrolnu tablu
+            </Link>
+          ) : (
+            <>
+              {/* Sekundarno dugme — vodi na postojeću Login stranicu */}
+              <Link
+                to={ROUTES.login}
+                className={`px-3 sm:px-4 py-2 text-sm font-medium text-slate-700 border ${COLORS.borderClass} rounded-lg ${ANIMATION.transitionClass} hover:bg-slate-50`}
+              >
+                Prijavi se
+              </Link>
+              {/* Primarno dugme — glavni CTA ka registraciji (Dok. 09: jedno dominantno primary po stranici u hero/headeru) */}
+              <Link
+                to={ROUTES.register}
+                className={`px-3 sm:px-4 py-2 text-sm font-medium text-white ${COLORS.primaryClass} rounded-lg ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
+              >
+                Registruj se
+              </Link>
+            </>
+          )}
           {/* Hamburger dugme — samo na mobilnom, otvara padajući meni sa anchor linkovima */}
           <button
             onClick={() => setMobileNavOpen((v) => !v)}

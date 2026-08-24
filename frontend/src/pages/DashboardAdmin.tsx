@@ -71,7 +71,7 @@ const STAT_CARDS: { key: keyof PlatformStats; label: string }[] = [
   { key: "suspended_tenants", label: "Suspendovani" },
 ];
 
-const HEALTH_ITEMS: { key: keyof Omit<PlatformHealth, "connection_pool">; label: string }[] = [
+const HEALTH_ITEMS: { key: "backend" | "database" | "smtp" | "paddle"; label: string }[] = [
   { key: "backend", label: "Backend" },
   { key: "database", label: "Baza podataka" },
   { key: "smtp", label: "Email (SMTP)" },

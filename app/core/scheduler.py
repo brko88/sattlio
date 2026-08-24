@@ -36,14 +36,11 @@ REMINDER_INTERVAL_MINUTES = 5
 REMINDER_WINDOW_START_MINUTES = 55
 REMINDER_WINDOW_END_MINUTES = 65
 
-# PRIVREMENA OGRADA (18.08.2026.) - baza ima ~400 aktivnih test termina sa
-# izmisljenim email domenima (sattlio-audit.qa, audit.test, sattlio-smoke3.qa)
-# koji bi se bez ovoga odmah "bounce"-ovali nazad na sattlio.app@gmail.com i
-# trosili Gmail-ov dnevni limit slanja (500/dan). Dok se ne potvrdi da posao
-# radi ispravno, podsjetnici idu SAMO na Borisove test naloge
-# (boris.kalamanda(+bilo sta)@gmail.com). UKLONITI OVU PROVJERU prije nego
-# se funkcija pusti za sve korisnike.
-REMINDER_TEST_MODE_ONLY_BORIS = True
+# Bila PRIVREMENA OGRADA (18.08.2026.) na dev bazi punoj izmisljenih test
+# email domena - produkcija je fresh baza bez tog smeca (vidi
+# project_production_deploy memoriju), pa je ogranicenje ugaseno 24.08.2026.
+# Podsjetnici sad idu svim korisnicima.
+REMINDER_TEST_MODE_ONLY_BORIS = False
 
 
 def _reminder_recipient_allowed(email: str) -> bool:

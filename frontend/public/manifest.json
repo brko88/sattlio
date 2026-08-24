@@ -52,9 +52,9 @@
         "purpose": "any"
       },
       {
-        "src": "/icons/icon-512x512.jpg",
+        "src": "/icons/icon-512x512.png",
         "sizes": "512x512",
-        "type": "image/jpeg",
+        "type": "image/png",
         "purpose": "any maskable"
       }
     ],

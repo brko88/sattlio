@@ -55,6 +55,7 @@ def _set_refresh_cookie(response: Response, raw_token: str) -> None:
         secure=settings.cookie_secure,
         samesite="lax",
         path=REFRESH_COOKIE_PATH,
+        domain=settings.cookie_domain,
         max_age=settings.refresh_token_expire_days * 86400,
     )
 
@@ -270,7 +271,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
             stored_token.is_revoked = True
             db.commit()
 
-    response.delete_cookie(key=REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH)
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH, domain=settings.cookie_domain)
     return {"detail": "Odjavljeni ste."}
 
 

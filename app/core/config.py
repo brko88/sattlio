@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     # COOKIE_SECURE, refresh cookie i dalje ide samo preko HTTPS-a. Lokalni
     # dev (plain HTTP) mora eksplicitno postaviti COOKIE_SECURE=false u .env.
     cookie_secure: bool = True
+    # None u dev-u (localhost ne podnosi Domain atribut na cookie-ju). U
+    # produkciji postaviti npr. ".sattlio.com" (vodeca tacka) da isti refresh
+    # cookie vazi i za sattlio.com i za www.sattlio.com - bez ovoga je cookie
+    # host-only, pa je korisnik neocekivano izlogovan kad predje sa jednog na
+    # drugi (nema redirect izmedju njih u nginx-u).
+    cookie_domain: str | None = None
     # Mora pratiti stvarni --workers broj u Dockerfile CMD-u (isti WEB_CONCURRENCY
     # env var) - koristi se SAMO za prikaz na /admin/health, ne kontrolise uvicorn.
     web_concurrency: int = 2

@@ -55,6 +55,16 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Strane domene (Google Fonts i sl.) - pusti browseru da ih normalno
+  // ucita. Nasa fetch()/cache fallback logika ispod je bila hvatala i njih,
+  // a kad bi CSP connect-src blokirao SW-ov fetch, fallback je vracao
+  // keširani index.html KAO da je to trazeni resurs (npr. font CSS) - browser
+  // bi onda odbio "text/html" kao stylesheet. Same-origin zahtjevi i dalje
+  // idu kroz strategije ispod.
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   // Upload-ovane slike (avatari, logo, cover) - fajl na datom URL-u se NIKAD
   // ne mijenja (novi upload = nova nasumicna putanja), pa je cache-first
   // bezbjedno i mnogo brze, radi i offline nakon prve posjete.

@@ -153,6 +153,11 @@ export const ROADMAP: RoadmapGroup[] = [
         title: "Prijava problema iz aplikacije",
         description: "Formular sa mogućnošću slanja slike ekrana — podrška odgovara direktno.",
       },
+      {
+        title: "Podsjetnici na termin",
+        description: "Automatski email klijentu prije termina — manje zaboravljenih dolazaka.",
+        highlight: true,
+      },
     ],
   },
   {
@@ -162,11 +167,6 @@ export const ROADMAP: RoadmapGroup[] = [
     status: "in_progress",
     intro: "Na ovome se radi upravo sada.",
     items: [
-      {
-        title: "Podsjetnici na termin",
-        description: "Automatski email i obavještenje na telefon prije termina — manje zaboravljenih dolazaka.",
-        highlight: true,
-      },
       {
         title: "Pomjeranje termina",
         description: "Izmjena vremena postojeće rezervacije bez otkazivanja i ponovnog unosa.",

@@ -2,3 +2,5 @@ services:
   frontend:
     ports:
       - "80:80"
+    volumes:
+      - ./certbot-webroot:/var/www/certbot

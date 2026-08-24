@@ -40,6 +40,12 @@ interface CpuLoad {
   used_pct: number;
 }
 
+interface NetworkUsage {
+  total_gb: number;
+  limit_tb: number;
+  used_pct: number;
+}
+
 interface PlatformHealth {
   backend: { status: string };
   database: { status: string };
@@ -50,6 +56,7 @@ interface PlatformHealth {
   disk?: ResourceUsage | null;
   memory?: ResourceUsage | null;
   cpu?: CpuLoad | null;
+  network?: NetworkUsage | null;
 }
 
 interface WorkingHoursRangeDay {
@@ -195,6 +202,7 @@ function Dashboard() {
                     { data: health.cpu, label: "CPU", detail: health.cpu ? `${health.cpu.load_1min} load / ${health.cpu.cores} jezgara` : "" },
                     { data: health.memory, label: "Memorija", detail: health.memory ? `${health.memory.used_gb}/${health.memory.total_gb} GB` : "" },
                     { data: health.disk, label: "Disk", detail: health.disk ? `${health.disk.used_gb}/${health.disk.total_gb} GB` : "" },
+                    { data: health.network, label: "Mreža (~30 dana)", detail: health.network ? `${health.network.total_gb} GB / ${health.network.limit_tb} TB` : "" },
                   ].map(({ data, label, detail }) =>
                     data ? (
                       <div key={label} className="pt-2 border-t border-slate-100">

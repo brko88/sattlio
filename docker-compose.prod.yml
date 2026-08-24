@@ -1,4 +1,8 @@
 services:
+  backend:
+    volumes:
+      - ./infra/network_usage.csv:/app/infra/network_usage.csv:ro
+
   frontend:
     ports:
       - "80:80"

@@ -439,7 +439,7 @@ def get_platform_health(
         pass
 
     from app.core.database import get_pool_status
-    from app.core.system_stats import get_cpu_load, get_disk_usage, get_memory_usage
+    from app.core.system_stats import get_cpu_load, get_disk_usage, get_memory_usage, get_network_usage
 
     last_24h = datetime.now(timezone.utc) - timedelta(hours=24)
     sent_last_24h = (
@@ -465,6 +465,7 @@ def get_platform_health(
         "disk": get_disk_usage(),
         "memory": get_memory_usage(),
         "cpu": get_cpu_load(),
+        "network": get_network_usage(),
         "smtp": {
             "status": "online" if smtp_ok else "offline",
             "sent_last_24h": sent_last_24h,

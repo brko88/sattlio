@@ -52,7 +52,7 @@ function OwnerLayout() {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <span className="font-bold">Sattlio</span>
+        <Link to="/" className="font-bold">Sattlio</Link>
         <div className="w-8" />
       </div>
 
@@ -69,7 +69,7 @@ function OwnerLayout() {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <h2 className="text-xl font-bold mb-3">Sattlio</h2>
+        <Link to="/" className="text-xl font-bold mb-3 block hover:opacity-80 transition-opacity">Sattlio</Link>
 
         {/* Header menija: korisnik + salon (Dok. checklist - hamburger unapredjenje) */}
         <Link

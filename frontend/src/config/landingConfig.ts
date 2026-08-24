@@ -184,8 +184,14 @@ export const LANDING_SECTIONS = {
 // PRETPLATA — Dokument 13 (SaaS Pricing), odluka 28.06.2026.
 // ---------------------------------------------------------------------------
 export const SUBSCRIPTION = {
-  /** Trial period u danima — sekcija 4 Dok. 13 */
+  /** Trial period u danima — sekcija 4 Dok. 13. Koristi se SAMO za stvarni
+   *  po-tenant obrojan trial (Dashboard.tsx) kad se naplata jednom ukljuci -
+   *  NE koristiti u marketing tekstu dok je beta (vidi freeAccessLabel). */
   trialDays: 14,
+  /** Marketing formulacija dok je platforma u beta fazi (naplata jos
+   *  ugasena globalno) - besplatno bez rokova, ne "X dana". Zamijeniti ovaj
+   *  string kad se naplata stvarno ukljuci. */
+  freeAccessLabel: "besplatno tokom beta perioda",
   /** Godišnji popust — sekcija 7 Dok. 13 */
   annualDiscountPercent: 20,
   /** Free plan ukinut — sekcija 5 Dok. 13 */

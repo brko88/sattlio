@@ -5,10 +5,11 @@
  * Svi značajni elementi imaju komentare na bosanskom/hrvatskom/srpskom.
  */
 
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import BrandLogo from "../components/BrandLogo";
+import Avatar from "../components/Avatar";
 import {
   ANIMATION,
   APPOINTMENT_STATUS_COLORS,
@@ -86,7 +87,14 @@ function Landing() {
 // ---------------------------------------------------------------------------
 // LandingHeader — gornja navigaciona traka
 // ---------------------------------------------------------------------------
+interface MeInfo {
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
 function LandingHeader() {
+  const navigate = useNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   // "/" se prikazuje SVIMA (i ulogovanim), jer je top-level ruta van
   // RoleRouter-a - bez ovoga bi ulogovan korisnik i dalje vidio "Prijavi
@@ -94,7 +102,44 @@ function LandingHeader() {
   // svaki RoleRouter blok ima fallback (`path="*"`) koji vlasnika/radnika
   // vodi na njihov dashboard, a klijenta/superadmina na njihovu stvarnu
   // pocetnu rutu.
-  const isLoggedIn = !!localStorage.getItem("access_token");
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("access_token"));
+  const [me, setMe] = useState<MeInfo | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    api
+      .get("/api/v1/auth/me")
+      .then((res) => setMe(res.data))
+      .catch(() => {});
+  }, [isLoggedIn]);
+
+  // Zatvori dropdown na klik van njega
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [profileOpen]);
+
+  const handleLogout = async () => {
+    await api.post("/api/v1/auth/logout").catch(() => {});
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("is_superadmin");
+    localStorage.removeItem("tenant_id");
+    localStorage.removeItem("current_role");
+    setMe(null);
+    setIsLoggedIn(false);
+    setProfileOpen(false);
+    navigate("/");
+  };
+
+  const currentRole = localStorage.getItem("current_role");
 
   /**
    * Stavke sa `href` su sidra na ovoj stranici, stavke sa `to` vode na zasebnu
@@ -147,15 +192,54 @@ function LandingHeader() {
         {/* Akcije u headeru — prijava i registracija + mobilni hamburger */}
         <div className="flex items-center gap-2 sm:gap-3">
           {isLoggedIn ? (
-            /* Vec ulogovan - profil/odjava vec postoje unutar app-a (OwnerLayout
-               i sl.), ovdje samo jedno dugme da ga tamo odvede umjesto da
-               duplira citav profilni meni na marketing stranici. */
-            <Link
-              to={ROUTES.dashboard}
-              className={`px-3 sm:px-4 py-2 text-sm font-medium text-white ${COLORS.primaryClass} rounded-lg ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
-            >
-              Idi na kontrolnu tablu
-            </Link>
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => setProfileOpen((v) => !v)}
+                aria-label="Profil"
+                aria-expanded={profileOpen}
+                className="block"
+              >
+                <Avatar
+                  firstName={me?.first_name ?? undefined}
+                  lastName={me?.last_name ?? undefined}
+                  size={36}
+                />
+              </button>
+              {profileOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <p className="text-sm font-medium text-slate-900 truncate">
+                      {me
+                        ? `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() || me.email
+                        : "Učitavanje..."}
+                    </p>
+                    {me && <p className="text-xs text-slate-500 truncate">{me.email}</p>}
+                  </div>
+                  <Link
+                    to={ROUTES.dashboard}
+                    onClick={() => setProfileOpen(false)}
+                    className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Idi na kontrolnu tablu
+                  </Link>
+                  {currentRole === "customer" && (
+                    <Link
+                      to="/book"
+                      onClick={() => setProfileOpen(false)}
+                      className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Nova rezervacija
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-slate-50"
+                  >
+                    Odjavi se
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               {/* Sekundarno dugme — vodi na postojeću Login stranicu */}
@@ -240,9 +324,9 @@ function HeroSection() {
       <div className="max-w-6xl mx-auto px-4 py-16 md:py-24 grid md:grid-cols-2 gap-12 items-center">
         {/* Lijeva kolona — tekstualni sadržaj */}
         <div>
-          {/* Badge sa trial periodom — SUBSCRIPTION.trialDays iz Dok. 13 */}
+          {/* Badge — beta faza, SUBSCRIPTION.freeAccessLabel iz Dok. 13 */}
           <p className="inline-block px-3 py-1 mb-4 text-sm bg-blue-600/30 text-blue-200 rounded-full border border-blue-500/40">
-            {SUBSCRIPTION.trialDays} dana besplatnog probnog perioda
+            Trenutno {SUBSCRIPTION.freeAccessLabel}
           </p>
 
           {/* Glavni naslov — BRAND.productName + value proposition */}
@@ -274,7 +358,7 @@ function HeroSection() {
               to={ROUTES.register}
               className={`px-6 py-3 ${COLORS.primaryClass} text-white font-medium rounded-xl ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
             >
-              Započni besplatno — {SUBSCRIPTION.trialDays} dana
+              Započni besplatno
             </Link>
             <Link
               to={ROUTES.login}
@@ -364,7 +448,7 @@ function PricingSection() {
         </h2>
         {/* Obavijest o ukinutom free planu — Dok. 13 sekcija 5 */}
         <p className="text-slate-500 text-center mb-2">
-          {SUBSCRIPTION.trialDays} dana besplatno, zatim plaćeni paket.
+          Trenutno {SUBSCRIPTION.freeAccessLabel}.
         </p>
         <p className="text-sm text-blue-600 text-center mb-10">
           Godišnja pretplata: {SUBSCRIPTION.annualDiscountPercent}% popusta
@@ -584,7 +668,7 @@ function LossCalculatorSection() {
               to={ROUTES.register}
               className={`inline-block px-6 py-3 ${COLORS.primaryClass} text-white font-medium rounded-xl ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
             >
-              Započni besplatno — {SUBSCRIPTION.trialDays} dana
+              Započni besplatno
             </Link>
           </div>
         </div>
@@ -703,7 +787,7 @@ function ContactSection() {
             to={ROUTES.register}
             className={`inline-block px-8 py-3 ${COLORS.primaryClass} text-white font-medium rounded-xl ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
           >
-            Kreiraj nalog — {SUBSCRIPTION.trialDays} dana besplatno
+            Kreiraj nalog — besplatno
           </Link>
         </div>
       </div>

@@ -14,7 +14,6 @@ import {
   COLORS,
   CONTACT,
   ROUTES,
-  SUBSCRIPTION,
   TYPOGRAPHY,
 } from "../config/landingConfig";
 import {
@@ -128,7 +127,7 @@ function Roadmap() {
             to={ROUTES.register}
             className={`inline-block px-6 py-3 ${COLORS.primaryClass} text-white font-medium rounded-xl ${COLORS.primaryHoverClass} ${ANIMATION.transitionClass}`}
           >
-            Probajte besplatno — {SUBSCRIPTION.trialDays} dana
+            Probajte besplatno
           </Link>
         </div>
       </footer>

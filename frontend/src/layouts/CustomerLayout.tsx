@@ -35,7 +35,7 @@ function CustomerLayout() {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <span className="font-bold">Sattlio</span>
+        <Link to="/" className="font-bold">Sattlio</Link>
         <div className="w-8" />
       </div>
 
@@ -52,7 +52,7 @@ function CustomerLayout() {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <h2 className="text-xl font-bold mb-1">Sattlio</h2>
+        <Link to="/" className="text-xl font-bold mb-1 block hover:opacity-80 transition-opacity">Sattlio</Link>
         <p className="text-xs text-slate-400 mb-4">Moj nalog</p>
 
         <div className="border-t border-slate-700 mb-3" />

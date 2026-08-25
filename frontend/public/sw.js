@@ -65,6 +65,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Ne-GET zahtjevi (POST/PUT/DELETE) - pusti browseru direktno, bez SW
+  // posrednistva. Otkriveno 25.08.2026: kad SW presretne POST /auth/login
+  // (respondWith(fetch(request))), Chrome ume da NE primijeni Set-Cookie iz
+  // takvog "kroz SW" odgovora (DevTools ga oznaci "from service worker"),
+  // pa je refresh cookie tiho nestajao i korisnik bi bio izlogovan cim
+  // istekne access token (~60 min). Cache/keriranje ionako nema smisla za
+  // POST/PUT/DELETE, pa nema sta da se izgubi ovim ranim izlaskom.
+  if (request.method !== 'GET') {
+    return;
+  }
+
   // Upload-ovane slike (avatari, logo, cover) - fajl na datom URL-u se NIKAD
   // ne mijenja (novi upload = nova nasumicna putanja), pa je cache-first
   // bezbjedno i mnogo brze, radi i offline nakon prve posjete.

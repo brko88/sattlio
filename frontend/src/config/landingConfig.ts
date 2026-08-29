@@ -137,6 +137,8 @@ export const ROUTES = {
   home: "/",
   /** Javni roadmap — sadržaj u config/roadmapConfig.ts */
   roadmap: "/roadmap",
+  /** Javni blog — sadržaj u config/blogConfig.ts */
+  blog: "/blog",
   login: "/login",
   register: "/register",
   forgotPassword: "/forgot-password",

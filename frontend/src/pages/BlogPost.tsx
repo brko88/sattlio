@@ -9,15 +9,7 @@ import { useEffect } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import { ANIMATION, BRAND, COLORS, ROUTES, TYPOGRAPHY } from "../config/landingConfig";
-import { getBlogPostBySlug } from "../config/blogConfig";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("bs-BA", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
+import { getBlogPostBySlug, formatBlogDate } from "../config/blogConfig";
 
 function BlogPost() {
   const { slug } = useParams<{ slug: string }>();
@@ -64,7 +56,7 @@ function BlogPost() {
 
       <main className="max-w-3xl mx-auto px-4 py-12 md:py-16">
         <article>
-          <p className="text-xs text-slate-400 mb-3">{formatDate(post.publishedAt)}</p>
+          <p className="text-xs text-slate-400 mb-3">{formatBlogDate(post.publishedAt)}</p>
           <h1 className={`${TYPOGRAPHY.heroTitleClass} text-slate-900 mb-8`}>{post.title}</h1>
 
           <div className="space-y-6">

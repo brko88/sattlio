@@ -120,3 +120,19 @@ export const BLOG_POSTS: BlogPost[] = [
 export function getBlogPostBySlug(slug: string): BlogPost | undefined {
   return BLOG_POSTS.find((post) => post.slug === slug);
 }
+
+const MONTH_NAMES = [
+  "januar", "februar", "mart", "april", "maj", "juni",
+  "juli", "avgust", "septembar", "oktobar", "novembar", "decembar",
+];
+
+/**
+ * Ručno formatiranje datuma umjesto toLocaleDateString("bs-BA", ...) — na
+ * dijelu Android/Chrome verzija ICU podaci za "bs-BA" fale, pa mjesec ispadne
+ * kao skraćenica tipa "M08" umjesto "avgust" (otkriveno 29.08.2026. na
+ * telefonu, screenshot).
+ */
+export function formatBlogDate(iso: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  return `${day}. ${MONTH_NAMES[month - 1]} ${year}.`;
+}

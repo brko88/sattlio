@@ -835,6 +835,9 @@ function LandingFooter() {
           <Link to={ROUTES.roadmap} className={`${ANIMATION.transitionClass} hover:text-white`}>
             Roadmap
           </Link>
+          <Link to={ROUTES.blog} className={`${ANIMATION.transitionClass} hover:text-white`}>
+            Blog
+          </Link>
           <Link to="/uslovi-koristenja" className={`${ANIMATION.transitionClass} hover:text-white`}>
             Uslovi korištenja
           </Link>

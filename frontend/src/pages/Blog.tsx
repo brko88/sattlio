@@ -9,15 +9,7 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import { ANIMATION, BRAND, COLORS, ROUTES, TYPOGRAPHY } from "../config/landingConfig";
-import { BLOG_POSTS } from "../config/blogConfig";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("bs-BA", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
+import { BLOG_POSTS, formatBlogDate } from "../config/blogConfig";
 
 function Blog() {
   useEffect(() => {
@@ -61,7 +53,7 @@ function Blog() {
                 to={`/blog/${post.slug}`}
                 className="block bg-white rounded-xl border border-slate-200 p-6 hover:border-blue-300 transition-colors"
               >
-                <p className="text-xs text-slate-400 mb-2">{formatDate(post.publishedAt)}</p>
+                <p className="text-xs text-slate-400 mb-2">{formatBlogDate(post.publishedAt)}</p>
                 <h2 className="text-lg font-semibold text-slate-900 mb-2">{post.title}</h2>
                 <p className="text-sm text-slate-500">{post.excerpt}</p>
               </Link>

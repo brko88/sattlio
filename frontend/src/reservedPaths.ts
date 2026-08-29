@@ -34,6 +34,7 @@ export const RESERVED_PATHS = new Set<string>([
     // app/api/routes/tenants.py, da salon ne dobije slug koji ih poklapa)
     "roadmap",
     "video-uputstva",
+    "blog",
   ]);
   
   /** Vraća true ako je prvi segment putanje interna ruta (ne salon slug). */

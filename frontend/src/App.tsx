@@ -30,6 +30,8 @@ const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Roadmap = lazy(() => import("./pages/Roadmap"));
 const VideoTutorials = lazy(() => import("./pages/VideoTutorials"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
 const BookAppointment = lazy(() => import("./pages/BookAppointment"));
 const SalonProfile = lazy(() => import("./pages/SalonProfile"));
 
@@ -264,6 +266,8 @@ function App() {
           <Route path="/politika-privatnosti" element={<PrivacyPolicy />} />
           <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/video-uputstva" element={<VideoTutorials />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/book/:employeeId" element={<BookAppointment />} />
 
           <Route path="/*" element={<PublicOrApp />} />

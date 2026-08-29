@@ -8,31 +8,25 @@
 import { useEffect } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
-import { ANIMATION, BRAND, COLORS, ROUTES, TYPOGRAPHY } from "../config/landingConfig";
+import { ANIMATION, BRAND, COLORS, ROUTES, SEO, TYPOGRAPHY } from "../config/landingConfig";
 import { getBlogPostBySlug, formatBlogDate } from "../config/blogConfig";
+import { setPageMeta } from "../utils/seo";
 
 function BlogPost() {
   const { slug } = useParams<{ slug: string }>();
   const post = slug ? getBlogPostBySlug(slug) : undefined;
 
-  // Postavlja dinamički <title> i meta description po postu — Dok. 23 (SEO po
-  // stranici). Vraća prethodni opis pri odlasku (za razliku od Landing.tsx,
-  // ovdje je restore bitan jer se korisnik obično vraća na /blog listu).
+  // Postavlja dinamički <title>, meta description i og:* po postu — Dok. 23
+  // (SEO po stranici). og:image ovdje NE pomaze Facebook/WhatsApp botovima
+  // (oni ne izvrsavaju JS, vidi utils/seo.ts) ali pomaze Google-u i botovima
+  // koji renderuju JS.
   useEffect(() => {
     if (!post) return;
-    const previousTitle = document.title;
-    const metaDesc = document.querySelector('meta[name="description"]');
-    const previousDescription = metaDesc?.getAttribute("content") ?? null;
-
-    document.title = `${post.title} — ${BRAND.productName}`;
-    metaDesc?.setAttribute("content", post.metaDescription);
-
-    return () => {
-      document.title = previousTitle;
-      if (previousDescription !== null) {
-        metaDesc?.setAttribute("content", previousDescription);
-      }
-    };
+    return setPageMeta({
+      title: `${post.title} — ${BRAND.productName}`,
+      description: post.metaDescription,
+      image: `${SEO.siteUrl}${post.coverImage}`,
+    });
   }, [post]);
 
   if (!post) {

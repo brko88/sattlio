@@ -25,6 +25,7 @@ import {
   TYPOGRAPHY,
   annualPriceKM,
 } from "../config/landingConfig";
+import { setPageMeta } from "../utils/seo";
 import {
   MINI_ROADMAP_KEYS,
   ROADMAP,
@@ -52,13 +53,9 @@ interface PricingPlan {
 // Landing — glavna komponenta stranice
 // ---------------------------------------------------------------------------
 function Landing() {
-  // Postavlja dinamički <title> i meta description — Dok. 23 (SEO po stranici)
+  // Postavlja dinamički <title>, meta description i og:* — Dok. 23 (SEO po stranici)
   useEffect(() => {
-    document.title = SEO.title;
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) {
-      metaDesc.setAttribute("content", SEO.description);
-    }
+    return setPageMeta({ title: SEO.title, description: SEO.description });
   }, []);
 
   return (

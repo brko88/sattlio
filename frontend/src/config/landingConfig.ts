@@ -252,6 +252,8 @@ export const TARGET_CATEGORIES = [
 // SEO — Dokument 23 (meta tagovi za javne stranice)
 // ---------------------------------------------------------------------------
 export const SEO = {
+  /** Goli domen bez trailing slash-a — koristi se za og:url i og:image (moraju biti apsolutni). */
+  siteUrl: "https://sattlio.com",
   title: "Sattlio — Rezervacije termina za salone i uslužne djelatnosti",
   description:
     "Jednostavna SaaS platforma za upravljanje rezervacijama, zaposlenima, klijentima i kalendarom. Trenutno potpuno besplatno tokom beta perioda.",

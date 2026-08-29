@@ -10,14 +10,13 @@ import { Link } from "react-router-dom";
 import BrandLogo from "../components/BrandLogo";
 import { ANIMATION, BRAND, COLORS, ROUTES, TYPOGRAPHY } from "../config/landingConfig";
 import { BLOG_POSTS, formatBlogDate } from "../config/blogConfig";
+import { setPageMeta } from "../utils/seo";
+
+const BLOG_INTRO = "Savjeti za vlasnike salona — organizacija termina, manje nedolazaka, digitalizacija posla.";
 
 function Blog() {
   useEffect(() => {
-    const previous = document.title;
-    document.title = `Blog — ${BRAND.productName}`;
-    return () => {
-      document.title = previous;
-    };
+    return setPageMeta({ title: `Blog — ${BRAND.productName}`, description: BLOG_INTRO });
   }, []);
 
   return (
@@ -38,9 +37,7 @@ function Blog() {
       <main className="max-w-4xl mx-auto px-4 py-12 md:py-16">
         <div className="text-center mb-12">
           <h1 className={`${TYPOGRAPHY.heroTitleClass} text-slate-900 mb-3`}>Blog</h1>
-          <p className="text-slate-500 max-w-2xl mx-auto">
-            Savjeti za vlasnike salona — organizacija termina, manje nedolazaka, digitalizacija posla.
-          </p>
+          <p className="text-slate-500 max-w-2xl mx-auto">{BLOG_INTRO}</p>
         </div>
 
         {BLOG_POSTS.length === 0 ? (

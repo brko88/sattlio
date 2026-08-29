@@ -51,11 +51,18 @@ function Blog() {
               <Link
                 key={post.slug}
                 to={`/blog/${post.slug}`}
-                className="block bg-white rounded-xl border border-slate-200 p-6 hover:border-blue-300 transition-colors"
+                className="flex flex-col sm:flex-row gap-5 bg-white rounded-xl border border-slate-200 p-6 hover:border-blue-300 transition-colors"
               >
-                <p className="text-xs text-slate-400 mb-2">{formatBlogDate(post.publishedAt)}</p>
-                <h2 className="text-lg font-semibold text-slate-900 mb-2">{post.title}</h2>
-                <p className="text-sm text-slate-500">{post.excerpt}</p>
+                <img
+                  src={post.coverImage}
+                  alt={post.title}
+                  className="w-full sm:w-40 h-32 sm:h-24 rounded-lg object-cover shrink-0"
+                />
+                <div>
+                  <p className="text-xs text-slate-400 mb-2">{formatBlogDate(post.publishedAt)}</p>
+                  <h2 className="text-lg font-semibold text-slate-900 mb-2">{post.title}</h2>
+                  <p className="text-sm text-slate-500">{post.excerpt}</p>
+                </div>
               </Link>
             ))}
           </div>

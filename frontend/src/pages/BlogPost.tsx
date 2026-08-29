@@ -56,6 +56,11 @@ function BlogPost() {
 
       <main className="max-w-3xl mx-auto px-4 py-12 md:py-16">
         <article>
+          <img
+            src={post.coverImage}
+            alt={post.title}
+            className="w-full rounded-2xl mb-8 border border-slate-200"
+          />
           <p className="text-xs text-slate-400 mb-3">{formatBlogDate(post.publishedAt)}</p>
           <h1 className={`${TYPOGRAPHY.heroTitleClass} text-slate-900 mb-8`}>{post.title}</h1>
 

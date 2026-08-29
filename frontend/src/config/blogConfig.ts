@@ -30,6 +30,51 @@ export interface BlogPost {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "zasto-salon-treba-online-rezervacije",
+    title: "5 razloga zašto vaš salon treba sistem za online rezervacije",
+    metaDescription:
+      "Instagram poruke, telefonski pozivi, papirni rokovnik — evo pet konkretnih razloga zašto salon danas treba jedan sistem za sve rezervacije.",
+    publishedAt: "2026-08-30",
+    excerpt:
+      "Ako rezervacije danas primate kroz Instagram, Viber, telefon i papirni rokovnik, niste jedini — evo zašto se isplati sve svesti na jedno mjesto.",
+    coverImage: "/blog-covers/zasto-salon-treba-online-rezervacije.png",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "Ako vaš salon danas prima rezervacije kroz Instagram poruke, Viber, telefon i po koji papirni rokovnik — niste jedini. Ali svaki od tih kanala je posebno mjesto koje treba provjeriti, i lako je nešto propustiti. Evo zašto se isplati sve to svesti na jedno mjesto.",
+      },
+      {
+        type: "list",
+        items: [
+          {
+            title: "Klijenti danas očekuju opciju online rezervacije.",
+            text: "Sve više ljudi jednostavno preskoči salon koji nema tu opciju — ne zato što je salon loš, nego zato što je zvanje telefonom postalo nezgodno, posebno mlađoj populaciji. Salon koji nudi online rezervaciju djeluje pristupačnije već na prvi utisak.",
+          },
+          {
+            title: "Kraj haosa poruka na više mjesta.",
+            text: "Instagram DM za jednog klijenta, Viber poruka za drugog, poziv za trećeg — sve razbacano, ništa na jednom mjestu. Kad sve rezervacije prolaze kroz isti sistem, ne morate pamtiti gdje ste šta dogovorili.",
+          },
+          {
+            title: "Automatska provjera preklapanja.",
+            text: "Čak i najorganizovaniji ljudi ponekad upišu dva klijenta u isti termin greškom. Sistem to spriječi sam — ne dozvoljava da se dva termina poklope za istog zaposlenog.",
+          },
+          {
+            title: "Lakše upravljanje sa više zaposlenih.",
+            text: "Kad salon ima dva, tri ili više zaposlenih, ručno pamtiti čiji je koji termin postaje nepregledno. Svaki zaposleni ima svoj kalendar, klijent bira i osobu i termin, bez zabune.",
+          },
+          {
+            title: "Profesionalniji utisak prema novim klijentima.",
+            text: "Javna stranica sa uslugama, cijenama i slobodnim terminima djeluje ozbiljnije od \"pošaljite poruku za cijenu i termin\". Novom klijentu je lakše da se odluči kad odmah vidi sve što mu treba.",
+          },
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "Sattlio pokriva sve navedeno iz jednog mjesta — javnu stranicu za rezervaciju, automatsku provjeru preklapanja i poseban kalendar po zaposlenom, bez potrebe da žonglirate sa više kanala.",
+      },
+    ],
+  },
+  {
     slug: "online-zakazivanje-vs-telefon",
     title: "Online zakazivanje vs. zakazivanje telefonom — šta se isplati vlasniku salona",
     metaDescription:

@@ -135,6 +135,23 @@ def draw_phone(draw, cx, cy, w, h):
     draw.ellipse((cx - button_r, y1 - h * 0.075 - button_r, cx + button_r, y1 - h * 0.075 + button_r), outline=WHITE, width=max(2, int(w * 0.02)))
 
 
+def draw_chat_bubble(draw, cx, cy, w, h, fill):
+    """Oblacic poruke (Instagram/Viber) - zaobljen pravougaonik + rep + tri tacke."""
+    x0, y0 = cx - w / 2, cy - h / 2
+    x1, y1 = cx + w / 2, cy + h / 2
+    radius = h * 0.30
+    draw.rounded_rectangle((x0, y0, x1, y1), radius=radius, fill=fill)
+    tail = h * 0.22
+    draw.polygon(
+        [(x0 + w * 0.22, y1 - h * 0.02), (x0 + w * 0.22, y1 + tail), (x0 + w * 0.42, y1 - h * 0.02)],
+        fill=fill,
+    )
+    dot_r = h * 0.07
+    for i in (-1, 0, 1):
+        dcx = cx + i * dot_r * 3
+        draw.ellipse((dcx - dot_r, cy - dot_r, dcx + dot_r, cy + dot_r), fill=WHITE)
+
+
 def draw_arrow_right(draw, x0, y, length, color, width):
     x1 = x0 + length
     draw.line([(x0, y), (x1, y)], fill=color, width=width)
@@ -163,5 +180,17 @@ cal_x0, cal_y0 = W / 2 - cal_w / 2, H / 2 - cal_h / 2
 draw_calendar(draw, x0=cal_x0, y0=cal_y0, w=cal_w, h=cal_h, marks={(0, 2): "x", (1, 0): "check", (2, 3): "check"})
 draw_bell_badge(draw, cx=cal_x0 + cal_w * 0.96, cy=cal_y0 + cal_h * 0.04, r=H * 0.075)
 save(img, "smanjiti-nedolaske-na-termine")
+
+# ---------------------------------------------------------------------------
+# Post 3: zasto-salon-treba-online-rezervacije — rasuti kanali (poruke/telefon)
+# u pozadini konvergiraju ka jednom kalendaru u prvom planu.
+# ---------------------------------------------------------------------------
+img, draw = new_canvas()
+draw_chat_bubble(draw, cx=W * 0.24, cy=H * 0.28, w=W * 0.15, h=H * 0.16, fill=SLATE_400)
+draw_chat_bubble(draw, cx=W * 0.78, cy=H * 0.30, w=W * 0.13, h=H * 0.14, fill=SLATE_400)
+draw_phone(draw, cx=W * 0.20, cy=H * 0.72, w=W * 0.08, h=H * 0.26)
+cal_w, cal_h = W * 0.34, H * 0.56
+draw_calendar(draw, x0=W / 2 - cal_w / 2, y0=H / 2 - cal_h / 2, w=cal_w, h=cal_h, marks={(1, 1): "check", (1, 2): "check"})
+save(img, "zasto-salon-treba-online-rezervacije")
 
 print("Gotovo.")

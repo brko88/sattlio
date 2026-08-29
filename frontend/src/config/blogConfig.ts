@@ -37,7 +37,7 @@ export const BLOG_POSTS: BlogPost[] = [
     publishedAt: "2026-08-29",
     excerpt:
       "Telefon je besplatan, ali nije bez cijene — evo šta zakazivanje preko telefona stvarno košta salon, i šta se dobije prelaskom na online.",
-    coverImage: "/blog/online-zakazivanje-vs-telefon.png",
+    coverImage: "/blog-covers/online-zakazivanje-vs-telefon.png",
     blocks: [
       {
         type: "paragraph",
@@ -82,7 +82,7 @@ export const BLOG_POSTS: BlogPost[] = [
     publishedAt: "2026-08-29",
     excerpt:
       "Svaki prazan termin je izgubljen prihod koji niko drugi nije mogao rezervisati. Evo koliko to realno košta, i šta stvarno pomaže.",
-    coverImage: "/blog/smanjiti-nedolaske-na-termine.png",
+    coverImage: "/blog-covers/smanjiti-nedolaske-na-termine.png",
     blocks: [
       {
         type: "paragraph",

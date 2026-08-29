@@ -40,8 +40,12 @@ def new_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
 
 
 def save(img: Image.Image, slug: str) -> None:
+    # NAPOMENA: folder mora biti "blog-covers", NE "blog" - potonje bi u
+    # build-u napravilo stvaran direktorijum koji se kosi sa React rutom
+    # /blog i pravi nginx da vrati 403 umjesto SPA stranice (otkriveno
+    # 29.08.2026. odmah nakon prvog produkcijskog deploya).
     final = img.resize((FINAL_W, FINAL_H), Image.LANCZOS)
-    path = f"D:/SmartBooking Platform/frontend/public/blog/{slug}.png"
+    path = f"D:/SmartBooking Platform/frontend/public/blog-covers/{slug}.png"
     final.save(path)
     print(f"Sacuvano: {path}")
 

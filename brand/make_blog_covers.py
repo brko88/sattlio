@@ -160,6 +160,53 @@ def draw_arrow_right(draw, x0, y, length, color, width):
     draw.line([(x1 - head, y + head), (x1, y)], fill=color, width=width)
 
 
+def draw_contact_card(draw, x0, y0, w, h):
+    """Kartica klijenta: avatar + linije (ime/telefon/email) + napomena ispod."""
+    radius = int(w * 0.06)
+    draw.rounded_rectangle((x0, y0, x0 + w, y0 + h), radius=radius, fill=WHITE, outline=SLATE_200, width=int(w * 0.01))
+
+    avatar_r = h * 0.16
+    avatar_cx, avatar_cy = x0 + w * 0.22, y0 + h * 0.30
+    draw.ellipse((avatar_cx - avatar_r, avatar_cy - avatar_r, avatar_cx + avatar_r, avatar_cy + avatar_r), fill=BLUE)
+    head_r = avatar_r * 0.38
+    draw.ellipse(
+        (avatar_cx - head_r, avatar_cy - avatar_r * 0.32 - head_r, avatar_cx + head_r, avatar_cy - avatar_r * 0.32 + head_r),
+        fill=WHITE,
+    )
+    shoulder_w, shoulder_h = avatar_r * 1.15, avatar_r * 0.6
+    draw.pieslice(
+        (avatar_cx - shoulder_w / 2, avatar_cy + avatar_r * 0.05, avatar_cx + shoulder_w / 2, avatar_cy + avatar_r * 0.05 + shoulder_h * 2),
+        start=180, end=360, fill=WHITE,
+    )
+
+    line_x0 = avatar_cx + avatar_r * 1.7
+    line_h = h * 0.045
+    line_y = avatar_cy - avatar_r * 0.5
+    draw.rounded_rectangle((line_x0, line_y, x0 + w * 0.86, line_y + line_h), radius=line_h / 2, fill=SLATE_800)
+    draw.rounded_rectangle((line_x0, line_y + line_h * 2.1, x0 + w * 0.68, line_y + line_h * 3.1), radius=line_h / 2, fill=SLATE_400)
+    draw.rounded_rectangle((line_x0, line_y + line_h * 4.2, x0 + w * 0.74, line_y + line_h * 5.2), radius=line_h / 2, fill=SLATE_400)
+
+    div_y = y0 + h * 0.60
+    draw.rectangle((x0 + w * 0.08, div_y, x0 + w * 0.92, div_y + max(1, int(h * 0.006))), fill=SLATE_200)
+
+    note_h = h * 0.05
+    note_y0 = div_y + h * 0.10
+    draw.rounded_rectangle((x0 + w * 0.08, note_y0, x0 + w * 0.80, note_y0 + note_h), radius=note_h / 2, fill=SLATE_200)
+    draw.rounded_rectangle((x0 + w * 0.08, note_y0 + note_h * 1.8, x0 + w * 0.60, note_y0 + note_h * 2.8), radius=note_h / 2, fill=SLATE_200)
+
+
+def draw_search_badge(draw, cx, cy, r):
+    """Lupa (pretraga) u kruznom zelenom baloncicu, isti obrazac kao draw_bell_badge."""
+    draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=GREEN)
+    glass_r = r * 0.38
+    glass_cx, glass_cy = cx - r * 0.12, cy - r * 0.12
+    width = max(2, int(r * 0.16))
+    draw.ellipse((glass_cx - glass_r, glass_cy - glass_r, glass_cx + glass_r, glass_cy + glass_r), outline=WHITE, width=width)
+    handle_start = (glass_cx + glass_r * 0.72, glass_cy + glass_r * 0.72)
+    handle_end = (glass_cx + glass_r * 1.7, glass_cy + glass_r * 1.7)
+    draw.line([handle_start, handle_end], fill=WHITE, width=width)
+
+
 # ---------------------------------------------------------------------------
 # Post 1: online-zakazivanje-vs-telefon — telefon (lijevo) -> strelica -> kalendar (desno)
 # ---------------------------------------------------------------------------
@@ -192,5 +239,16 @@ draw_phone(draw, cx=W * 0.20, cy=H * 0.72, w=W * 0.08, h=H * 0.26)
 cal_w, cal_h = W * 0.34, H * 0.56
 draw_calendar(draw, x0=W / 2 - cal_w / 2, y0=H / 2 - cal_h / 2, w=cal_w, h=cal_h, marks={(1, 1): "check", (1, 2): "check"})
 save(img, "zasto-salon-treba-online-rezervacije")
+
+# ---------------------------------------------------------------------------
+# Post 4: baza-klijenata-jedno-mjesto — kartica klijenta (avatar + linije +
+# napomena) sa lupom (pretraga) u baloncicu preko gornjeg desnog ugla.
+# ---------------------------------------------------------------------------
+img, draw = new_canvas()
+card_w, card_h = W * 0.44, H * 0.62
+card_x0, card_y0 = W / 2 - card_w / 2, H / 2 - card_h / 2
+draw_contact_card(draw, x0=card_x0, y0=card_y0, w=card_w, h=card_h)
+draw_search_badge(draw, cx=card_x0 + card_w * 0.98, cy=card_y0 + card_h * 0.02, r=H * 0.075)
+save(img, "baza-klijenata-jedno-mjesto")
 
 print("Gotovo.")

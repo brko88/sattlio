@@ -30,6 +30,47 @@ export interface BlogPost {
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "baza-klijenata-jedno-mjesto",
+    title: "Baza klijenata: zašto salon treba jedno mjesto za kontakte i napomene, ne pamćenje",
+    metaDescription:
+      "Kad je baza klijenata razbacana po glavama zaposlenih i porukama na više kanala, lako se izgubi. Evo zašto salon treba jedno mjesto za kontakte i napomene o klijentima.",
+    publishedAt: "2026-09-08",
+    excerpt:
+      "Klijentov broj u nečijem telefonu, alergija zapamćena samo u glavi frizera, dupli kontakt pod dva imena — evo zašto baza klijenata treba biti na jednom mjestu, ne razbacana.",
+    coverImage: "/blog-covers/baza-klijenata-jedno-mjesto.png",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "Puno salona danas ima klijente \"u glavi\" — frizer zna ko je alergičan na šta, recepcija zna ko obično kasni, a broj telefona je zapisan u ličnom mobitelu zaposlenog. Dok sve funkcioniše, niko to ne primijeti. Problem se pojavi tačno onda kad nešto pođe po zlu.",
+      },
+      {
+        type: "list",
+        items: [
+          {
+            title: "Podaci ne nestaju kad zaposleni ode.",
+            text: "Ako frizerka koja pamti da gospođa Amela dolazi svake tri sedmice i da je alergična na amonijak da otkaz, taj podatak ode s njom. Kad je zapisan u zajedničkoj bazi, ostaje vlasništvo salona, ne pojedinca.",
+          },
+          {
+            title: "Brzo pronalaženje umjesto prelistavanja starih poruka.",
+            text: "Klijent koji dolazi jednom u pola godine zove, a niko se ne sjeća njegovog broja — pretraživanje kroz mjesece Viber ili Instagram poruka da se nađe ko je i šta je radio zadnji put gubi vrijeme usred rada.",
+          },
+          {
+            title: "Napomene koje poboljšaju uslugu.",
+            text: "Nijansa boje koju je tražila prošli put, alergija, omiljeni radnik — sitni detalji koji djeluju kao lična pažnja kad se zapamte, a nemoguće ih je nositi u glavi za stotine klijenata.",
+          },
+          {
+            title: "Nema duplih ili izgubljenih kontakata.",
+            text: "Ista osoba upisana kao \"Sandra\" na jednom mjestu i \"Sandra kod 065...\" na drugom lako postane dva razdvojena zapisa umjesto jednog klijenta s istorijom.",
+          },
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "Sattlio uz svaki termin vodi i bazu klijenata — ime, telefon, email i napomena na jednom mjestu, pretraživo za par sekundi, dostupno svima u salonu ko ima pristup, a ne samo osobi koja je klijenta prvi put upisala.",
+      },
+    ],
+  },
+  {
     slug: "zasto-salon-treba-online-rezervacije",
     title: "5 razloga zašto vaš salon treba sistem za online rezervacije",
     metaDescription:
